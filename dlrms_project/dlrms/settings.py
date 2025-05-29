@@ -1,6 +1,26 @@
 import os
+import sys
 from pathlib import Path
 from decouple import config
+
+# CRITICAL: Set GDAL paths BEFORE any Django imports
+if os.name == 'nt':  # Windows
+    # Set the exact paths we found from the working test
+    osgeo_dir = r"D:\COURSES\SEM 7\FINAL YEAR PROJECT\CODEBASE\DLRMS\dlrms_project\dlrms_env\Lib\site-packages\osgeo"
+    
+    # Set environment variable for GDAL (this is what made it work)
+    os.environ['GDAL_LIBRARY_PATH'] = osgeo_dir
+    
+    # Also set the specific library paths
+    GDAL_LIBRARY_PATH = os.path.join(osgeo_dir, "gdal.dll")
+    GEOS_LIBRARY_PATH = os.path.join(osgeo_dir, "geos_c.dll")
+    
+    # Set data directories
+    os.environ['GDAL_DATA'] = osgeo_dir
+    os.environ['PROJ_LIB'] = osgeo_dir
+    
+    print(f"✅ GDAL configured: {GDAL_LIBRARY_PATH}")
+    print(f"✅ GEOS configured: {GEOS_LIBRARY_PATH}")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,7 +31,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'ec49-2c0f-eb68-693-a400-8db1-dd10-305b-f299.ngrok-free.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 # Application definition
 INSTALLED_APPS = [
@@ -21,10 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'django.contrib.gis',  # Temporarily disabled
+    'django.contrib.gis',  # Enable GIS support
     
     # Third party apps
-    # 'leaflet',  # Temporarily disabled
+    'leaflet',  # Enable Leaflet for maps
     'crispy_forms',
     'crispy_tailwind',
     'django_extensions',
@@ -72,27 +92,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dlrms.wsgi.application'
 
-# Database - Using SQLite temporarily
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-# Future PostGIS configuration (commented out for now)
-"""
+# Database - PostgreSQL with PostGIS
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': config('DB_NAME', default='dlrms_db'),
         'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='your_password'),
+        'PASSWORD': config('DB_PASSWORD', default='arikuagz'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
     }
 }
-"""
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -137,21 +147,22 @@ AUTH_USER_MODEL = 'accounts.User'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
 
-# Leaflet Configuration (disabled for now)
-"""
+# Leaflet Configuration for North Kivu, DRC
 LEAFLET_CONFIG = {
     'DEFAULT_CENTER': (-1.9441, 30.0619),  # North Kivu coordinates
     'DEFAULT_ZOOM': 10,
     'MIN_ZOOM': 3,
     'MAX_ZOOM': 18,
-    'ATTRIBUTION_PREFIX': 'DLRMS',
+    'ATTRIBUTION_PREFIX': 'DLRMS - North Kivu Land Management',
     'TILES': [
         ('OpenStreetMap', 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             'attribution': '© OpenStreetMap contributors'
         }),
+        ('Satellite', 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            'attribution': 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }),
     ],
 }
-"""
 
 # Email Configuration (for notifications)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -186,7 +197,3 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
     }
 }
-
-CSRF_TRUSTED_ORIGINS = [
-    'https://ec49-2c0f-eb68-693-a400-8db1-dd10-305b-f299.ngrok-free.app'  # IP with port
-]

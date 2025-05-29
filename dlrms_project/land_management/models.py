@@ -1,10 +1,10 @@
-from django.db import models
+from django.contrib.gis.db import models
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 class LandParcel(models.Model):
-    """Model representing a land parcel"""
+    """Model representing a land parcel with basic GIS support"""
     
     PARCEL_STATUS_CHOICES = [
         ('registered', 'Registered'),
@@ -38,9 +38,18 @@ class LandParcel(models.Model):
     land_use = models.CharField(max_length=20, choices=LAND_USE_CHOICES)
     status = models.CharField(max_length=20, choices=PARCEL_STATUS_CHOICES, default='pending')
     
-    # Coordinates (we'll add PostGIS fields later)
+    # Basic GIS Fields - Simple PostGIS integration
+    # Point geometry for parcel center/reference point
+    location_point = models.PointField(srid=4326, blank=True, null=True, help_text="GPS coordinates of parcel center")
+    
+    # Legacy coordinate fields (kept for backward compatibility)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
+    
+    # Survey Information
+    survey_date = models.DateField(blank=True, null=True)
+    surveyor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='surveyed_parcels')
+    survey_accuracy = models.CharField(max_length=50, blank=True, null=True, help_text="GPS accuracy in meters")
     
     # Registration Information
     registration_date = models.DateTimeField(blank=True, null=True)
@@ -52,6 +61,30 @@ class LandParcel(models.Model):
     
     def __str__(self):
         return f"Parcel {self.parcel_id} - {self.owner.username}"
+    
+    def save(self, *args, **kwargs):
+        """Override save to update calculated fields"""
+        # Update location_point from lat/lng if needed
+        if self.latitude and self.longitude and not self.location_point:
+            from django.contrib.gis.geos import Point
+            self.location_point = Point(float(self.longitude), float(self.latitude), srid=4326)
+        
+        super().save(*args, **kwargs)
+    
+    @property
+    def coordinates(self):
+        """Return coordinates as dict"""
+        if self.location_point:
+            return {
+                'lat': self.location_point.y,
+                'lng': self.location_point.x
+            }
+        elif self.latitude and self.longitude:
+            return {
+                'lat': float(self.latitude),
+                'lng': float(self.longitude)
+            }
+        return None
     
     class Meta:
         verbose_name = "Land Parcel"
