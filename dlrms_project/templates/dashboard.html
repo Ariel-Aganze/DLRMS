@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50" style='font-family: "Public Sans", "Noto Sans", sans-serif;'>
+    <div class="layout-container flex h-full grow flex-col">
+        <div class="gap-1 px-6 flex flex-1 justify-center py-5">
+            
+            <!-- Sidebar -->
+            <div class="layout-content-container flex flex-col w-80">
+                <div class="flex h-full min-h-[700px] flex-col justify-between bg-slate-50 p-4">
+                    <div class="flex flex-col gap-4">
+                        <!-- User Profile Section -->
+                        <div class="flex gap-3">
+                            <div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 bg-blue-600 flex items-center justify-center">
+                                <span class="text-white font-bold text-sm">
+                                    {{ user.first_name.0 }}{{ user.last_name.0 }}
+                                </span>
+                            </div>
+                            <div class="flex flex-col">
+                                <h1 class="text-[#0e141b] text-base font-medium leading-normal">{{ user.first_name }} {{ user.last_name }}</h1>
+                                <p class="text-[#4e7397] text-sm font-normal leading-normal">{{ user.get_role_display }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Navigation Menu -->
+                        <div class="flex flex-col gap-2">
+                            <!-- Dashboard -->
+                            <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#e7edf3]">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48.11-.11a16,16,0,0,1,21.53,0,1.14,1.14,0,0,0,.11.11l80,75.48A16,16,0,0,1,224,115.55Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">Dashboard</p>
+                            </a>
+
+                            <!-- Land Titles -->
+                            <a href="{% url 'land_management:parcel_list' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">Land Titles</p>
+                            </a>
+
+                            <!-- Applications -->
+                            <a href="{% url 'applications:application_list' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M80,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H88A8,8,0,0,1,80,64Zm136,56H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM44,52A12,12,0,1,0,56,64,12,12,0,0,0,44,52Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,180Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">Applications</p>
+                            </a>
+
+                            <!-- GIS Map -->
+                            <a href="{% url 'land_management:map' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">GIS Map</p>
+                            </a>
+
+                            <!-- Documents -->
+                            <a href="{% url 'documents:document_list' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">Documents</p>
+                            </a>
+
+                            <!-- Profile -->
+                            <a href="{% url 'accounts:profile' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">Profile</p>
+                            </a>
+
+                            <!-- Logout -->
+                            <a href="{% url 'accounts:logout' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-red-100 rounded-lg transition-colors">
+                                <div class="text-red-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M112,216a8,8,0,0,1-8,8H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h56a8,8,0,0,1,0,16H48V208h56A8,8,0,0,1,112,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L188.69,112H104a8,8,0,0,0,0,16h84.69l-18.35,18.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,221.66,122.34Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-red-600 text-sm font-medium leading-normal">Logout</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+                <!-- Header -->
+                <div class="flex flex-wrap justify-between gap-3 p-4">
+                    <div class="flex min-w-72 flex-col gap-3">
+                        <p class="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight">Dashboard</p>
+                        <p class="text-[#4e7397] text-sm font-normal leading-normal">
+                            Welcome, {{ user.first_name }}! Here's an overview of your land titles and applications.
+                        </p>
+                    </div>
+                </div>
+
+                {% if user.land_parcels.exists %}
+                <!-- Land Titles Section -->
+                <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">Land Titles</h3>
+                {% for parcel in recent_parcels %}
+                <div class="p-4">
+                    <div class="flex items-stretch justify-between gap-4 rounded-lg bg-slate-50 p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
+                        <div class="flex flex-[2_2_0px] flex-col gap-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-[#0e141b] text-base font-bold leading-tight">{{ parcel.parcel_id }}</p>
+                                <p class="text-[#4e7397] text-sm font-normal leading-normal">
+                                    {% if parcel.registration_date %}
+                                        Registered on {{ parcel.registration_date|date:"Y-m-d" }}
+                                    {% else %}
+                                        Registration pending
+                                    {% endif %}
+                                </p>
+                                <p class="text-[#4e7397] text-xs font-normal leading-normal">
+                                    {{ parcel.location }} • {{ parcel.size_hectares }} hectares • {{ parcel.get_status_display }}
+                                </p>
+                            </div>
+                            <a href="{% url 'land_management:parcel_detail' parcel.pk %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal w-fit hover:bg-[#d1d9e0] transition-colors">
+                                <span class="truncate">View Details</span>
+                            </a>
+                        </div>
+                        <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center">
+                            <div class="text-[#0e141b] opacity-30">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" fill="currentColor" viewBox="0 0 256 256">
+                                    <path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if user.applications.exists %}
+                <!-- Applications Section -->
+                <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">Applications</h3>
+                {% for application in recent_applications %}
+                <div class="p-4">
+                    <div class="flex items-stretch justify-between gap-4 rounded-lg bg-slate-50 p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
+                        <div class="flex flex-[2_2_0px] flex-col gap-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-[#0e141b] text-base font-bold leading-tight">{{ application.get_application_type_display }}</p>
+                                <p class="text-[#4e7397] text-sm font-normal leading-normal">Submitted on {{ application.submitted_at|date:"Y-m-d" }}</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                                        {% if application.status == 'approved' %}bg-green-100 text-green-800
+                                        {% elif application.status == 'rejected' %}bg-red-100 text-red-800
+                                        {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
+                                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        {{ application.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            <a href="{% url 'applications:application_detail' application.pk %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal w-fit hover:bg-[#d1d9e0] transition-colors">
+                                <span class="truncate">Track Status</span>
+                            </a>
+                        </div>
+                        <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center">
+                            <div class="text-[#0e141b] opacity-30">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" fill="currentColor" viewBox="0 0 256 256">
+                                    <path d="M80,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H88A8,8,0,0,1,80,64Zm136,56H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM44,52A12,12,0,1,0,56,64,12,12,0,0,0,44,52Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,180Z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <!-- Quick Actions for New Users -->
+                <div class="p-4">
+                    <div class="bg-blue-50 rounded-lg p-6">
+                        <h3 class="text-lg font-bold text-blue-900 mb-4">Get Started with DLRMS!</h3>
+                        <p class="text-blue-800 mb-4">You haven't submitted any applications yet. Here's how to begin:</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <a href="{% url 'applications:application_create' %}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                                <div class="flex items-center">
+                                    <div class="text-[#0e141b] mr-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                            <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900">Submit Application</h4>
+                                        <p class="text-sm text-gray-500">Apply for land title registration</p>
+                                    </div>
+                                </div>
+                            </a>
+                            
+                            <a href="{% url 'documents:document_upload' %}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                                <div class="flex items-center">
+                                    <div class="text-[#0e141b] mr-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                            <path d="M224,112v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V64A16,16,0,0,1,48,48H80a8,8,0,0,1,0,16H48V192H208V112a8,8,0,0,1,16,0ZM229.66,74.34l-48-48a8,8,0,0,0-11.32,0l-48,48a8,8,0,0,0,11.32,11.32L168,51.31V112a8,8,0,0,0,16,0V51.31l34.34,34.35a8,8,0,0,0,11.32-11.32Z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-900">Upload Documents</h4>
+                                        <p class="text-sm text-gray-500">Add supporting documents</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Stats Summary -->
+                <div class="p-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <div class="text-2xl font-bold text-blue-600">{{ user.land_parcels.count }}</div>
+                            <div class="text-sm text-gray-600">Land Parcels</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <div class="text-2xl font-bold text-green-600">{{ user.applications.count }}</div>
+                            <div class="text-sm text-gray-600">Applications</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <div class="text-2xl font-bold text-yellow-600">{{ pending_applications_count }}</div>
+                            <div class="text-sm text-gray-600">Pending</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <div class="text-2xl font-bold text-red-600">{{ user.filed_disputes.count }}</div>
+                            <div class="text-sm text-gray-600">Disputes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

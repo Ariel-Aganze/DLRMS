@@ -21,10 +21,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.gis',
+    # 'django.contrib.gis',  # Temporarily disabled
     
     # Third party apps
-    'leaflet',
+    # 'leaflet',  # Temporarily disabled
     'crispy_forms',
     'crispy_tailwind',
     'django_extensions',
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'documents',
     'notifications',
     'disputes',
+    'signatures',
 ]
 
 MIDDLEWARE = [
@@ -71,7 +72,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dlrms.wsgi.application'
 
-# Database
+# Database - Using SQLite temporarily
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# Future PostGIS configuration (commented out for now)
+"""
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -82,6 +92,7 @@ DATABASES = {
         'PORT': config('DB_PORT', default='5432'),
     }
 }
+"""
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -126,7 +137,8 @@ AUTH_USER_MODEL = 'accounts.User'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 CRISPY_TEMPLATE_PACK = "tailwind"
 
-# Leaflet Configuration
+# Leaflet Configuration (disabled for now)
+"""
 LEAFLET_CONFIG = {
     'DEFAULT_CENTER': (-1.9441, 30.0619),  # North Kivu coordinates
     'DEFAULT_ZOOM': 10,
@@ -137,16 +149,9 @@ LEAFLET_CONFIG = {
         ('OpenStreetMap', 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             'attribution': '© OpenStreetMap contributors'
         }),
-        ('Satellite', 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            'attribution': 'Tiles © Esri'
-        }),
     ],
-    'PLUGINS': {
-        'forms': {
-            'auto-include': True
-        }
-    }
 }
+"""
 
 # Email Configuration (for notifications)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -178,7 +183,6 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Cache Configuration
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
+        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
     }
 }

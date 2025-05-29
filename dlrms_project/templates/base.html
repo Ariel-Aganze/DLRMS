@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DLRMS - Digital Land Registration Management System{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&family=Noto+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    {# Commented out to avoid TemplateSyntaxError #}
+    {# {% load leaflet_tags %} #}
+    {# {% leaflet_css %} #}
+
+    <style>
+        body { font-family: "Public Sans", "Noto Sans", sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    {% block content %}
+    {% endblock %}
+    
+    {# {% leaflet_js %} #}
+
+    <!-- Custom JS -->
+    {% block extra_js %}
+    {% endblock %}
+</body>
+</html>

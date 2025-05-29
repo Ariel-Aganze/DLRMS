@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Profile - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50" style='font-family: "Public Sans", "Noto Sans", sans-serif;'>
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Header -->
+        <div class="bg-white shadow border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <a href="{% url 'core:dashboard' %}" class="text-blue-600 hover:text-blue-700 mr-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                                <path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+                            </svg>
+                            Back to Dashboard
+                        </a>
+                        <h1 class="text-2xl font-bold text-[#0e141b]">My Profile</h1>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Profile Stats -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white shadow-lg rounded-lg p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="size-20 bg-blue-600 rounded-full flex items-center justify-center">
+                                    <span class="text-2xl font-bold text-white">
+                                        {{ user.first_name.0 }}{{ user.last_name.0 }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <h2 class="text-xl font-bold text-[#0e141b]">
+                                    {{ user.first_name }} {{ user.last_name }}
+                                </h2>
+                                <p class="text-[#4e7397]">{{ user.get_role_display }}</p>
+                                <p class="text-sm text-[#4e7397]">
+                                    Member since {{ user.date_joined|date:"M d, Y" }}
+                                </p>
+                                {% if user.is_verified %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                                        ✓ Verified
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
+                                        ⚠ Pending Verification
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="mt-6 border-t border-gray-200 pt-6">
+                            <h3 class="text-lg font-medium text-[#0e141b] mb-4">Quick Stats</h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">Land Parcels</span>
+                                    <span class="font-semibold text-[#0e141b]">{{ user_stats.total_parcels }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">Applications</span>
+                                    <span class="font-semibold text-[#0e141b]">{{ user_stats.total_applications }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">Pending</span>
+                                    <span class="font-semibold text-yellow-600">{{ user_stats.pending_applications }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">Disputes</span>
+                                    <span class="font-semibold text-[#0e141b]">{{ user_stats.total_disputes }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Info -->
+                        <div class="mt-6 border-t border-gray-200 pt-6">
+                            <h3 class="text-lg font-medium text-[#0e141b] mb-4">Account Info</h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">Username:</span>
+                                    <span class="font-medium text-[#0e141b]">{{ user.username }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">Email:</span>
+                                    <span class="font-medium text-[#0e141b]">{{ user.email }}</span>
+                                </div>
+                                {% if user.national_id %}
+                                <div class="flex justify-between">
+                                    <span class="text-[#4e7397]">National ID:</span>
+                                    <span class="font-medium text-[#0e141b]">{{ user.national_id }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Form -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white shadow-lg rounded-lg p-6">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="mb-6 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% else %}bg-green-50 border border-green-200 text-green-800{% endif %}">
+                                    <div class="flex items-center">
+                                        {% if message.tags == 'error' %}
+                                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        {% endif %}
+                                        {{ message }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <div class="mb-6">
+                            <h2 class="text-2xl font-bold text-[#0e141b] mb-2">Update Profile</h2>
+                            <p class="text-[#4e7397] text-sm">Keep your information up to date for better service delivery.</p>
+                        </div>
+
+                        <form method="post" class="space-y-6">
+                            {% csrf_token %}
+                            
+                            <!-- Personal Information Section -->
+                            <div class="border-b border-gray-200 pb-6">
+                                <h3 class="text-lg font-medium text-[#0e141b] mb-4">Personal Information</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="{{ form.first_name.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                            First Name
+                                        </label>
+                                        {{ form.first_name }}
+                                    </div>
+                                    <div>
+                                        <label for="{{ form.last_name.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                            Last Name
+                                        </label>
+                                        {{ form.last_name }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Contact Information Section -->
+                            <div class="border-b border-gray-200 pb-6">
+                                <h3 class="text-lg font-medium text-[#0e141b] mb-4">Contact Information</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                            Email Address
+                                        </label>
+                                        {{ form.email }}
+                                    </div>
+                                    <div>
+                                        <label for="{{ form.phone_number.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                            Phone Number
+                                        </label>
+                                        {{ form.phone_number }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Information Section -->
+                            <div class="border-b border-gray-200 pb-6">
+                                <h3 class="text-lg font-medium text-[#0e141b] mb-4">Additional Information</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="{{ form.date_of_birth.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                            Date of Birth
+                                        </label>
+                                        {{ form.date_of_birth }}
+                                    </div>
+                                    <div>
+                                        <label for="{{ form.national_id.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                            National ID
+                                        </label>
+                                        {{ form.national_id }}
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <label for="{{ form.address.id_for_label }}" class="block text-sm font-medium text-[#0e141b] mb-1">
+                                        Address
+                                    </label>
+                                    {{ form.address }}
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex items-center justify-between pt-4">
+                                <a href="{% url 'core:dashboard' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                    Cancel
+                                </a>
+                                <button type="submit" class="inline-flex items-center px-6 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Update Profile
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
