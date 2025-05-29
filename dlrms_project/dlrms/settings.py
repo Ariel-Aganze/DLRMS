@@ -11,7 +11,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'ec49-2c0f-eb68-693-a400-8db1-dd10-305b-f299.ngrok-free.app']
 
 # Application definition
 INSTALLED_APPS = [
@@ -186,3 +186,7 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
     }
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://ec49-2c0f-eb68-693-a400-8db1-dd10-305b-f299.ngrok-free.app'  # IP with port
+]

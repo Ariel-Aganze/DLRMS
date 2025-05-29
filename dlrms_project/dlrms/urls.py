@@ -6,7 +6,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('core.urls')),
+    path('', include('core.urls')),  # This will handle /admin/create-user/ through core.urls
     path('accounts/', include('accounts.urls')),
     path('land/', include('land_management.urls')),
     path('applications/', include('applications.urls')),

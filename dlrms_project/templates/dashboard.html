@@ -27,7 +27,7 @@
                         <!-- Navigation Menu -->
                         <div class="flex flex-col gap-2">
                             <!-- Dashboard -->
-                            <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#e7edf3]">
+                            <a href="#dashboard" onclick="showDashboard()" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#e7edf3]">
                                 <div class="text-[#0e141b]">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
                                         <path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48.11-.11a16,16,0,0,1,21.53,0,1.14,1.14,0,0,0,.11.11l80,75.48A16,16,0,0,1,224,115.55Z"></path>
@@ -124,6 +124,275 @@
                             </a>
                         </div>
                     </div>
+
+                    <!-- Edit User Modal -->
+                    <div id="edit-user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                            <div class="mt-3">
+                                <!-- Modal Header -->
+                                <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-semibold text-gray-900">Edit User</h3>
+                                    <button onclick="closeEditUserModal()" class="text-gray-400 hover:text-gray-600">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Modal Body -->
+                                <div class="py-4">
+                                    <form id="edit-user-form" class="space-y-4">
+                                        <input type="hidden" id="edit-user-id" name="user_id">
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- First Name -->
+                                            <div>
+                                                <label for="edit-first_name" class="block text-sm font-medium text-gray-700">First Name *</label>
+                                                <input type="text" id="edit-first_name" name="first_name" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            
+                                            <!-- Last Name -->
+                                            <div>
+                                                <label for="edit-last_name" class="block text-sm font-medium text-gray-700">Last Name *</label>
+                                                <input type="text" id="edit-last_name" name="last_name" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- Username -->
+                                            <div>
+                                                <label for="edit-username" class="block text-sm font-medium text-gray-700">Username *</label>
+                                                <input type="text" id="edit-username" name="username" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            
+                                            <!-- Email -->
+                                            <div>
+                                                <label for="edit-email" class="block text-sm font-medium text-gray-700">Email *</label>
+                                                <input type="email" id="edit-email" name="email" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- Role -->
+                                            <div>
+                                                <label for="edit-role" class="block text-sm font-medium text-gray-700">Role *</label>
+                                                <select id="edit-role" name="role" required 
+                                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                                    <option value="">Select Role</option>
+                                                    <option value="landowner">Landowner</option>
+                                                    <option value="registry_officer">Registry Officer</option>
+                                                    <option value="surveyor">Surveyor</option>
+                                                    <option value="notary">Notary</option>
+                                                    {% if user.role == 'admin' %}
+                                                    <option value="admin">Administrator</option>
+                                                    {% endif %}
+                                                </select>
+                                            </div>
+                                            
+                                            <!-- Phone Number -->
+                                            <div>
+                                                <label for="edit-phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                                <input type="tel" id="edit-phone_number" name="phone_number" 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <!-- National ID -->
+                                        <div>
+                                            <label for="edit-national_id" class="block text-sm font-medium text-gray-700">National ID</label>
+                                            <input type="text" id="edit-national_id" name="national_id" 
+                                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+
+                                        <!-- Address -->
+                                        <div>
+                                            <label for="edit-address" class="block text-sm font-medium text-gray-700">Address</label>
+                                            <textarea id="edit-address" name="address" rows="3" 
+                                                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                        </div>
+
+                                        <!-- Status Controls -->
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="edit-is_verified" name="is_verified" 
+                                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                <label for="edit-is_verified" class="ml-2 block text-sm text-gray-900">
+                                                    Verified
+                                                </label>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="edit-is_active" name="is_active" 
+                                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                                <label for="edit-is_active" class="ml-2 block text-sm text-gray-900">
+                                                    Active
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Password Reset Option -->
+                                        <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="reset_password" name="reset_password" 
+                                                       class="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded">
+                                                <label for="reset_password" class="ml-2 block text-sm text-gray-900">
+                                                    Reset password and send new password via email
+                                                </label>
+                                            </div>
+                                            <p class="mt-1 text-xs text-yellow-700">
+                                                Check this box to generate a new password for the user
+                                            </p>
+                                        </div>
+                                    </form>
+                                </div>
+                                
+                                <!-- Modal Footer -->
+                                <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                                    <button type="button" onclick="closeEditUserModal()" 
+                                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Cancel
+                                    </button>
+                                    <button type="button" onclick="submitEditUserForm()" 
+                                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Update User
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add User Modal -->
+                    <div id="add-user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                            <div class="mt-3">
+                                <!-- Modal Header -->
+                                <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-semibold text-gray-900">Add New User</h3>
+                                    <button onclick="closeAddUserModal()" class="text-gray-400 hover:text-gray-600">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Modal Body -->
+                                <div class="py-4">
+                                    <form id="add-user-form" class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- First Name -->
+                                            <div>
+                                                <label for="first_name" class="block text-sm font-medium text-gray-700">First Name *</label>
+                                                <input type="text" id="first_name" name="first_name" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            
+                                            <!-- Last Name -->
+                                            <div>
+                                                <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name *</label>
+                                                <input type="text" id="last_name" name="last_name" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- Username -->
+                                            <div>
+                                                <label for="username" class="block text-sm font-medium text-gray-700">Username *</label>
+                                                <input type="text" id="username" name="username" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            
+                                            <!-- Email -->
+                                            <div>
+                                                <label for="email" class="block text-sm font-medium text-gray-700">Email *</label>
+                                                <input type="email" id="email" name="email" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- Role -->
+                                            <div>
+                                                <label for="role" class="block text-sm font-medium text-gray-700">Role *</label>
+                                                <select id="role" name="role" required 
+                                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                                    <option value="">Select Role</option>
+                                                    <option value="landowner">Landowner</option>
+                                                    <option value="registry_officer">Registry Officer</option>
+                                                    <option value="surveyor">Surveyor</option>
+                                                    <option value="notary">Notary</option>
+                                                    {% if user.role == 'admin' %}
+                                                    <option value="admin">Administrator</option>
+                                                    {% endif %}
+                                                </select>
+                                            </div>
+                                            
+                                            <!-- Phone Number -->
+                                            <div>
+                                                <label for="phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                                <input type="tel" id="phone_number" name="phone_number" 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- Password -->
+                                            <div>
+                                                <label for="password1" class="block text-sm font-medium text-gray-700">Password *</label>
+                                                <input type="password" id="password1" name="password1" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                            
+                                            <!-- Confirm Password -->
+                                            <div>
+                                                <label for="password2" class="block text-sm font-medium text-gray-700">Confirm Password *</label>
+                                                <input type="password" id="password2" name="password2" required 
+                                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            </div>
+                                        </div>
+
+                                        <!-- National ID -->
+                                        <div>
+                                            <label for="national_id" class="block text-sm font-medium text-gray-700">National ID</label>
+                                            <input type="text" id="national_id" name="national_id" 
+                                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+
+                                        <!-- Address -->
+                                        <div>
+                                            <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+                                            <textarea id="address" name="address" rows="3" 
+                                                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                        </div>
+
+                                        <!-- Verification Status -->
+                                        <div class="flex items-center">
+                                            <input type="checkbox" id="is_verified" name="is_verified" 
+                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                            <label for="is_verified" class="ml-2 block text-sm text-gray-900">
+                                                Mark as verified
+                                            </label>
+                                        </div>
+                                    </form>
+                                </div>
+                                
+                                <!-- Modal Footer -->
+                                <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                                    <button type="button" onclick="closeAddUserModal()" 
+                                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Cancel
+                                    </button>
+                                    <button type="button" onclick="submitAddUserForm()" 
+                                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Create User
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -175,7 +444,7 @@
                         <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
                             <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
                                 <div class="flex justify-between items-center">
-                                    <h4 class="text-lg font-medium text-gray-900">Recent Users</h4>
+                                    <h4 class="text-lg font-medium text-gray-900">User Management</h4>
                                     <div class="flex gap-2">
                                         <button onclick="refreshUserList()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,12 +452,42 @@
                                             </svg>
                                             Refresh
                                         </button>
-                                        <a href="/admin/accounts/user/add/" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <button onclick="showAddUserForm()" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                             </svg>
                                             Add User
-                                        </a>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Search and Filter Controls -->
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label for="user-search" class="block text-xs font-medium text-gray-700 mb-1">Search Users</label>
+                                        <input type="text" id="user-search" placeholder="Search by name, email, username..."
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="role-filter" class="block text-xs font-medium text-gray-700 mb-1">Filter by Role</label>
+                                        <select id="role-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Roles</option>
+                                            <option value="landowner">Landowner</option>
+                                            <option value="registry_officer">Registry Officer</option>
+                                            <option value="surveyor">Surveyor</option>
+                                            <option value="notary">Notary</option>
+                                            <option value="admin">Administrator</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="status-filter" class="block text-xs font-medium text-gray-700 mb-1">Filter by Status</label>
+                                        <select id="status-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Status</option>
+                                            <option value="verified">Verified</option>
+                                            <option value="unverified">Unverified</option>
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -283,6 +582,53 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Pagination Controls -->
+                            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                                <div class="flex-1 flex justify-between sm:hidden">
+                                    <!-- Mobile pagination -->
+                                    <button id="prev-page-mobile" onclick="changePage('prev')" 
+                                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Previous
+                                    </button>
+                                    <button id="next-page-mobile" onclick="changePage('next')" 
+                                            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Next
+                                    </button>
+                                </div>
+                                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                    <div>
+                                        <p class="text-sm text-gray-700">
+                                            Showing <span id="page-start" class="font-medium">1</span> to <span id="page-end" class="font-medium">20</span> of
+                                            <span id="total-users" class="font-medium">{{ total_users }}</span> results
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                            <button id="prev-page" onclick="changePage('prev')" 
+                                                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <span class="sr-only">Previous</span>
+                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            
+                                            <!-- Page numbers will be generated by JavaScript -->
+                                            <div id="page-numbers" class="flex">
+                                                <!-- Dynamic page numbers -->
+                                            </div>
+                                            
+                                            <button id="next-page" onclick="changePage('next')" 
+                                                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <span class="sr-only">Next</span>
+                                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Quick Actions Section -->
@@ -455,32 +801,503 @@
 
 <script>
 // JavaScript functions for user management
-function showUserManagement() {
+let currentPage = 1;
+let totalPages = 1;
+let usersPerPage = 20;
+let totalUsersCount = 0;
+
+// Function to check URL hash and show appropriate section
+function checkURLHash() {
+    const hash = window.location.hash;
+    if (hash === '#user-management') {
+        showUserManagement(false); // false = don't update hash again
+    } else {
+        showDashboard(false);
+    }
+}
+
+function showUserManagement(updateHash = true) {
     const userManagementSection = document.getElementById('user-management-section');
     const landownerContent = document.getElementById('landowner-content');
     
-    if (userManagementSection.classList.contains('hidden')) {
+    if (userManagementSection && landownerContent) {
         userManagementSection.classList.remove('hidden');
         landownerContent.style.display = 'none';
-    } else {
+        
+        // Update navigation highlighting
+        updateNavigationHighlight('user-management');
+        
+        // Update URL hash if requested
+        if (updateHash) {
+            window.location.hash = '#user-management';
+        }
+        
+        // Load users if not already loaded
+        loadUsers(1);
+    }
+}
+
+function showDashboard(updateHash = true) {
+    const userManagementSection = document.getElementById('user-management-section');
+    const landownerContent = document.getElementById('landowner-content');
+    
+    if (userManagementSection && landownerContent) {
         userManagementSection.classList.add('hidden');
         landownerContent.style.display = 'block';
+        
+        // Update navigation highlighting
+        updateNavigationHighlight('dashboard');
+        
+        // Update URL hash if requested
+        if (updateHash) {
+            window.location.hash = '#dashboard';
+        }
+    }
+}
+
+function updateNavigationHighlight(activeSection) {
+    // Remove active class from all navigation items
+    const navItems = document.querySelectorAll('.layout-content-container .flex.flex-col.gap-2 a');
+    navItems.forEach(item => {
+        item.classList.remove('bg-[#e7edf3]');
+        item.classList.add('hover:bg-[#e7edf3]');
+    });
+    
+    // Add active class to current section
+    if (activeSection === 'user-management') {
+        const userMgmtLink = document.querySelector('a[href="#user-management"]');
+        if (userMgmtLink) {
+            userMgmtLink.classList.add('bg-[#e7edf3]');
+            userMgmtLink.classList.remove('hover:bg-[#e7edf3]');
+        }
+    } else {
+        const dashboardLink = document.querySelector('a[href="/dashboard/"]');
+        if (dashboardLink) {
+            dashboardLink.classList.add('bg-[#e7edf3]');
+            dashboardLink.classList.remove('hover:bg-[#e7edf3]');
+        }
+    }
+}
+
+async function loadUsers(page = 1, searchQuery = '', roleFilter = '', statusFilter = '') {
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            per_page: usersPerPage,
+            q: searchQuery,
+            role: roleFilter,
+            status: statusFilter
+        });
+
+        const response = await fetch(`/api/search-users/?${params}`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            updateUserTable(data.users);
+            updatePaginationInfo(data.pagination);
+            currentPage = page;
+        } else {
+            alert('Error loading users: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        alert('An error occurred while loading users.');
+    }
+}
+
+function updateUserTable(users) {
+    const tbody = document.getElementById('user-list-tbody');
+    if (!tbody) return;
+
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No users found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => generateUserRow(user)).join('');
+}
+
+function generateUserRow(user) {
+    const roleClasses = {
+        'admin': 'bg-purple-100 text-purple-800',
+        'registry_officer': 'bg-blue-100 text-blue-800',
+        'surveyor': 'bg-green-100 text-green-800',
+        'notary': 'bg-orange-100 text-orange-800',
+        'landowner': 'bg-gray-100 text-gray-800'
+    };
+
+    const verificationStatus = user.is_verified 
+        ? '<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">✓ Verified</span>'
+        : '<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">⚠ Pending</span>';
+
+    const activeStatus = user.is_active 
+        ? '' 
+        : '<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 ml-1">Inactive</span>';
+
+    const actions = [
+        `<button onclick="editUser(${user.id})" class="text-blue-600 hover:text-blue-900">Edit</button>`
+    ];
+
+    if (!user.is_verified) {
+        actions.push(`<button onclick="verifyUser(${user.id})" class="text-green-600 hover:text-green-900">Verify</button>`);
+    }
+
+    if (user.is_active) {
+        actions.push(`<button onclick="deactivateUser(${user.id})" class="text-red-600 hover:text-red-900">Deactivate</button>`);
+    } else {
+        actions.push(`<button onclick="activateUser(${user.id})" class="text-green-600 hover:text-green-900">Activate</button>`);
+    }
+
+    return `
+        <tr class="hover:bg-gray-50" data-user-id="${user.id}">
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-8 w-8">
+                        <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span class="text-xs font-medium text-white">
+                                ${user.first_name.charAt(0)}${user.last_name.charAt(0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <div class="text-sm font-medium text-gray-900">
+                            ${user.first_name} ${user.last_name}
+                        </div>
+                        <div class="text-sm text-gray-500">${user.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${roleClasses[user.role] || 'bg-gray-100 text-gray-800'}">
+                    ${user.role_display}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    ${verificationStatus}
+                    ${activeStatus}
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${user.date_joined}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex gap-2">
+                    ${actions.join('')}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function updatePaginationInfo(pagination) {
+    totalPages = pagination.total_pages;
+    totalUsersCount = pagination.total_count;
+    
+    // Update pagination text
+    const pageStart = document.getElementById('page-start');
+    const pageEnd = document.getElementById('page-end');
+    const totalUsers = document.getElementById('total-users');
+    
+    if (pageStart) pageStart.textContent = pagination.start;
+    if (pageEnd) pageEnd.textContent = pagination.end;
+    if (totalUsers) totalUsers.textContent = pagination.total_count;
+    
+    // Update pagination buttons
+    updatePaginationButtons();
+}
+
+function updatePaginationButtons() {
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    const prevBtnMobile = document.getElementById('prev-page-mobile');
+    const nextBtnMobile = document.getElementById('next-page-mobile');
+    
+    // Disable/enable buttons
+    const isFirstPage = currentPage <= 1;
+    const isLastPage = currentPage >= totalPages;
+    
+    [prevBtn, prevBtnMobile].forEach(btn => {
+        if (btn) {
+            btn.disabled = isFirstPage;
+            btn.classList.toggle('opacity-50', isFirstPage);
+            btn.classList.toggle('cursor-not-allowed', isFirstPage);
+        }
+    });
+    
+    [nextBtn, nextBtnMobile].forEach(btn => {
+        if (btn) {
+            btn.disabled = isLastPage;
+            btn.classList.toggle('opacity-50', isLastPage);
+            btn.classList.toggle('cursor-not-allowed', isLastPage);
+        }
+    });
+    
+    // Generate page numbers
+    generatePageNumbers();
+}
+
+function generatePageNumbers() {
+    const pageNumbersContainer = document.getElementById('page-numbers');
+    if (!pageNumbersContainer) return;
+    
+    pageNumbersContainer.innerHTML = '';
+    
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    // Adjust start page if we're near the end
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // Add first page and ellipsis if needed
+    if (startPage > 1) {
+        pageNumbersContainer.appendChild(createPageButton(1));
+        if (startPage > 2) {
+            pageNumbersContainer.appendChild(createEllipsis());
+        }
+    }
+    
+    // Add visible pages
+    for (let i = startPage; i <= endPage; i++) {
+        pageNumbersContainer.appendChild(createPageButton(i));
+    }
+    
+    // Add ellipsis and last page if needed
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            pageNumbersContainer.appendChild(createEllipsis());
+        }
+        pageNumbersContainer.appendChild(createPageButton(totalPages));
+    }
+}
+
+function createPageButton(pageNum) {
+    const button = document.createElement('button');
+    button.onclick = () => changePage(pageNum);
+    button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+        pageNum === currentPage 
+            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+    }`;
+    button.textContent = pageNum;
+    return button;
+}
+
+function createEllipsis() {
+    const span = document.createElement('span');
+    span.className = 'relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700';
+    span.textContent = '...';
+    return span;
+}
+
+function changePage(direction) {
+    let newPage = currentPage;
+    
+    if (direction === 'prev') {
+        newPage = Math.max(1, currentPage - 1);
+    } else if (direction === 'next') {
+        newPage = Math.min(totalPages, currentPage + 1);
+    } else if (typeof direction === 'number') {
+        newPage = direction;
+    }
+    
+    if (newPage !== currentPage) {
+        const searchQuery = document.getElementById('user-search')?.value || '';
+        const roleFilter = document.getElementById('role-filter')?.value || '';
+        const statusFilter = document.getElementById('status-filter')?.value || '';
+        
+        loadUsers(newPage, searchQuery, roleFilter, statusFilter);
+    }
+}
+   
+
+function showAddUserForm() {
+    document.getElementById('add-user-modal').classList.remove('hidden');
+    // Reset form
+    document.getElementById('add-user-form').reset();
+}
+
+function closeAddUserModal() {
+    document.getElementById('add-user-modal').classList.add('hidden');
+}
+
+async function editUser(userId) {
+    try {
+        // Fetch user data
+        const response = await fetch(`/api/get-user/${userId}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Populate the edit form
+            populateEditForm(data.user);
+            // Show the edit modal
+            document.getElementById('edit-user-modal').classList.remove('hidden');
+        } else {
+            alert('Error loading user data: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        alert('An error occurred while loading user data.');
+    }
+}
+
+function populateEditForm(user) {
+    document.getElementById('edit-user-id').value = user.id;
+    document.getElementById('edit-first_name').value = user.first_name || '';
+    document.getElementById('edit-last_name').value = user.last_name || '';
+    document.getElementById('edit-username').value = user.username || '';
+    document.getElementById('edit-email').value = user.email || '';
+    document.getElementById('edit-role').value = user.role || '';
+    document.getElementById('edit-phone_number').value = user.phone_number || '';
+    document.getElementById('edit-national_id').value = user.national_id || '';
+    document.getElementById('edit-address').value = user.address || '';
+    document.getElementById('edit-is_verified').checked = user.is_verified || false;
+    document.getElementById('edit-is_active').checked = user.is_active || false;
+    document.getElementById('reset_password').checked = false; // Always start unchecked
+}
+
+function closeEditUserModal() {
+    document.getElementById('edit-user-modal').classList.add('hidden');
+}
+
+async function submitEditUserForm() {
+    const form = document.getElementById('edit-user-form');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/api/update-user/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User updated successfully!');
+            closeEditUserModal();
+            refreshUserList();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        alert('An error occurred while updating the user.');
+    }
+}
+
+async function submitAddUserForm() {
+    const form = document.getElementById('add-user-form');
+    const formData = new FormData(form);
+    
+    // Basic validation
+    const password1 = formData.get('password1');
+    const password2 = formData.get('password2');
+    
+    if (password1 !== password2) {
+        alert('Passwords do not match!');
+        return;
+    }
+    
+    if (password1.length < 8) {
+        alert('Password must be at least 8 characters long!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/create-user/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User created successfully!');
+            closeAddUserModal();
+            refreshUserList();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error creating user:', error);
+        alert('An error occurred while creating the user.');
     }
 }
 
 function refreshUserList() {
-    // In a real implementation, this would fetch updated user data via AJAX
-    location.reload();
+    const searchQuery = document.getElementById('user-search')?.value || '';
+    const roleFilter = document.getElementById('role-filter')?.value || '';
+    const statusFilter = document.getElementById('status-filter')?.value || '';
+    
+    loadUsers(currentPage, searchQuery, roleFilter, statusFilter);
 }
+
+// Add search and filter event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Search input with debounce
+    const searchInput = document.getElementById('user-search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1; // Reset to first page on new search
+                const roleFilter = document.getElementById('role-filter')?.value || '';
+                const statusFilter = document.getElementById('status-filter')?.value || '';
+                loadUsers(1, this.value, roleFilter, statusFilter);
+            }, 300);
+        });
+    }
+
+    // Role filter
+    const roleFilter = document.getElementById('role-filter');
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function() {
+            currentPage = 1; // Reset to first page on filter change
+            const searchQuery = document.getElementById('user-search')?.value || '';
+            const statusFilter = document.getElementById('status-filter')?.value || '';
+            loadUsers(1, searchQuery, this.value, statusFilter);
+        });
+    }
+
+    // Status filter
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            currentPage = 1; // Reset to first page on filter change
+            const searchQuery = document.getElementById('user-search')?.value || '';
+            const roleFilter = document.getElementById('role-filter')?.value || '';
+            loadUsers(1, searchQuery, roleFilter, this.value);
+        });
+    }
+});
 
 function verifyUser(userId) {
     if (confirm('Are you sure you want to verify this user?')) {
-        // In a real implementation, this would make an AJAX call to verify the user
-        // For now, we'll simulate with an alert
-        alert('User verification functionality would be implemented here via AJAX');
-        // You would make a POST request to a verify_user endpoint
-        /*
-        fetch(`/admin/verify_user/${userId}/`, {
+        fetch(`/api/verify-user/${userId}/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -489,35 +1306,90 @@ function verifyUser(userId) {
         }).then(response => response.json())
           .then(data => {
               if (data.success) {
+                  alert(data.message);
                   refreshUserList();
-                  alert('User verified successfully');
+              } else {
+                  alert('Error: ' + data.message);
               }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while verifying the user.');
           });
-        */
     }
 }
 
 function deactivateUser(userId) {
     if (confirm('Are you sure you want to deactivate this user?')) {
-        alert('User deactivation functionality would be implemented here via AJAX');
+        fetch(`/api/toggle-user-active/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while deactivating the user.');
+          });
     }
 }
 
 function activateUser(userId) {
     if (confirm('Are you sure you want to activate this user?')) {
-        alert('User activation functionality would be implemented here via AJAX');
+        fetch(`/api/toggle-user-active/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while activating the user.');
+          });
     }
 }
 
 function bulkVerifyUsers() {
     if (confirm('This will verify all unverified users. Are you sure?')) {
-        alert('Bulk verification functionality would be implemented here');
+        fetch('/api/bulk-verify-users/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred during bulk verification.');
+          });
     }
 }
 
 function exportUsers() {
-    // In a real implementation, this would trigger a CSV/Excel export
-    alert('User export functionality would be implemented here');
+    // Trigger CSV export by redirecting to the export endpoint
+    window.location.href = '/api/export-users/';
 }
 
 // Helper function to get CSRF token
