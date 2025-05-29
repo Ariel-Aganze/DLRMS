@@ -1,6 +1,10 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth import get_user_model
+from django.db.models import Q
+
+User = get_user_model()
 
 class HomeView(TemplateView):
     template_name = 'home.html'
@@ -24,6 +28,21 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         
         # Add pending applications count (calculated in view to avoid template filter issues)
         context['pending_applications_count'] = user.applications.filter(status='submitted').count()
+        
+        # Admin-specific data (only for admin and registry_officer roles)
+        if user.role in ['admin', 'registry_officer']:
+            # User statistics
+            all_users = User.objects.all()
+            context['total_users'] = all_users.count()
+            context['verified_users'] = all_users.filter(is_verified=True).count()
+            context['unverified_users'] = all_users.filter(is_verified=False).count()
+            context['total_landowners'] = all_users.filter(role='landowner').count()
+            context['total_officers'] = all_users.filter(
+                role__in=['registry_officer', 'surveyor', 'notary', 'admin']
+            ).count()
+            
+            # Recent users for the table (last 20 users)
+            context['recent_users'] = all_users.order_by('-date_joined')[:20]
         
         return context
 

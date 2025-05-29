@@ -56,6 +56,33 @@
                                 <p class="text-[#0e141b] text-sm font-medium leading-normal">Applications</p>
                             </a>
 
+                            <!-- Admin User Management (Only for admin and registry_officer) -->
+                            {% if user.role == 'admin' or user.role == 'registry_officer' %}
+                            <div class="border-t border-gray-200 my-2"></div>
+                            <div class="px-3 py-1">
+                                <p class="text-[#4e7397] text-xs font-medium uppercase tracking-wider">Admin Tools</p>
+                            </div>
+                            
+                            <a href="#user-management" onclick="showUserManagement()" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M117.25,157.92a60,60,0,1,0-66.5,0A95.83,95.83,0,0,0,3.53,195.63a8,8,0,1,0,13.4,8.74,80,80,0,0,1,134.14,0,8,8,0,0,0,13.4-8.74A95.83,95.83,0,0,0,117.25,157.92ZM40,108a44,44,0,1,1,44,44A44.05,44.05,0,0,1,40,108Zm210.14,98.7a8,8,0,0,1-11.07-2.33A79.83,79.83,0,0,0,172,168a8,8,0,0,1,0-16,44,44,0,1,0-16.34-84.87,8,8,0,1,1-5.94-14.85,60,60,0,0,1,55.53,105.64,95.83,95.83,0,0,1,47.22,37.71A8,8,0,0,1,250.14,206.7Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">User Management</p>
+                            </a>
+
+                            <a href="/admin/" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
+                                <div class="text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.6,107.6,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3.06-3.05L221.84,40.5a8,8,0,0,0-3.93-6A107.29,107.29,0,0,0,191.66,24.61a8,8,0,0,0-7.06,1.48L166,40.92q-2.16-.06-4.32,0L143,26a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,109.67,35.41a8,8,0,0,0-3.93,6L103.1,65.14q-1.56,1.49-3.05,3.06L76.31,55.12a8,8,0,0,0-6,3.93,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L75.84,111q-.06,2.16,0,4.32L61,133.94a8,8,0,0,0-1.48,7.06,107.6,107.6,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3.06,3.05L89.15,201.5a8,8,0,0,0,3.93,6,107.29,107.29,0,0,0,26.25,9.87,8,8,0,0,0,7.06-1.48L145,201.08q2.16.06,4.32,0L168,216a8,8,0,0,0,7.06,1.48,107.6,107.6,0,0,0,26.25-10.87,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3.05-3.06L234.69,186.9a8,8,0,0,0,6-3.93,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06ZM128,184A56,56,0,1,1,184,128,56.06,56.06,0,0,1,128,184Z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-[#0e141b] text-sm font-medium leading-normal">Admin Panel</p>
+                            </a>
+                            <div class="border-t border-gray-200 my-2"></div>
+                            {% endif %}
+
                             <!-- GIS Map -->
                             <a href="{% url 'land_management:map' %}" class="flex items-center gap-3 px-3 py-2 hover:bg-[#e7edf3] rounded-lg transition-colors">
                                 <div class="text-[#0e141b]">
@@ -112,134 +139,312 @@
                     </div>
                 </div>
 
-                {% if user.land_parcels.exists %}
-                <!-- Land Titles Section -->
-                <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">Land Titles</h3>
-                {% for parcel in recent_parcels %}
-                <div class="p-4">
-                    <div class="flex items-stretch justify-between gap-4 rounded-lg bg-slate-50 p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
-                        <div class="flex flex-[2_2_0px] flex-col gap-4">
-                            <div class="flex flex-col gap-1">
-                                <p class="text-[#0e141b] text-base font-bold leading-tight">{{ parcel.parcel_id }}</p>
-                                <p class="text-[#4e7397] text-sm font-normal leading-normal">
-                                    {% if parcel.registration_date %}
-                                        Registered on {{ parcel.registration_date|date:"Y-m-d" }}
-                                    {% else %}
-                                        Registration pending
-                                    {% endif %}
-                                </p>
-                                <p class="text-[#4e7397] text-xs font-normal leading-normal">
-                                    {{ parcel.location }} • {{ parcel.size_hectares }} hectares • {{ parcel.get_status_display }}
-                                </p>
+                <!-- Admin User Management Section -->
+                {% if user.role == 'admin' or user.role == 'registry_officer' %}
+                <div id="user-management-section" class="hidden">
+                    <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">User Management</h3>
+                    
+                    <!-- User Stats Cards -->
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                            <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                                <div class="text-2xl font-bold text-blue-600">{{ total_users }}</div>
+                                <div class="text-sm text-gray-600">Total Users</div>
                             </div>
-                            <a href="{% url 'land_management:parcel_detail' parcel.pk %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal w-fit hover:bg-[#d1d9e0] transition-colors">
-                                <span class="truncate">View Details</span>
-                            </a>
-                        </div>
-                        <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center">
-                            <div class="text-[#0e141b] opacity-30">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" fill="currentColor" viewBox="0 0 256 256">
-                                    <path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"></path>
-                                </svg>
+                            <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                                <div class="text-2xl font-bold text-green-600">{{ verified_users }}</div>
+                                <div class="text-sm text-gray-600">Verified</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                                <div class="text-2xl font-bold text-yellow-600">{{ unverified_users }}</div>
+                                <div class="text-sm text-gray-600">Unverified</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                                <div class="text-2xl font-bold text-purple-600">{{ total_landowners }}</div>
+                                <div class="text-sm text-gray-600">Landowners</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                                <div class="text-2xl font-bold text-orange-600">{{ total_officers }}</div>
+                                <div class="text-sm text-gray-600">Officers</div>
                             </div>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-                {% endif %}
 
-                {% if user.applications.exists %}
-                <!-- Applications Section -->
-                <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">Applications</h3>
-                {% for application in recent_applications %}
-                <div class="p-4">
-                    <div class="flex items-stretch justify-between gap-4 rounded-lg bg-slate-50 p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
-                        <div class="flex flex-[2_2_0px] flex-col gap-4">
-                            <div class="flex flex-col gap-1">
-                                <p class="text-[#0e141b] text-base font-bold leading-tight">{{ application.get_application_type_display }}</p>
-                                <p class="text-[#4e7397] text-sm font-normal leading-normal">Submitted on {{ application.submitted_at|date:"Y-m-d" }}</p>
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                                        {% if application.status == 'approved' %}bg-green-100 text-green-800
-                                        {% elif application.status == 'rejected' %}bg-red-100 text-red-800
-                                        {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
-                                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                                        {{ application.get_status_display }}
-                                    </span>
-                                </div>
-                            </div>
-                            <a href="{% url 'applications:application_detail' application.pk %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal w-fit hover:bg-[#d1d9e0] transition-colors">
-                                <span class="truncate">Track Status</span>
-                            </a>
-                        </div>
-                        <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center">
-                            <div class="text-[#0e141b] opacity-30">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" fill="currentColor" viewBox="0 0 256 256">
-                                    <path d="M80,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H88A8,8,0,0,1,80,64Zm136,56H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM44,52A12,12,0,1,0,56,64,12,12,0,0,0,44,52Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,180Z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-                {% else %}
-                <!-- Quick Actions for New Users -->
-                <div class="p-4">
-                    <div class="bg-blue-50 rounded-lg p-6">
-                        <h3 class="text-lg font-bold text-blue-900 mb-4">Get Started with DLRMS!</h3>
-                        <p class="text-blue-800 mb-4">You haven't submitted any applications yet. Here's how to begin:</p>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <a href="{% url 'applications:application_create' %}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-                                <div class="flex items-center">
-                                    <div class="text-[#0e141b] mr-3">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                                            <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-gray-900">Submit Application</h4>
-                                        <p class="text-sm text-gray-500">Apply for land title registration</p>
+                    <!-- User Management Actions -->
+                    <div class="p-4">
+                        <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-lg font-medium text-gray-900">Recent Users</h4>
+                                    <div class="flex gap-2">
+                                        <button onclick="refreshUserList()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                            </svg>
+                                            Refresh
+                                        </button>
+                                        <a href="/admin/accounts/user/add/" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            Add User
+                                        </a>
                                     </div>
                                 </div>
-                            </a>
+                            </div>
                             
-                            <a href="{% url 'documents:document_upload' %}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-                                <div class="flex items-center">
-                                    <div class="text-[#0e141b] mr-3">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                                            <path d="M224,112v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V64A16,16,0,0,1,48,48H80a8,8,0,0,1,0,16H48V192H208V112a8,8,0,0,1,16,0ZM229.66,74.34l-48-48a8,8,0,0,0-11.32,0l-48,48a8,8,0,0,0,11.32,11.32L168,51.31V112a8,8,0,0,0,16,0V51.31l34.34,34.35a8,8,0,0,0,11.32-11.32Z"></path>
+                            <!-- User List Table -->
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-list-tbody" class="bg-white divide-y divide-gray-200">
+                                        {% for user_item in recent_users %}
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    <div class="flex-shrink-0 h-8 w-8">
+                                                        <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                                            <span class="text-xs font-medium text-white">
+                                                                {{ user_item.first_name.0 }}{{ user_item.last_name.0 }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="ml-3">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            {{ user_item.first_name }} {{ user_item.last_name }}
+                                                        </div>
+                                                        <div class="text-sm text-gray-500">{{ user_item.email }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
+                                                    {% if user_item.role == 'admin' %}bg-purple-100 text-purple-800
+                                                    {% elif user_item.role == 'registry_officer' %}bg-blue-100 text-blue-800
+                                                    {% elif user_item.role == 'surveyor' %}bg-green-100 text-green-800
+                                                    {% elif user_item.role == 'notary' %}bg-orange-100 text-orange-800
+                                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                                    {{ user_item.get_role_display }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    {% if user_item.is_verified %}
+                                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            Verified
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            Pending
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if not user_item.is_active %}
+                                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 ml-1">
+                                                            Inactive
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ user_item.date_joined|date:"M d, Y" }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div class="flex gap-2">
+                                                    <a href="/admin/accounts/user/{{ user_item.id }}/change/" class="text-blue-600 hover:text-blue-900">Edit</a>
+                                                    {% if not user_item.is_verified %}
+                                                        <button onclick="verifyUser({{ user_item.id }})" class="text-green-600 hover:text-green-900">Verify</button>
+                                                    {% endif %}
+                                                    {% if user_item.is_active %}
+                                                        <button onclick="deactivateUser({{ user_item.id }})" class="text-red-600 hover:text-red-900">Deactivate</button>
+                                                    {% else %}
+                                                        <button onclick="activateUser({{ user_item.id }})" class="text-green-600 hover:text-green-900">Activate</button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">No users found</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Quick Actions Section -->
+                            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="bulkVerifyUsers()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-gray-900">Upload Documents</h4>
-                                        <p class="text-sm text-gray-500">Add supporting documents</p>
-                                    </div>
+                                        Bulk Verify
+                                    </button>
+                                    <button onclick="exportUsers()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Export Users
+                                    </button>
+                                    <a href="/admin/accounts/user/" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                        Full Admin Panel
+                                    </a>
                                 </div>
-                            </a>
+                            </div>
                         </div>
                     </div>
                 </div>
                 {% endif %}
 
-                <!-- Stats Summary -->
-                <div class="p-4">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <div class="text-2xl font-bold text-blue-600">{{ user.land_parcels.count }}</div>
-                            <div class="text-sm text-gray-600">Land Parcels</div>
+                <!-- Landowner Content (existing content) -->
+                <div id="landowner-content">
+                    {% if user.land_parcels.exists %}
+                    <!-- Land Titles Section -->
+                    <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">Land Titles</h3>
+                    {% for parcel in recent_parcels %}
+                    <div class="p-4">
+                        <div class="flex items-stretch justify-between gap-4 rounded-lg bg-slate-50 p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
+                            <div class="flex flex-[2_2_0px] flex-col gap-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-[#0e141b] text-base font-bold leading-tight">{{ parcel.parcel_id }}</p>
+                                    <p class="text-[#4e7397] text-sm font-normal leading-normal">
+                                        {% if parcel.registration_date %}
+                                            Registered on {{ parcel.registration_date|date:"Y-m-d" }}
+                                        {% else %}
+                                            Registration pending
+                                        {% endif %}
+                                    </p>
+                                    <p class="text-[#4e7397] text-xs font-normal leading-normal">
+                                        {{ parcel.location }} • {{ parcel.size_hectares }} hectares • {{ parcel.get_status_display }}
+                                    </p>
+                                </div>
+                                <a href="{% url 'land_management:parcel_detail' parcel.pk %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal w-fit hover:bg-[#d1d9e0] transition-colors">
+                                    <span class="truncate">View Details</span>
+                                </a>
+                            </div>
+                            <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center">
+                                <div class="text-[#0e141b] opacity-30">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"></path>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <div class="text-2xl font-bold text-green-600">{{ user.applications.count }}</div>
-                            <div class="text-sm text-gray-600">Applications</div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    {% if user.applications.exists %}
+                    <!-- Applications Section -->
+                    <h3 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">Applications</h3>
+                    {% for application in recent_applications %}
+                    <div class="p-4">
+                        <div class="flex items-stretch justify-between gap-4 rounded-lg bg-slate-50 p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
+                            <div class="flex flex-[2_2_0px] flex-col gap-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-[#0e141b] text-base font-bold leading-tight">{{ application.get_application_type_display }}</p>
+                                    <p class="text-[#4e7397] text-sm font-normal leading-normal">Submitted on {{ application.submitted_at|date:"Y-m-d" }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if application.status == 'approved' %}bg-green-100 text-green-800
+                                            {% elif application.status == 'rejected' %}bg-red-100 text-red-800
+                                            {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
+                                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                            {{ application.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <a href="{% url 'applications:application_detail' application.pk %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal w-fit hover:bg-[#d1d9e0] transition-colors">
+                                    <span class="truncate">Track Status</span>
+                                </a>
+                            </div>
+                            <div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center">
+                                <div class="text-[#0e141b] opacity-30">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" fill="currentColor" viewBox="0 0 256 256">
+                                        <path d="M80,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H88A8,8,0,0,1,80,64Zm136,56H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,64H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM44,52A12,12,0,1,0,56,64,12,12,0,0,0,44,52Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,116Zm0,64a12,12,0,1,0,12,12A12,12,0,0,0,44,180Z"></path>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <div class="text-2xl font-bold text-yellow-600">{{ pending_applications_count }}</div>
-                            <div class="text-sm text-gray-600">Pending</div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <!-- Quick Actions for New Users -->
+                    <div class="p-4">
+                        <div class="bg-blue-50 rounded-lg p-6">
+                            <h3 class="text-lg font-bold text-blue-900 mb-4">Get Started with DLRMS!</h3>
+                            <p class="text-blue-800 mb-4">You haven't submitted any applications yet. Here's how to begin:</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <a href="{% url 'applications:application_create' %}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                                    <div class="flex items-center">
+                                        <div class="text-[#0e141b] mr-3">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                                <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-gray-900">Submit Application</h4>
+                                            <p class="text-sm text-gray-500">Apply for land title registration</p>
+                                        </div>
+                                    </div>
+                                </a>
+                                
+                                <a href="{% url 'documents:document_upload' %}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                                    <div class="flex items-center">
+                                        <div class="text-[#0e141b] mr-3">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                                                <path d="M224,112v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V64A16,16,0,0,1,48,48H80a8,8,0,0,1,0,16H48V192H208V112a8,8,0,0,1,16,0ZM229.66,74.34l-48-48a8,8,0,0,0-11.32,0l-48,48a8,8,0,0,0,11.32,11.32L168,51.31V112a8,8,0,0,0,16,0V51.31l34.34,34.35a8,8,0,0,0,11.32-11.32Z"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-gray-900">Upload Documents</h4>
+                                            <p class="text-sm text-gray-500">Add supporting documents</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                         </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <div class="text-2xl font-bold text-red-600">{{ user.filed_disputes.count }}</div>
-                            <div class="text-sm text-gray-600">Disputes</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Stats Summary -->
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-2xl font-bold text-blue-600">{{ user.land_parcels.count }}</div>
+                                <div class="text-sm text-gray-600">Land Parcels</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-2xl font-bold text-green-600">{{ user.applications.count }}</div>
+                                <div class="text-sm text-gray-600">Applications</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-2xl font-bold text-yellow-600">{{ pending_applications_count }}</div>
+                                <div class="text-sm text-gray-600">Pending</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-2xl font-bold text-red-600">{{ user.filed_disputes.count }}</div>
+                                <div class="text-sm text-gray-600">Disputes</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -247,4 +452,88 @@
         </div>
     </div>
 </div>
+
+<script>
+// JavaScript functions for user management
+function showUserManagement() {
+    const userManagementSection = document.getElementById('user-management-section');
+    const landownerContent = document.getElementById('landowner-content');
+    
+    if (userManagementSection.classList.contains('hidden')) {
+        userManagementSection.classList.remove('hidden');
+        landownerContent.style.display = 'none';
+    } else {
+        userManagementSection.classList.add('hidden');
+        landownerContent.style.display = 'block';
+    }
+}
+
+function refreshUserList() {
+    // In a real implementation, this would fetch updated user data via AJAX
+    location.reload();
+}
+
+function verifyUser(userId) {
+    if (confirm('Are you sure you want to verify this user?')) {
+        // In a real implementation, this would make an AJAX call to verify the user
+        // For now, we'll simulate with an alert
+        alert('User verification functionality would be implemented here via AJAX');
+        // You would make a POST request to a verify_user endpoint
+        /*
+        fetch(`/admin/verify_user/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  refreshUserList();
+                  alert('User verified successfully');
+              }
+          });
+        */
+    }
+}
+
+function deactivateUser(userId) {
+    if (confirm('Are you sure you want to deactivate this user?')) {
+        alert('User deactivation functionality would be implemented here via AJAX');
+    }
+}
+
+function activateUser(userId) {
+    if (confirm('Are you sure you want to activate this user?')) {
+        alert('User activation functionality would be implemented here via AJAX');
+    }
+}
+
+function bulkVerifyUsers() {
+    if (confirm('This will verify all unverified users. Are you sure?')) {
+        alert('Bulk verification functionality would be implemented here');
+    }
+}
+
+function exportUsers() {
+    // In a real implementation, this would trigger a CSV/Excel export
+    alert('User export functionality would be implemented here');
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 {% endblock %}
