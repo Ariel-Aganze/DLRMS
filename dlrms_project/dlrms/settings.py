@@ -3,27 +3,33 @@ import sys
 from pathlib import Path
 from decouple import config
 
-# CRITICAL: Set GDAL paths BEFORE any Django imports
-if os.name == 'nt':  # Windows
-    # Set the exact paths we found from the working test
-    osgeo_dir = r"D:\COURSES\SEM 7\FINAL YEAR PROJECT\CODEBASE\DLRMS\dlrms_project\dlrms_env\Lib\site-packages\osgeo"
-    
-    # Set environment variable for GDAL (this is what made it work)
-    os.environ['GDAL_LIBRARY_PATH'] = osgeo_dir
-    
-    # Also set the specific library paths
-    GDAL_LIBRARY_PATH = os.path.join(osgeo_dir, "gdal.dll")
-    GEOS_LIBRARY_PATH = os.path.join(osgeo_dir, "geos_c.dll")
-    
-    # Set data directories
-    os.environ['GDAL_DATA'] = osgeo_dir
-    os.environ['PROJ_LIB'] = osgeo_dir
-    
-    print(f"✅ GDAL configured: {GDAL_LIBRARY_PATH}")
-    print(f"✅ GEOS configured: {GEOS_LIBRARY_PATH}")
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# CRITICAL: GDAL Configuration for Windows
+if os.name == 'nt':  # Windows
+    # Get the virtual environment path dynamically
+    venv_path = os.path.dirname(sys.executable)
+    if 'dlrms_env' in venv_path:
+        # We're in the virtual environment
+        osgeo_path = os.path.join(os.path.dirname(venv_path), 'Lib', 'site-packages', 'osgeo')
+    else:
+        # Fallback to your specific path
+        osgeo_path = r"D:\COURSES\SEM 7\FINAL YEAR PROJECT\CODEBASE\DLRMS\dlrms_project\dlrms_env\Lib\site-packages\osgeo"
+    
+    # Set environment variables BEFORE any Django GIS imports
+    os.environ['GDAL_LIBRARY_PATH'] = osgeo_path
+    os.environ['GEOS_LIBRARY_PATH'] = osgeo_path
+    os.environ['GDAL_DATA'] = osgeo_path
+    os.environ['PROJ_LIB'] = osgeo_path  # This fixes the proj.db error
+    
+    # Set specific library paths
+    GDAL_LIBRARY_PATH = os.path.join(osgeo_path, 'gdal.dll')
+    GEOS_LIBRARY_PATH = os.path.join(osgeo_path, 'geos_c.dll')
+    
+    print(f"✅ GDAL configured at: {GDAL_LIBRARY_PATH}")
+    print(f"✅ GEOS configured at: {GEOS_LIBRARY_PATH}")
+    print(f"✅ PROJ_LIB set to: {osgeo_path}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here')
@@ -92,7 +98,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dlrms.wsgi.application'
 
-# Database - PostgreSQL with PostGIS
+# Database - PostgreSQL with PostGIS (FIXED - removed invalid init_command)
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -165,13 +171,13 @@ LEAFLET_CONFIG = {
 }
 
 # Email Configuration (for notifications)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@dlrms.cd')
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+# EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+# EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+# DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@dlrms.cd')
 
 # File Upload Settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB

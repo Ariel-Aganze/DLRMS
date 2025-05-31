@@ -105,13 +105,3 @@ class ProfileView(LoginRequiredMixin, UpdateView):
             'total_disputes': user.filed_disputes.count(),
         }
         return context
-
-
-class PasswordResetView(TemplateView):
-    """Password reset view (placeholder for now)"""
-    template_name = 'accounts/password_reset.html'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Password Reset - DLRMS'
-        return context
