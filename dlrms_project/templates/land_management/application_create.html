@@ -1,0 +1,353 @@
+{% extends 'land_management/base_dashboard.html' %}
+{% load crispy_forms_tags %}
+
+{% block dashboard_content %}
+<div class="max-w-4xl mx-auto">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="mb-6 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% else %}bg-green-50 border border-green-200 text-green-800{% endif %}">
+                <div class="flex items-center">
+                    {% if message.tags == 'error' %}
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                    {% else %}
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                    {% endif %}
+                    {{ message }}
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Application Type Section -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+                <svg class="inline-block w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Application Type
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="{{ form.application_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Choose Document Type *
+                    </label>
+                    {{ form.application_type }}
+                    {% if form.application_type.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.application_type.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 mt-1">
+                                <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium text-blue-900">Property Contract</p>
+                                <p class="text-blue-700">Valid for 3 years, renewable. Provides temporary land ownership rights.</p>
+                                <p class="text-xs text-blue-600 mt-1">Required: Owner's ID, Sale Deed</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 mt-1">
+                                <div class="w-2 h-2 bg-green-600 rounded-full"></div>
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium text-green-900">Parcel Certificate</p>
+                                <p class="text-green-700">Lifetime validity, permanent ownership document. Higher security and legal standing.</p>
+                                <p class="text-xs text-green-600 mt-1">Required: Owner's ID, Sale Deed, Previous Contract (optional)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Owner Information Section -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+                <svg class="inline-block w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                Owner Information
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.owner_first_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        First Name *
+                    </label>
+                    {{ form.owner_first_name }}
+                    {% if form.owner_first_name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.owner_first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.owner_last_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Last Name *
+                    </label>
+                    {{ form.owner_last_name }}
+                    {% if form.owner_last_name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.owner_last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Property Information Section -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+                <svg class="inline-block w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Property Information
+            </h3>
+            
+            <div class="space-y-6">
+                <div>
+                    <label for="{{ form.property_address.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Property Address *
+                    </label>
+                    {{ form.property_address }}
+                    {% if form.property_address.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.property_address.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500">Provide the complete address including district, sector, cell, and village.</p>
+                </div>
+                
+                <div>
+                    <label for="{{ form.property_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Property Type *
+                    </label>
+                    {{ form.property_type }}
+                    {% if form.property_type.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.property_type.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Required Documents Section -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+                <svg class="inline-block w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Required Documents
+            </h3>
+            
+            <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div class="flex">
+                    <svg class="w-5 h-5 text-yellow-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-800">
+                            <strong>Important:</strong> Ensure all documents are clear, readable, and authentic. 
+                            Accepted formats: PDF, JPG, PNG (Maximum 10MB each)
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- Owner ID Document -->
+                <div>
+                    <label for="{{ form.owner_id_document.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Owner's ID Document *
+                    </label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <div class="flex text-sm text-gray-600">
+                                {{ form.owner_id_document }}
+                            </div>
+                            <p class="text-xs text-gray-500">National ID, Passport, or other government-issued ID</p>
+                        </div>
+                    </div>
+                    {% if form.owner_id_document.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.owner_id_document.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Sale Deed Document -->
+                <div>
+                    <label for="{{ form.sale_deed_document.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Sale Deed Document *
+                    </label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M9 12h6m6 0h6m6 0h6M9 16h6m6 0h6m6 0h6M9 20h6m6 0h6m6 0h6m-18 4h12M21 28v8m0 0l-3-3m3 3l3-3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <div class="flex text-sm text-gray-600">
+                                {{ form.sale_deed_document }}
+                            </div>
+                            <p class="text-xs text-gray-500">Official document proving land purchase or acquisition</p>
+                        </div>
+                    </div>
+                    {% if form.sale_deed_document.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.sale_deed_document.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Previous Contract Document (Conditional) -->
+                <div id="previous_contract_field" style="display: none;">
+                    <label for="{{ form.previous_contract_document.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Previous Property Contract (Optional)
+                    </label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M9 12h6m6 0h6m6 0h6M9 16h6m6 0h6m6 0h6M9 20h6m6 0h6m6 0h6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            <div class="flex text-sm text-gray-600">
+                                {{ form.previous_contract_document }}
+                            </div>
+                            <p class="text-xs text-gray-500">Upload if you have a previous property contract for this land</p>
+                        </div>
+                    </div>
+                    {% if form.previous_contract_document.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ form.previous_contract_document.errors.0 }}</p>
+                    {% endif %}
+                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm text-blue-800">
+                            <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            If you have a previous property contract for this parcel, uploading it will help expedite your certificate application.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terms and Conditions -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+                <svg class="inline-block w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Terms and Conditions
+            </h3>
+            
+            <div class="space-y-4">
+                <label class="flex items-start">
+                    <input type="checkbox" name="terms_accepted" required class="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <span class="text-sm text-gray-700">
+                        I hereby declare that all information provided is true and accurate. I understand that providing false information may result in rejection of my application and potential legal consequences.
+                    </span>
+                </label>
+                
+                <label class="flex items-start">
+                    <input type="checkbox" name="document_authenticity" required class="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <span class="text-sm text-gray-700">
+                        I confirm that all uploaded documents are authentic and have not been altered or falsified.
+                    </span>
+                </label>
+                
+                <label class="flex items-start">
+                    <input type="checkbox" name="processing_consent" required class="mt-1 mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <span class="text-sm text-gray-700">
+                        I consent to the processing of my personal data for the purpose of land registration and agree to field inspection of the property if required.
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <button type="button" onclick="showDashboard()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"></path>
+                    </svg>
+                    Cancel
+                </button>
+                
+                <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Submit Application
+                </button>
+            </div>
+            
+            <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600">
+                    <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    After submission, your application will be assigned to a registrar for review. You will receive notifications about the status of your application.
+                </p>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const applicationTypeField = document.getElementById('{{ form.application_type.id_for_label }}');
+    const previousContractField = document.getElementById('previous_contract_field');
+    
+    function togglePreviousContractField() {
+        if (applicationTypeField.value === 'certificate') {
+            previousContractField.style.display = 'block';
+        } else {
+            previousContractField.style.display = 'none';
+            // Clear the field when hidden
+            const fileInput = previousContractField.querySelector('input[type="file"]');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+        }
+    }
+    
+    // Initial check
+    togglePreviousContractField();
+    
+    // Listen for changes
+    applicationTypeField.addEventListener('change', togglePreviousContractField);
+    
+    // File upload preview functionality
+    function setupFilePreview(inputElement) {
+        inputElement.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const container = e.target.closest('.border-dashed');
+            
+            if (file) {
+                // Show file name and size
+                const fileName = file.name;
+                const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                
+                const preview = container.querySelector('.text-center');
+                preview.innerHTML = `
+                    <svg class="mx-auto h-8 w-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <p class="text-sm text-gray-900 font-medium">${fileName}</p>
+                    <p class="text-xs text-gray-500">${fileSize} MB</p>
+                `;
+                container.classList.remove('border-gray-300');
+                container.classList.add('border-green-300', 'bg-green-50');
+            }
+        });
+    }
+    
+    // Setup file previews for all file inputs
+    document.querySelectorAll('input[type="file"]').forEach(setupFilePreview);
+});
+</script>
+{% endblock %}
