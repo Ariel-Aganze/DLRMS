@@ -222,14 +222,127 @@
                             </thead>
                             <tbody id="applications-tbody" class="bg-white divide-y divide-gray-200">
                                 <!-- Applications will be loaded here via AJAX -->
-                                <tr>
-                                    <td colspan="9" class="px-6 py-12 text-center">
-                                        <div class="flex flex-col items-center">
-                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-                                            <p class="text-gray-500">Loading applications...</p>
+                                {% for application in recent_applications %}
+                                <tr class="hover:bg-gray-50 transition-colors" data-app-id="{{ application.id }}">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <input type="checkbox" value="{{ application.id }}" class="rounded border-gray-300 app-checkbox">
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 {% if application.application_type == 'property_contract' %}bg-blue-500{% else %}bg-green-500{% endif %} rounded-lg flex items-center justify-center">
+                                                    <i class="fas {% if application.application_type == 'property_contract' %}fa-file-alt{% else %}fa-certificate{% endif %} text-white"></i>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">{{ application.application_number }}</div>
+                                                <div class="text-sm text-gray-500">{{ application.get_application_type_display }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-8 w-8">
+                                                <div class="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                                    <span class="text-xs font-medium text-blue-800">
+                                                        {{ application.owner_first_name.0 }}{{ application.owner_last_name.0 }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="text-sm font-medium text-gray-900">{{ application.owner_first_name }} {{ application.owner_last_name }}</div>
+                                                <div class="text-sm text-gray-500">{{ application.applicant.email }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ application.property_address }}</div>
+                                        <div class="text-sm text-gray-500">{{ application.property_type }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {% if application.application_type == 'property_contract' %}bg-blue-100 text-blue-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                            {{ application.get_application_type_display }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full 
+                                            {% if application.status == 'submitted' %}bg-yellow-100 text-yellow-800
+                                            {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
+                                            {% elif application.status == 'field_inspection' %}bg-purple-100 text-purple-800
+                                            {% elif application.status == 'approved' %}bg-green-100 text-green-800
+                                            {% elif application.status == 'rejected' %}bg-red-100 text-red-800
+                                            {% endif %}">
+                                            <span class="w-2 h-2 
+                                                {% if application.status == 'submitted' %}bg-yellow-400
+                                                {% elif application.status == 'under_review' %}bg-blue-400
+                                                {% elif application.status == 'field_inspection' %}bg-purple-400
+                                                {% elif application.status == 'approved' %}bg-green-400
+                                                {% elif application.status == 'rejected' %}bg-red-400
+                                                {% endif %} rounded-full mr-1 status-indicator"></span>
+                                            {{ application.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% with days_old=application.submitted_at|timesince %}
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
+                                            {% if 'day' in days_old and days_old|slice:':1'|add:'0' > 7 %}bg-red-100 text-red-800
+                                            {% elif 'day' in days_old and days_old|slice:':1'|add:'0' > 3 %}bg-orange-100 text-orange-800
+                                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                            {% if 'day' in days_old and days_old|slice:':1'|add:'0' > 7 %}Urgent
+                                            {% elif 'day' in days_old and days_old|slice:':1'|add:'0' > 3 %}High
+                                            {% else %}Normal{% endif %}
+                                        </span>
+                                        {% endwith %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ application.submitted_at|timesince }} ago
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex space-x-2">
+                                            <button onclick="viewApplication({{ application.id }})" 
+                                                    class="text-blue-600 hover:text-blue-900 transition-colors" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% if application.status == 'submitted' %}
+                                                <button onclick="assignFieldAgent({{ application.id }})" 
+                                                        class="text-green-600 hover:text-green-900 transition-colors" title="Assign Field Agent">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </button>
+                                            {% endif %}
+                                            {% if application.status == 'field_inspection' %}
+                                                <button onclick="trackInspection({{ application.id }})" 
+                                                        class="text-orange-600 hover:text-orange-900 transition-colors" title="Track Inspection">
+                                                    <i class="fas fa-map-marker-alt"></i>
+                                                </button>
+                                            {% endif %}
+                                            <button onclick="reviewApplication({{ application.id }})" 
+                                                    class="text-purple-600 hover:text-purple-900 transition-colors" title="Review">
+                                                <i class="fas fa-clipboard-check"></i>
+                                            </button>
+                                            {% if application.status == 'submitted' %}
+                                                <button onclick="quickApprove({{ application.id }})" 
+                                                        class="text-green-600 hover:text-green-900 transition-colors" title="Quick Approve">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button onclick="quickReject({{ application.id }})" 
+                                                        class="text-red-600 hover:text-red-900 transition-colors" title="Quick Reject">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center">
+                                            <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
+                                            <p class="text-gray-500">No applications found</p>
+                                            <p class="text-gray-400 text-sm mt-1">Applications will appear here when submitted</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
