@@ -942,9 +942,8 @@
     </div>
 </div>
 
-<script src="{% static 'js/user_management.js' %}"></script>
 <script>
-// JavaScript functions for user management
+// User Management JavaScript - Embedded directly in the template
 let currentPage = 1;
 let totalPages = 1;
 let usersPerPage = 20;
@@ -954,6 +953,7 @@ let totalUsersCount = 0;
 function showUserManagement() {
     document.getElementById('user-management-modal').classList.remove('hidden');
     loadUsers(1);
+    updateUserStats();
 }
 
 // Function to close user management modal
@@ -974,7 +974,7 @@ function closeAddUserModal() {
 async function editUser(userId) {
     try {
         // Fetch user data
-        const response = await fetch(`/core/api/get-user/${userId}/`, {
+        const response = await fetch(`/api/get-user/${userId}/`, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -990,11 +990,11 @@ async function editUser(userId) {
             // Show the edit modal
             document.getElementById('edit-user-modal').classList.remove('hidden');
         } else {
-            alert('Error loading user data: ' + data.message);
+            showMessage('Error loading user data: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Error loading user data:', error);
-        alert('An error occurred while loading user data.');
+        showMessage('An error occurred while loading user data.', 'error');
     }
 }
 
@@ -1022,7 +1022,7 @@ async function submitEditUserForm() {
     const formData = new FormData(form);
     
     try {
-        const response = await fetch('/core/api/update-user/', {
+        const response = await fetch('/api/update-user/', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1033,15 +1033,16 @@ async function submitEditUserForm() {
         const data = await response.json();
         
         if (data.success) {
-            alert('User updated successfully!');
+            showMessage('User updated successfully!', 'success');
             closeEditUserModal();
             refreshUserList();
+            updateUserStats();
         } else {
-            alert('Error: ' + data.message);
+            showMessage('Error: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Error updating user:', error);
-        alert('An error occurred while updating the user.');
+        showMessage('An error occurred while updating the user.', 'error');
     }
 }
 
@@ -1054,17 +1055,17 @@ async function submitAddUserForm() {
     const password2 = formData.get('password2');
     
     if (password1 !== password2) {
-        alert('Passwords do not match!');
+        showMessage('Passwords do not match!', 'error');
         return;
     }
     
     if (password1.length < 8) {
-        alert('Password must be at least 8 characters long!');
+        showMessage('Password must be at least 8 characters long!', 'error');
         return;
     }
     
     try {
-        const response = await fetch('/core/api/create-user/', {
+        const response = await fetch('/api/create-user/', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1075,15 +1076,16 @@ async function submitAddUserForm() {
         const data = await response.json();
         
         if (data.success) {
-            alert('User created successfully!');
+            showMessage('User created successfully!', 'success');
             closeAddUserModal();
             refreshUserList();
+            updateUserStats();
         } else {
-            alert('Error: ' + data.message);
+            showMessage('Error: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Error creating user:', error);
-        alert('An error occurred while creating the user.');
+        showMessage('An error occurred while creating the user.', 'error');
     }
 }
 
@@ -1097,7 +1099,7 @@ async function loadUsers(page = 1, searchQuery = '', roleFilter = '', statusFilt
             status: statusFilter
         });
 
-        const response = await fetch(`/core/api/search-users/?${params}`, {
+        const response = await fetch(`/api/search-users/?${params}`, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1111,11 +1113,46 @@ async function loadUsers(page = 1, searchQuery = '', roleFilter = '', statusFilt
             updateUserTable(data.users);
             currentPage = page;
         } else {
-            alert('Error loading users: ' + data.message);
+            showMessage('Error loading users: ' + data.message, 'error');
         }
     } catch (error) {
         console.error('Error loading users:', error);
-        alert('An error occurred while loading users.');
+        showMessage('An error occurred while loading users.', 'error');
+    }
+}
+
+async function updateUserStats() {
+    try {
+        const response = await fetch('/api/user-stats/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update stats in both dashboard and modal
+            const statsElements = {
+                'total_users': document.querySelectorAll('[data-stat="total_users"]'),
+                'verified_users': document.querySelectorAll('[data-stat="verified_users"]'),
+                'unverified_users': document.querySelectorAll('[data-stat="unverified_users"]'),
+                'total_landowners': document.querySelectorAll('[data-stat="total_landowners"]'),
+                'total_officers': document.querySelectorAll('[data-stat="total_officers"]')
+            };
+
+            Object.keys(statsElements).forEach(key => {
+                if (statsElements[key] && data.stats[key] !== undefined) {
+                    statsElements[key].forEach(element => {
+                        element.textContent = data.stats[key];
+                    });
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading user stats:', error);
     }
 }
 
@@ -1254,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function verifyUser(userId) {
     if (confirm('Are you sure you want to verify this user?')) {
-        fetch(`/core/api/verify-user/${userId}/`, {
+        fetch(`/api/verify-user/${userId}/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1263,21 +1300,22 @@ function verifyUser(userId) {
         }).then(response => response.json())
           .then(data => {
               if (data.success) {
-                  alert(data.message);
+                  showMessage(data.message, 'success');
                   refreshUserList();
+                  updateUserStats();
               } else {
-                  alert('Error: ' + data.message);
+                  showMessage('Error: ' + data.message, 'error');
               }
           }).catch(error => {
               console.error('Error:', error);
-              alert('An error occurred while verifying the user.');
+              showMessage('An error occurred while verifying the user.', 'error');
           });
     }
 }
 
 function deactivateUser(userId) {
     if (confirm('Are you sure you want to deactivate this user?')) {
-        fetch(`/core/api/toggle-user-active/${userId}/`, {
+        fetch(`/api/toggle-user-active/${userId}/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1286,21 +1324,22 @@ function deactivateUser(userId) {
         }).then(response => response.json())
           .then(data => {
               if (data.success) {
-                  alert(data.message);
+                  showMessage(data.message, 'success');
                   refreshUserList();
+                  updateUserStats();
               } else {
-                  alert('Error: ' + data.message);
+                  showMessage('Error: ' + data.message, 'error');
               }
           }).catch(error => {
               console.error('Error:', error);
-              alert('An error occurred while deactivating the user.');
+              showMessage('An error occurred while deactivating the user.', 'error');
           });
     }
 }
 
 function activateUser(userId) {
     if (confirm('Are you sure you want to activate this user?')) {
-        fetch(`/core/api/toggle-user-active/${userId}/`, {
+        fetch(`/api/toggle-user-active/${userId}/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1309,21 +1348,22 @@ function activateUser(userId) {
         }).then(response => response.json())
           .then(data => {
               if (data.success) {
-                  alert(data.message);
+                  showMessage(data.message, 'success');
                   refreshUserList();
+                  updateUserStats();
               } else {
-                  alert('Error: ' + data.message);
+                  showMessage('Error: ' + data.message, 'error');
               }
           }).catch(error => {
               console.error('Error:', error);
-              alert('An error occurred while activating the user.');
+              showMessage('An error occurred while activating the user.', 'error');
           });
     }
 }
 
 function bulkVerifyUsers() {
     if (confirm('This will verify all unverified users. Are you sure?')) {
-        fetch('/core/api/bulk-verify-users/', {
+        fetch('/api/bulk-verify-users/', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1332,21 +1372,39 @@ function bulkVerifyUsers() {
         }).then(response => response.json())
           .then(data => {
               if (data.success) {
-                  alert(data.message);
+                  showMessage(data.message, 'success');
                   refreshUserList();
+                  updateUserStats();
               } else {
-                  alert('Error: ' + data.message);
+                  showMessage('Error: ' + data.message, 'error');
               }
           }).catch(error => {
               console.error('Error:', error);
-              alert('An error occurred during bulk verification.');
+              showMessage('An error occurred during bulk verification.', 'error');
           });
     }
 }
 
 function exportUsers() {
     // Trigger CSV export by redirecting to the export endpoint
-    window.location.href = '/core/api/export-users/';
+    window.location.href = '/api/export-users/';
+}
+
+function showMessage(message, type = 'info') {
+    // Create and show a temporary message
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `fixed top-4 right-4 px-4 py-2 rounded-lg text-white z-50 ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 
+        'bg-blue-500'
+    }`;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 5000);
 }
 
 // Helper function to get CSRF token

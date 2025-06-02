@@ -1,6 +1,6 @@
 # core/admin_views.py
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
@@ -9,7 +9,10 @@ from django.db.models import Q
 from django.contrib.auth.hashers import make_password
 from .decorators import admin_required, officer_required
 import csv
-from django.http import HttpResponse
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -19,6 +22,8 @@ User = get_user_model()
 def create_user(request):
     """Create a new user (AJAX endpoint)"""
     try:
+        logger.info(f"User creation request from {request.user.username}")
+        
         # Get form data
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
@@ -31,6 +36,8 @@ def create_user(request):
         national_id = request.POST.get('national_id', '').strip()
         address = request.POST.get('address', '').strip()
         is_verified = request.POST.get('is_verified') == 'on'
+        
+        logger.info(f"Creating user: {username}, {email}, {role}")
         
         # Validation
         if not all([username, email, first_name, last_name, role, password1, password2]):
@@ -96,6 +103,8 @@ def create_user(request):
             password=make_password(password1)
         )
         
+        logger.info(f"User {username} created successfully")
+        
         return JsonResponse({
             'success': True,
             'message': f'User {username} created successfully.',
@@ -103,10 +112,11 @@ def create_user(request):
         })
     
     except Exception as e:
+        logger.error(f"Error creating user: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error creating user: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 
 @login_required
@@ -138,10 +148,11 @@ def get_user(request, user_id):
         })
         
     except Exception as e:
+        logger.error(f"Error fetching user {user_id}: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error fetching user: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 @login_required
 @officer_required
@@ -244,10 +255,11 @@ def update_user(request):
         })
         
     except Exception as e:
+        logger.error(f"Error updating user: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error updating user: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 @login_required
 @officer_required
@@ -265,10 +277,11 @@ def verify_user(request, user_id):
             'user_id': user_id
         })
     except Exception as e:
+        logger.error(f"Error verifying user {user_id}: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error verifying user: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 @login_required
 @officer_required
@@ -289,10 +302,11 @@ def toggle_user_active(request, user_id):
             'is_active': user.is_active
         })
     except Exception as e:
+        logger.error(f"Error toggling user {user_id} status: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error toggling user status: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 @login_required
 @officer_required
@@ -318,42 +332,50 @@ def bulk_verify_users(request):
             'count': count
         })
     except Exception as e:
+        logger.error(f"Error in bulk verification: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error in bulk verification: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 @login_required
 @officer_required
 def export_users(request):
     """Export users to CSV"""
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="dlrms_users.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow([
-        'Username', 'First Name', 'Last Name', 'Email', 'Role', 
-        'Phone Number', 'National ID', 'Is Verified', 'Is Active', 
-        'Date Joined', 'Last Login'
-    ])
-    
-    users = User.objects.all().order_by('-date_joined')
-    for user in users:
+    try:
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="dlrms_users.csv"'
+        
+        writer = csv.writer(response)
         writer.writerow([
-            user.username,
-            user.first_name,
-            user.last_name,
-            user.email,
-            user.get_role_display(),
-            user.phone_number or '',
-            user.national_id or '',
-            'Yes' if user.is_verified else 'No',
-            'Yes' if user.is_active else 'No',
-            user.date_joined.strftime('%Y-%m-%d %H:%M:%S'),
-            user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never'
+            'Username', 'First Name', 'Last Name', 'Email', 'Role', 
+            'Phone Number', 'National ID', 'Is Verified', 'Is Active', 
+            'Date Joined', 'Last Login'
         ])
-    
-    return response
+        
+        users = User.objects.all().order_by('-date_joined')
+        for user in users:
+            writer.writerow([
+                user.username,
+                user.first_name,
+                user.last_name,
+                user.email,
+                user.get_role_display(),
+                user.phone_number or '',
+                user.national_id or '',
+                'Yes' if user.is_verified else 'No',
+                'Yes' if user.is_active else 'No',
+                user.date_joined.strftime('%Y-%m-%d %H:%M:%S'),
+                user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never'
+            ])
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error exporting users: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': f'Error exporting users: {str(e)}'
+        }, status=500)
 
 @login_required
 @officer_required
@@ -382,10 +404,11 @@ def get_user_stats(request):
             'stats': stats
         })
     except Exception as e:
+        logger.error(f"Error fetching stats: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error fetching stats: {str(e)}'
-        }, status=400)
+        }, status=500)
 
 @login_required
 @officer_required
@@ -467,7 +490,8 @@ def search_users(request):
             }
         })
     except Exception as e:
+        logger.error(f"Error searching users: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'message': f'Error searching users: {str(e)}'
-        }, status=400)
+        }, status=500)

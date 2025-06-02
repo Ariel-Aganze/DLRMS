@@ -1,0 +1,874 @@
+{# templates/applications/review_dashboard.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Applications Review Dashboard - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Include sidebar navigation -->
+        {% include 'includes/sidebar.html' with active_page='applications_review' %}
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-80">
+            <!-- Header -->
+            <div class="bg-white shadow-sm border-b border-gray-200">
+                <div class="max-w-full mx-auto px-6 lg:px-8">
+                    <div class="flex justify-between items-center py-4">
+                        <div class="flex items-center">
+                            <div class="size-10 flex items-center justify-center bg-blue-600 rounded-lg mr-3">
+                                <i class="fas fa-clipboard-check text-white"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-bold text-gray-900">Applications Review</h1>
+                                <p class="text-sm text-gray-500">Review and manage pending land applications</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-sm text-gray-500">{{ user.get_role_display }} Dashboard</span>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-xs font-medium">{{ user.first_name.0 }}{{ user.last_name.0 }}</span>
+                                </div>
+                                <span class="text-sm font-medium text-gray-900">{{ user.get_full_name }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-full mx-auto px-6 lg:px-8 py-6">
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-sm p-6 card-hover cursor-pointer" onclick="filterByStatus('submitted')">
+                        <div class="flex items-center">
+                            <div class="rounded-md bg-yellow-100 p-2 mr-4">
+                                <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Pending Review</p>
+                                <p class="text-2xl font-bold text-gray-900" id="stat-pending">{{ stats.pending_review }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                                <span class="text-green-500">+{{ stats.pending_review|add:"-5" }}</span>
+                                <span class="text-gray-500 ml-1">this week</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-6 card-hover cursor-pointer" onclick="filterByStatus('field_inspection')">
+                        <div class="flex items-center">
+                            <div class="rounded-md bg-blue-100 p-2 mr-4">
+                                <i class="fas fa-search text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Under Inspection</p>
+                                <p class="text-2xl font-bold text-gray-900" id="stat-inspection">{{ stats.under_inspection }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-minus text-gray-400 mr-1"></i>
+                                <span class="text-gray-500">No change</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-6 card-hover cursor-pointer" onclick="filterByStatus('approved')">
+                        <div class="flex items-center">
+                            <div class="rounded-md bg-green-100 p-2 mr-4">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Approved Today</p>
+                                <p class="text-2xl font-bold text-gray-900" id="stat-approved">{{ stats.approved_today }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                                <span class="text-green-500">+{{ stats.approved_today|add:"-2" }}</span>
+                                <span class="text-gray-500 ml-1">from yesterday</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-6 card-hover cursor-pointer" onclick="showOverdueApplications()">
+                        <div class="flex items-center">
+                            <div class="rounded-md bg-red-100 p-2 mr-4">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Overdue Reviews</p>
+                                <p class="text-2xl font-bold text-gray-900" id="stat-overdue">{{ stats.overdue_reviews }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-exclamation text-red-500 mr-1"></i>
+                                <span class="text-red-500">Urgent attention</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters and Actions -->
+                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                            <!-- Search -->
+                            <div class="relative">
+                                <input type="text" 
+                                       id="search-input"
+                                       placeholder="Search applications..." 
+                                       class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64">
+                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                            </div>
+
+                            <!-- Status Filter -->
+                            <select id="status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">All Status</option>
+                                <option value="submitted">Submitted</option>
+                                <option value="under_review">Under Review</option>
+                                <option value="field_inspection">Field Inspection</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+
+                            <!-- Application Type Filter -->
+                            <select id="type-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">All Types</option>
+                                <option value="property_contract">Property Contract</option>
+                                <option value="parcel_certificate">Parcel Certificate</option>
+                            </select>
+
+                            <!-- Date Range -->
+                            <input type="date" id="date-from" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <input type="date" id="date-to" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+
+                        <div class="flex space-x-3">
+                            <button onclick="exportApplications()" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-download mr-2"></i>
+                                Export
+                            </button>
+                            <button onclick="showBulkActions()" class="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-users mr-2"></i>
+                                Bulk Actions
+                            </button>
+                            <button onclick="refreshData()" class="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                                <i class="fas fa-refresh mr-2"></i>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Applications Table -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-medium text-gray-900">Applications</h3>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-gray-500" id="results-count">Loading...</span>
+                                <div class="flex items-center space-x-2">
+                                    <label for="per-page" class="text-sm text-gray-500">Show:</label>
+                                    <select id="per-page" class="text-sm border border-gray-300 rounded px-2 py-1">
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <input type="checkbox" id="select-all" class="rounded border-gray-300">
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Application
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Applicant
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Property
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Type
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Priority
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Submitted
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="applications-tbody" class="bg-white divide-y divide-gray-200">
+                                <!-- Applications will be loaded here via AJAX -->
+                                <tr>
+                                    <td colspan="8" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center">
+                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                                            <p class="text-gray-500">Loading applications...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="bg-white px-6 py-3 border-t border-gray-200" id="pagination-container">
+                        <!-- Pagination will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Review Modal -->
+<div id="quickReviewModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900" id="modal-title">Quick Review - Application</h3>
+                <button onclick="closeQuickReview()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="py-4" id="modal-content">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Field Agent Assignment Modal -->
+<div id="assignAgentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Assign Field Agent</h3>
+                <button onclick="closeAssignModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="py-4">
+                <form id="assign-agent-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Field Agent</label>
+                        <select id="agent-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Choose an agent...</option>
+                            {% for agent in field_agents %}
+                            <option value="{{ agent.id }}">{{ agent.get_full_name }} - {{ agent.get_role_display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Priority Level</label>
+                        <select id="priority-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Inspection Deadline</label>
+                        <input type="date" id="deadline-input" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes for Field Agent</label>
+                        <textarea id="notes-input" rows="3" 
+                                  placeholder="Add any special instructions or notes..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                </form>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button onclick="closeAssignModal()" 
+                        class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button onclick="confirmAssignment()" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Assign Agent
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Modal -->
+<div id="bulkActionsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center pb-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Bulk Actions</h3>
+                <button onclick="closeBulkModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="py-4">
+                <div class="text-sm text-gray-600 mb-4">
+                    <span id="selectedCount">0</span> applications selected
+                </div>
+                
+                <div class="space-y-3">
+                    <button onclick="showBulkAssignForm()" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-plus text-blue-600 mr-3"></i>
+                            <div>
+                                <div class="font-medium">Assign to Field Agent</div>
+                                <div class="text-sm text-gray-500">Bulk assign selected applications</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="showBulkPriorityForm()" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center">
+                            <i class="fas fa-flag text-orange-600 mr-3"></i>
+                            <div>
+                                <div class="font-medium">Change Priority</div>
+                                <div class="text-sm text-gray-500">Update priority level</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button onclick="exportSelected()" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center">
+                            <i class="fas fa-download text-green-600 mr-3"></i>
+                            <div>
+                                <div class="font-medium">Export Selected</div>
+                                <div class="text-sm text-gray-500">Download as Excel/PDF</div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Toast Notifications -->
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<!-- JavaScript -->
+<script>
+// Global variables
+let currentPage = 1;
+let currentFilters = {
+    search: '',
+    status: '',
+    type: '',
+    date_from: '',
+    date_to: ''
+};
+let selectedApplications = new Set();
+let currentApplicationId = null;
+
+// Initialize the dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    loadApplications();
+    setupEventListeners();
+    
+    // Show welcome message
+    setTimeout(() => {
+        showToast('Applications Review Dashboard loaded successfully!', 'success');
+    }, 1000);
+});
+
+// Setup event listeners
+function setupEventListeners() {
+    // Search input with debounce
+    const searchInput = document.getElementById('search-input');
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentFilters.search = this.value;
+            currentPage = 1;
+            loadApplications();
+        }, 300);
+    });
+
+    // Filter dropdowns
+    document.getElementById('status-filter').addEventListener('change', function() {
+        currentFilters.status = this.value;
+        currentPage = 1;
+        loadApplications();
+    });
+
+    document.getElementById('type-filter').addEventListener('change', function() {
+        currentFilters.type = this.value;
+        currentPage = 1;
+        loadApplications();
+    });
+
+    // Date filters
+    document.getElementById('date-from').addEventListener('change', function() {
+        currentFilters.date_from = this.value;
+        currentPage = 1;
+        loadApplications();
+    });
+
+    document.getElementById('date-to').addEventListener('change', function() {
+        currentFilters.date_to = this.value;
+        currentPage = 1;
+        loadApplications();
+    });
+
+    // Per page selector
+    document.getElementById('per-page').addEventListener('change', function() {
+        currentPage = 1;
+        loadApplications();
+    });
+
+    // Select all checkbox
+    document.getElementById('select-all').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            cb.checked = this.checked;
+            if (this.checked) {
+                selectedApplications.add(parseInt(cb.value));
+            } else {
+                selectedApplications.delete(parseInt(cb.value));
+            }
+        });
+        updateSelectionCount();
+    });
+
+    // Close modals when clicking outside
+    window.addEventListener('click', function(e) {
+        const modals = ['quickReviewModal', 'assignAgentModal', 'bulkActionsModal'];
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    });
+}
+
+// Load applications via AJAX
+async function loadApplications(page = currentPage) {
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            per_page: document.getElementById('per-page').value,
+            ...currentFilters
+        });
+
+        const response = await fetch(`{% url 'applications_review:api_applications_list' %}?${params}`, {
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            renderApplicationsTable(data.applications);
+            renderPagination(data.pagination);
+            updateResultsCount(data.pagination);
+        } else {
+            showToast('Error loading applications', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading applications:', error);
+        showToast('Error loading applications', 'error');
+    }
+}
+
+// Render applications table
+function renderApplicationsTable(applications) {
+    const tbody = document.getElementById('applications-tbody');
+    
+    if (applications.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="px-6 py-12 text-center">
+                    <div class="flex flex-col items-center">
+                        <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
+                        <p class="text-gray-500">No applications found</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = applications.map(app => `
+        <tr class="hover:bg-gray-50 transition-colors" data-app-id="${app.id}">
+            <td class="px-6 py-4 whitespace-nowrap">
+                <input type="checkbox" value="${app.id}" class="rounded border-gray-300 app-checkbox">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                        <div class="h-10 w-10 ${getApplicationTypeColor(app.application_type)} rounded-lg flex items-center justify-center">
+                            <i class="fas ${getApplicationTypeIcon(app.application_type)} text-white"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">${app.application_number}</div>
+                        <div class="text-sm text-gray-500">${app.application_type_display}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-8 w-8">
+                        <div class="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span class="text-xs font-medium text-blue-800">${getInitials(app.applicant_name)}</span>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <div class="text-sm font-medium text-gray-900">${app.applicant_name}</div>
+                        <div class="text-sm text-gray-500">${app.applicant_email}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${app.property_address}</div>
+                <div class="text-sm text-gray-500">${app.property_type}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(app.application_type)}">
+                    ${app.application_type_display}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(app.status)}">
+                    <span class="w-2 h-2 ${getStatusDot(app.status)} rounded-full mr-1 status-indicator"></span>
+                    ${app.status_display}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(app.priority)}">
+                    ${app.priority.charAt(0).toUpperCase() + app.priority.slice(1)}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${app.days_old} day${app.days_old !== 1 ? 's' : ''} ago
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex space-x-2">
+                    <button onclick="viewApplication(${app.id})" 
+                            class="text-blue-600 hover:text-blue-900 transition-colors" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${app.status === 'submitted' ? `
+                        <button onclick="assignFieldAgent(${app.id})" 
+                                class="text-green-600 hover:text-green-900 transition-colors" title="Assign Field Agent">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    ` : ''}
+                    ${app.status === 'field_inspection' ? `
+                        <button onclick="trackInspection(${app.id})" 
+                                class="text-orange-600 hover:text-orange-900 transition-colors" title="Track Inspection">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </button>
+                    ` : ''}
+                    <button onclick="reviewApplication(${app.id})" 
+                            class="text-purple-600 hover:text-purple-900 transition-colors" title="Review">
+                        <i class="fas fa-clipboard-check"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    // Add event listeners to checkboxes
+    document.querySelectorAll('.app-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const appId = parseInt(this.value);
+            if (this.checked) {
+                selectedApplications.add(appId);
+            } else {
+                selectedApplications.delete(appId);
+            }
+            updateSelectionCount();
+        });
+    });
+}
+
+// Helper functions for styling
+function getApplicationTypeColor(type) {
+    return type === 'property_contract' ? 'bg-blue-500' : 'bg-green-500';
+}
+
+function getApplicationTypeIcon(type) {
+    return type === 'property_contract' ? 'fa-file-alt' : 'fa-certificate';
+}
+
+function getInitials(name) {
+    return name.split(' ').map(n => n.charAt(0)).join('').toUpperCase();
+}
+
+function getTypeColor(type) {
+    return type === 'property_contract' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'submitted': 'bg-yellow-100 text-yellow-800',
+        'under_review': 'bg-blue-100 text-blue-800',
+        'field_inspection': 'bg-purple-100 text-purple-800',
+        'approved': 'bg-green-100 text-green-800',
+        'rejected': 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+}
+
+function getStatusDot(status) {
+    const colors = {
+        'submitted': 'bg-yellow-400',
+        'under_review': 'bg-blue-400',
+        'field_inspection': 'bg-purple-400',
+        'approved': 'bg-green-400',
+        'rejected': 'bg-red-400'
+    };
+    return colors[status] || 'bg-gray-400';
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'low': 'bg-gray-100 text-gray-800',
+        'normal': 'bg-blue-100 text-blue-800',
+        'medium': 'bg-yellow-100 text-yellow-800',
+        'high': 'bg-orange-100 text-orange-800',
+        'urgent': 'bg-red-100 text-red-800'
+    };
+    return colors[priority] || 'bg-gray-100 text-gray-800';
+}
+
+// Render pagination
+function renderPagination(pagination) {
+    const container = document.getElementById('pagination-container');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const prevDisabled = !pagination.has_previous;
+    const nextDisabled = !pagination.has_next;
+    
+    let paginationHTML = `
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+                Showing <span class="font-medium">${(pagination.current_page - 1) * pagination.per_page + 1}</span> 
+                to <span class="font-medium">${Math.min(pagination.current_page * pagination.per_page, pagination.total_count)}</span> 
+                of <span class="font-medium">${pagination.total_count}</span> applications
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="loadApplications(${pagination.current_page - 1})" 
+                        ${prevDisabled ? 'disabled' : ''} 
+                        class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 ${prevDisabled ? 'opacity-50 cursor-not-allowed' : ''}">
+                    Previous
+                </button>
+    `;
+
+    // Page numbers
+    const startPage = Math.max(1, pagination.current_page - 2);
+    const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === pagination.current_page;
+        paginationHTML += `
+            <button onclick="loadApplications(${i})" 
+                    class="px-3 py-1 ${isActive ? 'bg-blue-600 text-white' : 'border border-gray-300 hover:bg-gray-50'} rounded text-sm">
+                ${i}
+            </button>
+        `;
+    }
+
+    paginationHTML += `
+                <button onclick="loadApplications(${pagination.current_page + 1})" 
+                        ${nextDisabled ? 'disabled' : ''} 
+                        class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 ${nextDisabled ? 'opacity-50 cursor-not-allowed' : ''}">
+                    Next
+                </button>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = paginationHTML;
+}
+
+// Update results count
+function updateResultsCount(pagination) {
+    document.getElementById('results-count').textContent = 
+        `${pagination.total_count} application${pagination.total_count !== 1 ? 's' : ''}`;
+}
+
+// Update selection count
+function updateSelectionCount() {
+    document.getElementById('selectedCount').textContent = selectedApplications.size;
+}
+
+// Filter functions
+function filterByStatus(status) {
+    document.getElementById('status-filter').value = status;
+    currentFilters.status = status;
+    currentPage = 1;
+    loadApplications();
+}
+
+function showOverdueApplications() {
+    // Set filter to show overdue applications
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    
+    document.getElementById('date-to').value = fiveDaysAgo.toISOString().split('T')[0];
+    document.getElementById('status-filter').value = 'submitted';
+    
+    currentFilters.date_to = fiveDaysAgo.toISOString().split('T')[0];
+    currentFilters.status = 'submitted';
+    currentPage = 1;
+    loadApplications();
+}
+
+// Application actions
+function viewApplication(appId) {
+    currentApplicationId = appId;
+    // Load application details and show modal
+    loadApplicationDetails(appId);
+    document.getElementById('quickReviewModal').classList.remove('hidden');
+}
+
+async function loadApplicationDetails(appId) {
+    // This would typically fetch application details
+    // For now, we'll show a simple modal
+    document.getElementById('modal-title').textContent = `Application Details - #${appId}`;
+    document.getElementById('modal-content').innerHTML = `
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-500">Loading application details...</p>
+        </div>
+    `;
+    
+    // Simulate loading
+    setTimeout(() => {
+        document.getElementById('modal-content').innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-3">Application Details</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Application ID:</span>
+                            <span class="font-medium">#${appId}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Type:</span>
+                            <span class="font-medium">Property Contract</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Status:</span>
+                            <span class="font-medium">Submitted</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-medium text-gray-900 mb-3">Quick Actions</h4>
+                    <div class="space-y-2">
+                        <button onclick="quickApprove(${appId})" class="w-full text-left px-3 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200">
+                            <i class="fas fa-check mr-2"></i>Quick Approve
+                        </button>
+                        <button onclick="quickReject(${appId})" class="w-full text-left px-3 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200">
+                            <i class="fas fa-times mr-2"></i>Quick Reject
+                        </button>
+                        <button onclick="assignFieldAgent(${appId})" class="w-full text-left px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200">
+                            <i class="fas fa-user-plus mr-2"></i>Assign Field Agent
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }, 1000);
+}
+
+function assignFieldAgent(appId) {
+    currentApplicationId = appId;
+    document.getElementById('assignAgentModal').classList.remove('hidden');
+}
+
+function reviewApplication(appId) {
+    window.location.href = `{% url 'applications:parcel_application_detail' 0 %}`.replace('0', appId);
+}
+
+// Modal functions
+function closeQuickReview() {
+    document.getElementById('quickReviewModal').classList.add('hidden');
+}
+
+function closeAssignModal() {
+    document.getElementById('assignAgentModal').classList.add('hidden');
+}
+
+function closeBulkModal() {
+    document.getElementById('bulkActionsModal').classList.add('hidden');
+}
+
+async function confirmAssignment() {
+    const agentId = document.getElementById('agent-select').value;
+    const priority = document.getElementById('priority-select').value;
+    const deadline = document.getElementById('deadline-input').value;
+    const notes = document.getElementById('notes-input').value;
+
+    if (!agentId) {
+        showToast('Please select a field agent', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`{% url 'applications_review:api_quick_review' 0 %}`.replace('0', currentApplicationId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'assign',
+                agent_id: agentId,
+                notes: notes
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            closeAssignModal();
+            loadApplications();
+        } else {
+            showToast(data.message || 'Error assigning field agent', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Error ass

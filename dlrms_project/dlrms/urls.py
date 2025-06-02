@@ -1,3 +1,4 @@
+# dlrms_project/dlrms/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -6,7 +7,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('core.urls')),  # This will handle /admin/create-user/ through core.urls
+    path('', include('core.urls')),  # This handles all core URLs including API endpoints
     path('accounts/', include('accounts.urls')),
     path('land/', include('land_management.urls')),
     path('applications/', include('applications.urls')),
