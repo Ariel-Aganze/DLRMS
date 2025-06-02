@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
 {% block title %}Dashboard - DLRMS{% endblock %}
 
 {% block content %}
@@ -13,7 +15,13 @@
             <div class="p-6">
                 <div class="mb-6">
                     <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-                    <p class="text-sm text-gray-600 mt-1">Welcome, {{ user.first_name }}. Here's an overview of your land records.</p>
+                    <p class="text-sm text-gray-600 mt-1">
+                        {% if user.role == 'admin' or user.role == 'registry_officer' %}
+                            Welcome, {{ user.first_name }}. Administrative overview and system management.
+                        {% else %}
+                            Welcome, {{ user.first_name }}. Here's an overview of your land records.
+                        {% endif %}
+                    </p>
                 </div>
 
                 {% if messages %}
@@ -26,268 +34,1335 @@
                 </div>
                 {% endif %}
 
-                <!-- Stats Overview -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div class="flex items-center">
-                            <div class="rounded-md bg-blue-100 p-2 mr-3">
-                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Land Parcels</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ user.land_parcels.count }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div class="flex items-center">
-                            <div class="rounded-md bg-green-100 p-2 mr-3">
-                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Land Titles</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ parcel_titles_count }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div class="flex items-center">
-                            <div class="rounded-md bg-yellow-100 p-2 mr-3">
-                                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Applications</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ pending_applications_count }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                        <div class="flex items-center">
-                            <div class="rounded-md bg-red-100 p-2 mr-3">
-                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Disputes</p>
-                                <p class="text-2xl font-bold text-gray-900">{{ user.filed_disputes.count }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- My Land Parcels Section -->
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900">My Land Parcels</h2>
-                        <a href="{% url 'applications:parcel_application_create' %}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
-                            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Register New Parcel
-                        </a>
-                    </div>
-                    
-                    {% if user.land_parcels.exists %}
-                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Parcel ID
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Location
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Size
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Property Type
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Active Title
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Expiry Date
-                                        </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    {% for parcel in user.land_parcels.all %}
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                                            {{ parcel.parcel_id }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ parcel.location }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ parcel.size_hectares }} hectares
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ parcel.get_property_type_display }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            {% with active_title=parcel.get_active_title %}
-                                                {% if active_title %}
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                                    {% if active_title.title_type == 'property_contract' %}bg-yellow-100 text-yellow-800
-                                                    {% else %}bg-green-100 text-green-800{% endif %}">
-                                                        {{ active_title.get_title_type_display }}
-                                                    </span>
-                                                {% else %}
-                                                    <span class="text-gray-400">None</span>
-                                                {% endif %}
-                                            {% endwith %}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {% with active_title=parcel.get_active_title %}
-                                                {% if active_title %}
-                                                    {% if active_title.expiry_date %}
-                                                        {{ active_title.expiry_date|date:"M d, Y" }}
-                                                        {% if active_title.expiry_date < today %}
-                                                            <span class="text-red-600 ml-1">(Expired)</span>
-                                                        {% endif %}
-                                                    {% else %}
-                                                        <span class="text-green-600">Lifetime</span>
-                                                    {% endif %}
-                                                {% else %}
-                                                    <span class="text-gray-400">—</span>
-                                                {% endif %}
-                                            {% endwith %}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <a href="{% url 'land_management:parcel_detail' parcel.id %}" class="text-blue-600 hover:text-blue-900">
-                                                View Details
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="bg-white rounded-lg shadow-sm p-6 text-center">
-                            <p class="text-gray-500 mb-4">You don't have any registered land parcels yet.</p>
-                            <a href="{% url 'applications:parcel_application_create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Register a Land Parcel
-                            </a>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <!-- Recent Applications -->
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold text-gray-900">Recent Applications</h2>
-                        <a href="{% url 'applications:parcel_application_list' %}" class="text-blue-600 hover:text-blue-800 text-sm">
-                            View All Applications
-                        </a>
-                    </div>
-                    
-                    {% if recent_applications %}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {% for application in recent_applications %}
-                            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">{{ application.get_application_type_display }}</p>
-                                        <p class="text-xs text-gray-500">{{ application.property_address }}</p>
-                                    </div>
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                        {% if application.status == 'submitted' %}bg-yellow-100 text-yellow-800
-                                        {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
-                                        {% elif application.status == 'field_inspection' %}bg-purple-100 text-purple-800
-                                        {% elif application.status == 'approved' %}bg-green-100 text-green-800
-                                        {% elif application.status == 'rejected' %}bg-red-100 text-red-800
-                                        {% endif %}">
-                                        {{ application.get_status_display }}
-                                    </span>
-                                </div>
-                                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-                                    <p class="text-xs text-gray-500">Submitted: {{ application.submitted_at|date:"M d, Y" }}</p>
-                                    <a href="{% url 'applications:parcel_application_detail' application.id %}" class="text-xs text-blue-600 hover:text-blue-800">
-                                        View Details
-                                    </a>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="bg-white rounded-lg shadow-sm p-6 text-center">
-                            <p class="text-gray-500 mb-4">You haven't submitted any applications yet.</p>
-                            <a href="{% url 'applications:parcel_application_create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                Submit Application
-                            </a>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <!-- Quick Links -->
-                <div>
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Links</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <a href="{% url 'applications:parcel_application_create' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                <!-- Admin Dashboard Content -->
+                {% if user.role == 'admin' or user.role == 'registry_officer' %}
+                    <!-- Admin Stats Overview -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                             <div class="flex items-center">
                                 <div class="rounded-md bg-blue-100 p-2 mr-3">
-                                    <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">New Application</p>
-                                    <p class="text-xs text-gray-500">Register a new land parcel</p>
+                                    <p class="text-sm text-gray-500">Total Users</p>
+                                    <p class="text-2xl font-bold text-gray-900" data-stat="total_users">{{ total_users }}</p>
                                 </div>
                             </div>
-                        </a>
+                        </div>
                         
-                        <a href="{% url 'applications:parcel_title_list' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                             <div class="flex items-center">
                                 <div class="rounded-md bg-green-100 p-2 mr-3">
-                                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">View Titles</p>
-                                    <p class="text-xs text-gray-500">Manage your land titles</p>
+                                    <p class="text-sm text-gray-500">Verified Users</p>
+                                    <p class="text-2xl font-bold text-gray-900" data-stat="verified_users">{{ verified_users }}</p>
                                 </div>
                             </div>
-                        </a>
+                        </div>
                         
-                        <a href="{% url 'land_management:map' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                             <div class="flex items-center">
                                 <div class="rounded-md bg-yellow-100 p-2 mr-3">
-                                    <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Pending Verification</p>
+                                    <p class="text-2xl font-bold text-gray-900" data-stat="unverified_users">{{ unverified_users }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="rounded-md bg-purple-100 p-2 mr-3">
+                                    <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Landowners</p>
+                                    <p class="text-2xl font-bold text-gray-900" data-stat="total_landowners">{{ total_landowners }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent System Activity -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Recent System Activity</h2>
+                            <a href="#" class="text-blue-600 hover:text-blue-800 text-sm">View All Activity</a>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-900">Recent User Registrations</h3>
+                            </div>
+                            <div class="divide-y divide-gray-200">
+                                {% for user_item in recent_users|slice:":5" %}
+                                <div class="p-4 hover:bg-gray-50">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-8 w-8">
+                                                <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                                    <span class="text-xs font-medium text-white">
+                                                        {{ user_item.first_name.0 }}{{ user_item.last_name.0 }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-sm font-medium text-gray-900">
+                                                    {{ user_item.first_name }} {{ user_item.last_name }}
+                                                </p>
+                                                <p class="text-sm text-gray-500">{{ user_item.email }} • {{ user_item.get_role_display }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center">
+                                            {% if user_item.is_verified %}
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                                    Verified
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                                    Pending
+                                                </span>
+                                            {% endif %}
+                                            <span class="ml-2 text-xs text-gray-500">{{ user_item.date_joined|timesince }} ago</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="p-4 text-center text-gray-500">
+                                    No recent user registrations
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Admin Actions -->
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <a href="#" onclick="showUserManagement()" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                                <div class="flex items-center">
+                                    <div class="rounded-md bg-blue-100 p-2 mr-3">
+                                        <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">User Management</p>
+                                        <p class="text-xs text-gray-500">Manage system users</p>
+                                    </div>
+                                </div>
+                            </a>
+                            
+                            <a href="#" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                                <div class="flex items-center">
+                                    <div class="rounded-md bg-green-100 p-2 mr-3">
+                                        <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Applications Review</p>
+                                        <p class="text-xs text-gray-500">Review pending applications</p>
+                                    </div>
+                                </div>
+                            </a>
+                            
+                            <a href="/admin/" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                                <div class="flex items-center">
+                                    <div class="rounded-md bg-purple-100 p-2 mr-3">
+                                        <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">System Settings</p>
+                                        <p class="text-xs text-gray-500">Configure system settings</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                <!-- Landowner Dashboard Content -->
+                {% else %}
+                    <!-- Stats Overview -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="rounded-md bg-blue-100 p-2 mr-3">
+                                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">View Map</p>
-                                    <p class="text-xs text-gray-500">See your parcels on a map</p>
+                                    <p class="text-sm text-gray-500">Land Parcels</p>
+                                    <p class="text-2xl font-bold text-gray-900">{{ user.land_parcels.count }}</p>
                                 </div>
                             </div>
-                        </a>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="rounded-md bg-green-100 p-2 mr-3">
+                                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Land Titles</p>
+                                    <p class="text-2xl font-bold text-gray-900">{{ parcel_titles_count }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="rounded-md bg-yellow-100 p-2 mr-3">
+                                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Applications</p>
+                                    <p class="text-2xl font-bold text-gray-900">{{ pending_applications_count }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                            <div class="flex items-center">
+                                <div class="rounded-md bg-red-100 p-2 mr-3">
+                                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Disputes</p>
+                                    <p class="text-2xl font-bold text-gray-900">{{ user.filed_disputes.count }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- My Land Parcels Section -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">My Land Parcels</h2>
+                            <a href="{% url 'applications:parcel_application_create' %}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Register New Parcel
+                            </a>
+                        </div>
+                        
+                        {% if user.land_parcels.exists %}
+                            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Parcel ID
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Location
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Size
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Property Type
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Active Title
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Expiry Date
+                                            </th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {% for parcel in user.land_parcels.all %}
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                                {{ parcel.parcel_id }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ parcel.location }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ parcel.size_hectares }} hectares
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ parcel.get_property_type_display }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                {% with active_title=parcel.get_active_title %}
+                                                    {% if active_title %}
+                                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                                        {% if active_title.title_type == 'property_contract' %}bg-yellow-100 text-yellow-800
+                                                        {% else %}bg-green-100 text-green-800{% endif %}">
+                                                            {{ active_title.get_title_type_display }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-gray-400">None</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {% with active_title=parcel.get_active_title %}
+                                                    {% if active_title %}
+                                                        {% if active_title.expiry_date %}
+                                                            {{ active_title.expiry_date|date:"M d, Y" }}
+                                                            {% if active_title.expiry_date < today %}
+                                                                <span class="text-red-600 ml-1">(Expired)</span>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            <span class="text-green-600">Lifetime</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="text-gray-400">—</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <a href="{% url 'land_management:parcel_detail' parcel.id %}" class="text-blue-600 hover:text-blue-900">
+                                                    View Details
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+                                <p class="text-gray-500 mb-4">You don't have any registered land parcels yet.</p>
+                                <a href="{% url 'applications:parcel_application_create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Register a Land Parcel
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Recent Applications -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Recent Applications</h2>
+                            <a href="{% url 'applications:parcel_application_list' %}" class="text-blue-600 hover:text-blue-800 text-sm">
+                                View All Applications
+                            </a>
+                        </div>
+                        
+                        {% if recent_applications %}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {% for application in recent_applications %}
+                                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">{{ application.get_application_type_display }}</p>
+                                            <p class="text-xs text-gray-500">{{ application.property_address }}</p>
+                                        </div>
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                            {% if application.status == 'submitted' %}bg-yellow-100 text-yellow-800
+                                            {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
+                                            {% elif application.status == 'field_inspection' %}bg-purple-100 text-purple-800
+                                            {% elif application.status == 'approved' %}bg-green-100 text-green-800
+                                            {% elif application.status == 'rejected' %}bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ application.get_status_display }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                                        <p class="text-xs text-gray-500">Submitted: {{ application.submitted_at|date:"M d, Y" }}</p>
+                                        <a href="{% url 'applications:parcel_application_detail' application.id %}" class="text-xs text-blue-600 hover:text-blue-800">
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+                                <p class="text-gray-500 mb-4">You haven't submitted any applications yet.</p>
+                                <a href="{% url 'applications:parcel_application_create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    Submit Application
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Links</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <a href="{% url 'applications:parcel_application_create' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                                <div class="flex items-center">
+                                    <div class="rounded-md bg-blue-100 p-2 mr-3">
+                                        <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">New Application</p>
+                                        <p class="text-xs text-gray-500">Register a new land parcel</p>
+                                    </div>
+                                </div>
+                            </a>
+                            
+                            <a href="{% url 'applications:parcel_title_list' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                                <div class="flex items-center">
+                                    <div class="rounded-md bg-green-100 p-2 mr-3">
+                                        <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">View Titles</p>
+                                        <p class="text-xs text-gray-500">Manage your land titles</p>
+                                    </div>
+                                </div>
+                            </a>
+                            
+                            <a href="{% url 'land_management:map' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                                <div class="flex items-center">
+                                    <div class="rounded-md bg-yellow-100 p-2 mr-3">
+                                        <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">View Map</p>
+                                        <p class="text-xs text-gray-500">See your parcels on a map</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Management Modal -->
+<div id="user-management-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-4 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">User Management</h3>
+                <button onclick="closeUserManagement()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="py-4">
+                <!-- User Stats Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                        <div class="text-2xl font-bold text-blue-600" data-stat="total_users">{{ total_users }}</div>
+                        <div class="text-sm text-gray-600">Total Users</div>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                        <div class="text-2xl font-bold text-green-600" data-stat="verified_users">{{ verified_users }}</div>
+                        <div class="text-sm text-gray-600">Verified</div>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                        <div class="text-2xl font-bold text-yellow-600" data-stat="unverified_users">{{ unverified_users }}</div>
+                        <div class="text-sm text-gray-600">Unverified</div>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                        <div class="text-2xl font-bold text-purple-600" data-stat="total_landowners">{{ total_landowners }}</div>
+                        <div class="text-sm text-gray-600">Landowners</div>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+                        <div class="text-2xl font-bold text-orange-600" data-stat="total_officers">{{ total_officers }}</div>
+                        <div class="text-sm text-gray-600">Officers</div>
+                    </div>
+                </div>
+
+                <!-- User Management Actions -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-lg font-medium text-gray-900">System Users</h4>
+                            <div class="flex gap-2">
+                                <button onclick="refreshUserList()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Refresh
+                                </button>
+                                <button onclick="showAddUserForm()" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add User
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Search and Filter Controls -->
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="user-search" class="block text-xs font-medium text-gray-700 mb-1">Search Users</label>
+                                <input type="text" id="user-search" placeholder="Search by name, email, username..."
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="role-filter" class="block text-xs font-medium text-gray-700 mb-1">Filter by Role</label>
+                                <select id="role-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Roles</option>
+                                    <option value="landowner">Landowner</option>
+                                    <option value="registry_officer">Registry Officer</option>
+                                    <option value="surveyor">Surveyor</option>
+                                    <option value="notary">Notary</option>
+                                    <option value="admin">Administrator</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="status-filter" class="block text-xs font-medium text-gray-700 mb-1">Filter by Status</label>
+                                <select id="status-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Status</option>
+                                    <option value="verified">Verified</option>
+                                    <option value="unverified">Unverified</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User List Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-list-tbody" class="bg-white divide-y divide-gray-200">
+                                {% for user_item in recent_users %}
+                                <tr class="hover:bg-gray-50" data-user-id="{{ user_item.id }}">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-8 w-8">
+                                                <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                                    <span class="text-xs font-medium text-white">
+                                                        {{ user_item.first_name.0 }}{{ user_item.last_name.0 }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ user_item.first_name }} {{ user_item.last_name }}
+                                                </div>
+                                                <div class="text-sm text-gray-500">{{ user_item.email }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
+                                            {% if user_item.role == 'admin' %}bg-purple-100 text-purple-800
+                                            {% elif user_item.role == 'registry_officer' %}bg-blue-100 text-blue-800
+                                            {% elif user_item.role == 'surveyor' %}bg-green-100 text-green-800
+                                            {% elif user_item.role == 'notary' %}bg-orange-100 text-orange-800
+                                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                            {{ user_item.get_role_display }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            {% if user_item.is_verified %}
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                                    ✓ Verified
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                                    ⚠ Pending
+                                                </span>
+                                            {% endif %}
+                                            {% if not user_item.is_active %}
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 ml-1">
+                                                    Inactive
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ user_item.date_joined|date:"M d, Y" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div class="flex gap-2">
+                                            <button onclick="editUser({{ user_item.id }})" class="text-blue-600 hover:text-blue-900">Edit</button>
+                                            {% if not user_item.is_verified %}
+                                                <button onclick="verifyUser({{ user_item.id }})" class="text-green-600 hover:text-green-900">Verify</button>
+                                            {% endif %}
+                                            {% if user_item.is_active %}
+                                                <button onclick="deactivateUser({{ user_item.id }})" class="text-red-600 hover:text-red-900">Deactivate</button>
+                                            {% else %}
+                                                <button onclick="activateUser({{ user_item.id }})" class="text-green-600 hover:text-green-900">Activate</button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">No users found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Quick Actions Section -->
+                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="bulkVerifyUsers()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Bulk Verify
+                            </button>
+                            <button onclick="exportUsers()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Export Users
+                            </button>
+                            <a href="/admin/accounts/user/" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                Full Admin Panel
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Add User Modal -->
+<div id="add-user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Add New User</h3>
+                <button onclick="closeAddUserModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="py-4">
+                <form id="add-user-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- First Name -->
+                        <div>
+                            <label for="first_name" class="block text-sm font-medium text-gray-700">First Name *</label>
+                            <input type="text" id="first_name" name="first_name" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Last Name -->
+                        <div>
+                            <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name *</label>
+                            <input type="text" id="last_name" name="last_name" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Username -->
+                        <div>
+                            <label for="username" class="block text-sm font-medium text-gray-700">Username *</label>
+                            <input type="text" id="username" name="username" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Email -->
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700">Email *</label>
+                            <input type="email" id="email" name="email" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Role -->
+                        <div>
+                            <label for="role" class="block text-sm font-medium text-gray-700">Role *</label>
+                            <select id="role" name="role" required 
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select Role</option>
+                                <option value="landowner">Landowner</option>
+                                <option value="registry_officer">Registry Officer</option>
+                                <option value="surveyor">Surveyor</option>
+                                <option value="notary">Notary</option>
+                                {% if user.role == 'admin' %}
+                                <option value="admin">Administrator</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        
+                        <!-- Phone Number -->
+                        <div>
+                            <label for="phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                            <input type="tel" id="phone_number" name="phone_number" 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Password -->
+                        <div>
+                            <label for="password1" class="block text-sm font-medium text-gray-700">Password *</label>
+                            <input type="password" id="password1" name="password1" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Confirm Password -->
+                        <div>
+                            <label for="password2" class="block text-sm font-medium text-gray-700">Confirm Password *</label>
+                            <input type="password" id="password2" name="password2" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- National ID -->
+                    <div>
+                        <label for="national_id" class="block text-sm font-medium text-gray-700">National ID</label>
+                        <input type="text" id="national_id" name="national_id" 
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
+                        <textarea id="address" name="address" rows="3" 
+                                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+
+                    <!-- Verification Status -->
+                    <div class="flex items-center">
+                        <input type="checkbox" id="is_verified" name="is_verified" 
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="is_verified" class="ml-2 block text-sm text-gray-900">
+                            Mark as verified
+                        </label>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button type="button" onclick="closeAddUserModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Cancel
+                </button>
+                <button type="button" onclick="submitAddUserForm()" 
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Create User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="edit-user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Edit User</h3>
+                <button onclick="closeEditUserModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="py-4">
+                <form id="edit-user-form" class="space-y-4">
+                    <input type="hidden" id="edit-user-id" name="user_id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- First Name -->
+                        <div>
+                            <label for="edit-first_name" class="block text-sm font-medium text-gray-700">First Name *</label>
+                            <input type="text" id="edit-first_name" name="first_name" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Last Name -->
+                        <div>
+                            <label for="edit-last_name" class="block text-sm font-medium text-gray-700">Last Name *</label>
+                            <input type="text" id="edit-last_name" name="last_name" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Username -->
+                        <div>
+                            <label for="edit-username" class="block text-sm font-medium text-gray-700">Username *</label>
+                            <input type="text" id="edit-username" name="username" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Email -->
+                        <div>
+                            <label for="edit-email" class="block text-sm font-medium text-gray-700">Email *</label>
+                            <input type="email" id="edit-email" name="email" required 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Role -->
+                        <div>
+                            <label for="edit-role" class="block text-sm font-medium text-gray-700">Role *</label>
+                            <select id="edit-role" name="role" required 
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select Role</option>
+                                <option value="landowner">Landowner</option>
+                                <option value="registry_officer">Registry Officer</option>
+                                <option value="surveyor">Surveyor</option>
+                                <option value="notary">Notary</option>
+                                {% if user.role == 'admin' %}
+                                <option value="admin">Administrator</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        
+                        <!-- Phone Number -->
+                        <div>
+                            <label for="edit-phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                            <input type="tel" id="edit-phone_number" name="phone_number" 
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- National ID -->
+                    <div>
+                        <label for="edit-national_id" class="block text-sm font-medium text-gray-700">National ID</label>
+                        <input type="text" id="edit-national_id" name="national_id" 
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label for="edit-address" class="block text-sm font-medium text-gray-700">Address</label>
+                        <textarea id="edit-address" name="address" rows="3" 
+                                  class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+
+                    <!-- Status Controls -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="edit-is_verified" name="is_verified" 
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="edit-is_verified" class="ml-2 block text-sm text-gray-900">
+                                Verified
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="edit-is_active" name="is_active" 
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="edit-is_active" class="ml-2 block text-sm text-gray-900">
+                                Active
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Password Reset Option -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="reset_password" name="reset_password" 
+                                   class="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded">
+                            <label for="reset_password" class="ml-2 block text-sm text-gray-900">
+                                Reset password and send new password via email
+                            </label>
+                        </div>
+                        <p class="mt-1 text-xs text-yellow-700">
+                            Check this box to generate a new password for the user
+                        </p>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button type="button" onclick="closeEditUserModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Cancel
+                </button>
+                <button type="button" onclick="submitEditUserForm()" 
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Update User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/user_management.js' %}"></script>
+<script>
+// JavaScript functions for user management
+let currentPage = 1;
+let totalPages = 1;
+let usersPerPage = 20;
+let totalUsersCount = 0;
+
+// Function to show user management modal
+function showUserManagement() {
+    document.getElementById('user-management-modal').classList.remove('hidden');
+    loadUsers(1);
+}
+
+// Function to close user management modal
+function closeUserManagement() {
+    document.getElementById('user-management-modal').classList.add('hidden');
+}
+
+function showAddUserForm() {
+    document.getElementById('add-user-modal').classList.remove('hidden');
+    // Reset form
+    document.getElementById('add-user-form').reset();
+}
+
+function closeAddUserModal() {
+    document.getElementById('add-user-modal').classList.add('hidden');
+}
+
+async function editUser(userId) {
+    try {
+        // Fetch user data
+        const response = await fetch(`/core/api/get-user/${userId}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Populate the edit form
+            populateEditForm(data.user);
+            // Show the edit modal
+            document.getElementById('edit-user-modal').classList.remove('hidden');
+        } else {
+            alert('Error loading user data: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        alert('An error occurred while loading user data.');
+    }
+}
+
+function populateEditForm(user) {
+    document.getElementById('edit-user-id').value = user.id;
+    document.getElementById('edit-first_name').value = user.first_name || '';
+    document.getElementById('edit-last_name').value = user.last_name || '';
+    document.getElementById('edit-username').value = user.username || '';
+    document.getElementById('edit-email').value = user.email || '';
+    document.getElementById('edit-role').value = user.role || '';
+    document.getElementById('edit-phone_number').value = user.phone_number || '';
+    document.getElementById('edit-national_id').value = user.national_id || '';
+    document.getElementById('edit-address').value = user.address || '';
+    document.getElementById('edit-is_verified').checked = user.is_verified || false;
+    document.getElementById('edit-is_active').checked = user.is_active || false;
+    document.getElementById('reset_password').checked = false; // Always start unchecked
+}
+
+function closeEditUserModal() {
+    document.getElementById('edit-user-modal').classList.add('hidden');
+}
+
+async function submitEditUserForm() {
+    const form = document.getElementById('edit-user-form');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/core/api/update-user/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User updated successfully!');
+            closeEditUserModal();
+            refreshUserList();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        alert('An error occurred while updating the user.');
+    }
+}
+
+async function submitAddUserForm() {
+    const form = document.getElementById('add-user-form');
+    const formData = new FormData(form);
+    
+    // Basic validation
+    const password1 = formData.get('password1');
+    const password2 = formData.get('password2');
+    
+    if (password1 !== password2) {
+        alert('Passwords do not match!');
+        return;
+    }
+    
+    if (password1.length < 8) {
+        alert('Password must be at least 8 characters long!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/core/api/create-user/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('User created successfully!');
+            closeAddUserModal();
+            refreshUserList();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error creating user:', error);
+        alert('An error occurred while creating the user.');
+    }
+}
+
+async function loadUsers(page = 1, searchQuery = '', roleFilter = '', statusFilter = '') {
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            per_page: usersPerPage,
+            q: searchQuery,
+            role: roleFilter,
+            status: statusFilter
+        });
+
+        const response = await fetch(`/core/api/search-users/?${params}`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            updateUserTable(data.users);
+            currentPage = page;
+        } else {
+            alert('Error loading users: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        alert('An error occurred while loading users.');
+    }
+}
+
+function updateUserTable(users) {
+    const tbody = document.getElementById('user-list-tbody');
+    if (!tbody) return;
+
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No users found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => generateUserRow(user)).join('');
+}
+
+function generateUserRow(user) {
+    const roleClasses = {
+        'admin': 'bg-purple-100 text-purple-800',
+        'registry_officer': 'bg-blue-100 text-blue-800',
+        'surveyor': 'bg-green-100 text-green-800',
+        'notary': 'bg-orange-100 text-orange-800',
+        'landowner': 'bg-gray-100 text-gray-800'
+    };
+
+    const verificationStatus = user.is_verified 
+        ? '<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">✓ Verified</span>'
+        : '<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">⚠ Pending</span>';
+
+    const activeStatus = user.is_active 
+        ? '' 
+        : '<span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 ml-1">Inactive</span>';
+
+    const actions = [
+        `<button onclick="editUser(${user.id})" class="text-blue-600 hover:text-blue-900">Edit</button>`
+    ];
+
+    if (!user.is_verified) {
+        actions.push(`<button onclick="verifyUser(${user.id})" class="text-green-600 hover:text-green-900">Verify</button>`);
+    }
+
+    if (user.is_active) {
+        actions.push(`<button onclick="deactivateUser(${user.id})" class="text-red-600 hover:text-red-900">Deactivate</button>`);
+    } else {
+        actions.push(`<button onclick="activateUser(${user.id})" class="text-green-600 hover:text-green-900">Activate</button>`);
+    }
+
+    return `
+        <tr class="hover:bg-gray-50" data-user-id="${user.id}">
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 h-8 w-8">
+                        <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span class="text-xs font-medium text-white">
+                                ${user.first_name.charAt(0)}${user.last_name.charAt(0)}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ml-3">
+                        <div class="text-sm font-medium text-gray-900">
+                            ${user.first_name} ${user.last_name}
+                        </div>
+                        <div class="text-sm text-gray-500">${user.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full ${roleClasses[user.role] || 'bg-gray-100 text-gray-800'}">
+                    ${user.role_display}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    ${verificationStatus}
+                    ${activeStatus}
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${user.date_joined}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex gap-2">
+                    ${actions.join('')}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function refreshUserList() {
+    const searchQuery = document.getElementById('user-search')?.value || '';
+    const roleFilter = document.getElementById('role-filter')?.value || '';
+    const statusFilter = document.getElementById('status-filter')?.value || '';
+    
+    loadUsers(currentPage, searchQuery, roleFilter, statusFilter);
+}
+
+// Add search and filter event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Search input with debounce
+    const searchInput = document.getElementById('user-search');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1; // Reset to first page on new search
+                const roleFilter = document.getElementById('role-filter')?.value || '';
+                const statusFilter = document.getElementById('status-filter')?.value || '';
+                loadUsers(1, this.value, roleFilter, statusFilter);
+            }, 300);
+        });
+    }
+
+    // Role filter
+    const roleFilter = document.getElementById('role-filter');
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function() {
+            currentPage = 1; // Reset to first page on filter change
+            const searchQuery = document.getElementById('user-search')?.value || '';
+            const statusFilter = document.getElementById('status-filter')?.value || '';
+            loadUsers(1, searchQuery, this.value, statusFilter);
+        });
+    }
+
+    // Status filter
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            currentPage = 1; // Reset to first page on filter change
+            const searchQuery = document.getElementById('user-search')?.value || '';
+            const roleFilter = document.getElementById('role-filter')?.value || '';
+            loadUsers(1, searchQuery, roleFilter, this.value);
+        });
+    }
+});
+
+function verifyUser(userId) {
+    if (confirm('Are you sure you want to verify this user?')) {
+        fetch(`/core/api/verify-user/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while verifying the user.');
+          });
+    }
+}
+
+function deactivateUser(userId) {
+    if (confirm('Are you sure you want to deactivate this user?')) {
+        fetch(`/core/api/toggle-user-active/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while deactivating the user.');
+          });
+    }
+}
+
+function activateUser(userId) {
+    if (confirm('Are you sure you want to activate this user?')) {
+        fetch(`/core/api/toggle-user-active/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while activating the user.');
+          });
+    }
+}
+
+function bulkVerifyUsers() {
+    if (confirm('This will verify all unverified users. Are you sure?')) {
+        fetch('/core/api/bulk-verify-users/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert(data.message);
+                  refreshUserList();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          }).catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred during bulk verification.');
+          });
+    }
+}
+
+function exportUsers() {
+    // Trigger CSV export by redirecting to the export endpoint
+    window.location.href = '/core/api/export-users/';
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 {% endblock %}

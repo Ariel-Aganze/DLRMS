@@ -72,9 +72,8 @@ class ParcelApplicationDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-# Registry Officer Views
-# Fix MRO issue by properly ordering mixins - LoginRequiredMixin should come before RoleRequiredMixin
-class AssignFieldAgentView(LoginRequiredMixin, RoleRequiredMixin, FormView):
+# Registry Officer Views - FIXED MRO by putting RoleRequiredMixin first
+class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
     """View for registry officers to assign field agents to applications"""
     allowed_roles = ['registry_officer', 'admin']
     form_class = ApplicationAssignmentForm
@@ -95,9 +94,8 @@ class AssignFieldAgentView(LoginRequiredMixin, RoleRequiredMixin, FormView):
         return super().form_valid(form)
 
 
-# Field Agent (Surveyor) Views
-# Fix MRO issue here too
-class ReviewApplicationView(LoginRequiredMixin, RoleRequiredMixin, FormView):
+# Field Agent (Surveyor) Views - FIXED MRO by putting RoleRequiredMixin first
+class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
     """View for field agents to review and approve/reject applications"""
     allowed_roles = ['surveyor', 'admin']
     form_class = ApplicationReviewForm
@@ -204,3 +202,57 @@ class ParcelTitleDetailView(LoginRequiredMixin, DetailView):
         context['parcel'] = self.object.parcel
         context['today'] = timezone.now().date()
         return context
+
+
+# Legacy views for compatibility (keeping the same functionality)
+class ApplicationListView(LoginRequiredMixin, ListView):
+    """Legacy application list view"""
+    model = ParcelApplication
+    template_name = 'applications/application_list.html'
+    context_object_name = 'applications'
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['registry_officer', 'admin']:
+            return ParcelApplication.objects.all().order_by('-submitted_at')
+        return ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')
+
+
+class ApplicationCreateView(LoginRequiredMixin, CreateView):
+    """Legacy application create view"""
+    model = ParcelApplication
+    form_class = ParcelApplicationForm
+    template_name = 'applications/application_form.html'
+    success_url = reverse_lazy('applications:application_list')
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+
+class ApplicationDetailView(LoginRequiredMixin, DetailView):
+    """Legacy application detail view"""
+    model = ParcelApplication
+    template_name = 'applications/application_detail.html'
+    context_object_name = 'application'
+
+
+class ApplicationUpdateView(LoginRequiredMixin, UpdateView):
+    """Legacy application update view"""
+    model = ParcelApplication
+    form_class = ParcelApplicationForm
+    template_name = 'applications/application_form.html'
+    
+    def get_success_url(self):
+        return reverse('applications:application_detail', kwargs={'pk': self.object.pk})
+
+
+class ApplicationReviewView(RoleRequiredMixin, LoginRequiredMixin, FormView):
+    """Legacy application review view"""
+    allowed_roles = ['registry_officer', 'admin']
+    form_class = ApplicationReviewForm
+    template_name = 'applications/application_review.html'
+    
+    def get_success_url(self):
+        return reverse('applications:application_detail', kwargs={'pk': self.kwargs['pk']})
