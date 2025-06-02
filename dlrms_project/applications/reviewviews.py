@@ -93,7 +93,6 @@ def applications_api_list(request):
     search = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', '')
     type_filter = request.GET.get('type', '')
-    priority_filter = request.GET.get('priority', '')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
     
@@ -263,7 +262,7 @@ def quick_application_review(request, application_id):
                 
                 message = f'Application assigned to {field_agent.get_full_name()}'
                 
-            elif action == 'approve' and request.user.role in ['surveyor', 'admin']:
+            elif action == 'approve' and request.user.role in ['surveyor', 'admin', 'registry_officer']:
                 # Quick approve (simplified version)
                 application.status = 'approved'
                 application.review_notes = notes
@@ -319,6 +318,70 @@ def quick_application_review(request, application_id):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
+@login_required
+def export_applications(request):
+    """Export applications to CSV"""
+    if request.user.role not in ['registry_officer', 'admin']:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    # Get filter parameters
+    status_filter = request.GET.get('status', '')
+    type_filter = request.GET.get('type', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # Build queryset
+    applications = ParcelApplication.objects.select_related(
+        'applicant', 'field_agent', 'reviewed_by'
+    ).order_by('-submitted_at')
+    
+    if status_filter:
+        applications = applications.filter(status=status_filter)
+    if type_filter:
+        applications = applications.filter(application_type=type_filter)
+    if date_from:
+        applications = applications.filter(submitted_at__date__gte=date_from)
+    if date_to:
+        applications = applications.filter(submitted_at__date__lte=date_to)
+    
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="applications_export_{timezone.now().strftime("%Y%m%d_%H%M")}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow([
+        'Application Number',
+        'Applicant Name',
+        'Applicant Email',
+        'Property Address',
+        'Property Type',
+        'Application Type',
+        'Status',
+        'Field Agent',
+        'Reviewed By',
+        'Submitted Date',
+        'Review Date',
+        'Review Notes'
+    ])
+    
+    for app in applications:
+        writer.writerow([
+            app.application_number,
+            f"{app.owner_first_name} {app.owner_last_name}",
+            app.applicant.email,
+            app.property_address,
+            app.property_type,
+            app.get_application_type_display(),
+            app.get_status_display(),
+            app.field_agent.get_full_name() if app.field_agent else '',
+            app.reviewed_by.get_full_name() if app.reviewed_by else '',
+            app.submitted_at.strftime('%Y-%m-%d %H:%M'),
+            app.review_date.strftime('%Y-%m-%d %H:%M') if app.review_date else '',
+            app.review_notes or ''
+        ])
+    
+    return response
 
 @login_required
 def export_applications(request):

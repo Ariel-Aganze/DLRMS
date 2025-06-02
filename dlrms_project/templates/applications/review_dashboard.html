@@ -1,4 +1,3 @@
-{# templates/applications/review_dashboard.html #}
 {% extends 'base.html' %}
 {% load static %}
 
@@ -29,9 +28,15 @@
                             <span class="text-sm text-gray-500">{{ user.get_role_display }} Dashboard</span>
                             <div class="flex items-center space-x-2">
                                 <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                                    <span class="text-white text-xs font-medium">{{ user.first_name.0 }}{{ user.last_name.0 }}</span>
+                                    <span class="text-white text-xs font-medium">
+                                        {% if user.first_name and user.last_name %}
+                                            {{ user.first_name.0 }}{{ user.last_name.0 }}
+                                        {% else %}
+                                            {{ user.username.0|upper }}
+                                        {% endif %}
+                                    </span>
                                 </div>
-                                <span class="text-sm font-medium text-gray-900">{{ user.get_full_name }}</span>
+                                <span class="text-sm font-medium text-gray-900">{{ user.get_full_name|default:user.username }}</span>
                             </div>
                         </div>
                     </div>
@@ -54,7 +59,7 @@
                         <div class="mt-4">
                             <div class="flex items-center text-sm">
                                 <i class="fas fa-arrow-up text-green-500 mr-1"></i>
-                                <span class="text-green-500">+{{ stats.pending_review|add:"-5" }}</span>
+                                <span class="text-green-500">+{{ stats.pending_review|add:"-5"|default:"0" }}</span>
                                 <span class="text-gray-500 ml-1">this week</span>
                             </div>
                         </div>
@@ -91,7 +96,7 @@
                         <div class="mt-4">
                             <div class="flex items-center text-sm">
                                 <i class="fas fa-arrow-up text-green-500 mr-1"></i>
-                                <span class="text-green-500">+{{ stats.approved_today|add:"-2" }}</span>
+                                <span class="text-green-500">+{{ stats.approved_today|add:"-2"|default:"0" }}</span>
                                 <span class="text-gray-500 ml-1">from yesterday</span>
                             </div>
                         </div>
@@ -174,7 +179,9 @@
                         <div class="flex justify-between items-center">
                             <h3 class="text-lg font-medium text-gray-900">Applications</h3>
                             <div class="flex items-center space-x-4">
-                                <span class="text-sm text-gray-500" id="results-count">Loading...</span>
+                                <span class="text-sm text-gray-500" id="results-count">
+                                    {{ stats.total_applications|default:"0" }} application{{ stats.total_applications|pluralize }}
+                                </span>
                                 <div class="flex items-center space-x-2">
                                     <label for="per-page" class="text-sm text-gray-500">Show:</label>
                                     <select id="per-page" class="text-sm border border-gray-300 rounded px-2 py-1">
@@ -257,7 +264,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">{{ application.property_address }}</div>
-                                        <div class="text-sm text-gray-500">{{ application.property_type }}</div>
+                                        <div class="text-sm text-gray-500">{{ application.property_type|capfirst }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {% if application.application_type == 'property_contract' %}bg-blue-100 text-blue-800{% else %}bg-green-100 text-green-800{% endif %}">
@@ -308,6 +315,14 @@
                                                         class="text-green-600 hover:text-green-900 transition-colors" title="Assign Field Agent">
                                                     <i class="fas fa-user-plus"></i>
                                                 </button>
+                                                <button onclick="quickApprove({{ application.id }})" 
+                                                        class="text-green-600 hover:text-green-900 transition-colors" title="Quick Approve">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button onclick="quickReject({{ application.id }})" 
+                                                        class="text-red-600 hover:text-red-900 transition-colors" title="Quick Reject">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
                                             {% endif %}
                                             {% if application.status == 'field_inspection' %}
                                                 <button onclick="trackInspection({{ application.id }})" 
@@ -319,16 +334,6 @@
                                                     class="text-purple-600 hover:text-purple-900 transition-colors" title="Review">
                                                 <i class="fas fa-clipboard-check"></i>
                                             </button>
-                                            {% if application.status == 'submitted' %}
-                                                <button onclick="quickApprove({{ application.id }})" 
-                                                        class="text-green-600 hover:text-green-900 transition-colors" title="Quick Approve">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                                <button onclick="quickReject({{ application.id }})" 
-                                                        class="text-red-600 hover:text-red-900 transition-colors" title="Quick Reject">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -349,7 +354,16 @@
 
                     <!-- Pagination -->
                     <div class="bg-white px-6 py-3 border-t border-gray-200" id="pagination-container">
-                        <!-- Pagination will be loaded here -->
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                Showing <span class="font-medium">1</span> to <span class="font-medium">{{ recent_applications|length }}</span> of <span class="font-medium">{{ stats.total_applications|default:"0" }}</span> applications
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50" disabled>Previous</button>
+                                <button class="px-3 py-1 bg-blue-600 text-white rounded text-sm">1</button>
+                                <button class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">Next</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -370,6 +384,10 @@
             
             <div class="py-4" id="modal-content">
                 <!-- Content will be loaded dynamically -->
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-gray-500">Loading application details...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -490,6 +508,24 @@
 <!-- Success/Error Toast Notifications -->
 <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+<!-- Custom Styles -->
+<style>
+    .status-indicator {
+        animation: pulse 2s infinite;
+    }
+    .card-hover {
+        transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+
 <!-- JavaScript -->
 <script>
 // Global variables
@@ -506,8 +542,8 @@ let currentApplicationId = null;
 
 // Initialize the dashboard
 document.addEventListener('DOMContentLoaded', function() {
-    loadApplications();
     setupEventListeners();
+    loadApplications();
     
     // Show welcome message
     setTimeout(() => {
@@ -616,7 +652,7 @@ async function loadApplications(page = currentPage) {
             ...currentFilters
         });
 
-        const response = await fetch(`/applications/review/api/applications/?${params}`, {
+        const response = await fetch(`{% url 'applications:api_applications_list' %}?${params}`, {
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
             }
@@ -648,6 +684,7 @@ function renderApplicationsTable(applications) {
                     <div class="flex flex-col items-center">
                         <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
                         <p class="text-gray-500">No applications found</p>
+                        <p class="text-gray-400 text-sm mt-1">Applications will appear here when submitted</p>
                     </div>
                 </td>
             </tr>
@@ -719,6 +756,14 @@ function renderApplicationsTable(applications) {
                         <button onclick="assignFieldAgent(${app.id})" 
                                 class="text-green-600 hover:text-green-900 transition-colors" title="Assign Field Agent">
                             <i class="fas fa-user-plus"></i>
+                        </button>
+                        <button onclick="quickApprove(${app.id})" 
+                                class="text-green-600 hover:text-green-900 transition-colors" title="Quick Approve">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button onclick="quickReject(${app.id})" 
+                                class="text-red-600 hover:text-red-900 transition-colors" title="Quick Reject">
+                            <i class="fas fa-times"></i>
                         </button>
                     ` : ''}
                     ${app.status === 'field_inspection' ? `
@@ -805,7 +850,13 @@ function renderPagination(pagination) {
     const container = document.getElementById('pagination-container');
     
     if (!pagination || pagination.total_pages <= 1) {
-        container.innerHTML = '';
+        container.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Showing <span class="font-medium">${pagination ? pagination.total_count || 0 : 0}</span> applications
+                </div>
+            </div>
+        `;
         return;
     }
 
@@ -902,14 +953,11 @@ function showOverdueApplications() {
 // Application actions
 function viewApplication(appId) {
     currentApplicationId = appId;
-    // Load application details and show modal
     loadApplicationDetails(appId);
     document.getElementById('quickReviewModal').classList.remove('hidden');
 }
 
 async function loadApplicationDetails(appId) {
-    // This would typically fetch application details
-    // For now, we'll show a simple modal
     document.getElementById('modal-title').textContent = `Application Details - #${appId}`;
     document.getElementById('modal-content').innerHTML = `
         <div class="text-center">
@@ -918,44 +966,10 @@ async function loadApplicationDetails(appId) {
         </div>
     `;
     
-    // Simulate loading
+    // Navigate to detail page instead of modal for now
     setTimeout(() => {
-        document.getElementById('modal-content').innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h4 class="font-medium text-gray-900 mb-3">Application Details</h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Application ID:</span>
-                            <span class="font-medium">#${appId}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Type:</span>
-                            <span class="font-medium">Property Contract</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Status:</span>
-                            <span class="font-medium">Submitted</span>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <h4 class="font-medium text-gray-900 mb-3">Quick Actions</h4>
-                    <div class="space-y-2">
-                        <button onclick="quickApprove(${appId})" class="w-full text-left px-3 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200">
-                            <i class="fas fa-check mr-2"></i>Quick Approve
-                        </button>
-                        <button onclick="quickReject(${appId})" class="w-full text-left px-3 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200">
-                            <i class="fas fa-times mr-2"></i>Quick Reject
-                        </button>
-                        <button onclick="assignFieldAgent(${appId})" class="w-full text-left px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200">
-                            <i class="fas fa-user-plus mr-2"></i>Assign Field Agent
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }, 1000);
+        window.location.href = `{% url 'applications:parcel_application_detail' 0 %}`.replace('0', appId);
+    }, 500);
 }
 
 function assignFieldAgent(appId) {
@@ -968,7 +982,6 @@ function reviewApplication(appId) {
 }
 
 function trackInspection(appId) {
-    // Navigate to inspection tracking page
     window.location.href = `{% url 'applications:parcel_application_detail' 0 %}`.replace('0', appId);
 }
 
@@ -986,6 +999,10 @@ function closeBulkModal() {
 }
 
 function showBulkActions() {
+    if (selectedApplications.size === 0) {
+        showToast('Please select applications first', 'warning');
+        return;
+    }
     document.getElementById('bulkActionsModal').classList.remove('hidden');
 }
 
@@ -1001,7 +1018,7 @@ async function confirmAssignment() {
     }
 
     try {
-        const response = await fetch(`/applications/review/api/applications/${currentApplicationId}/quick-review/`, {
+        const response = await fetch(`{% url 'applications:api_quick_review' 0 %}`.replace('0', currentApplicationId), {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1045,7 +1062,7 @@ function quickReject(appId) {
 
 async function performQuickAction(appId, action, notes = '') {
     try {
-        const response = await fetch(`/applications/review/api/applications/${appId}/quick-review/`, {
+        const response = await fetch(`{% url 'applications:api_quick_review' 0 %}`.replace('0', appId), {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1074,12 +1091,10 @@ async function performQuickAction(appId, action, notes = '') {
 
 // Bulk actions
 function showBulkAssignForm() {
-    // Implementation for bulk assignment
     showToast('Bulk assignment feature coming soon', 'info');
 }
 
 function showBulkPriorityForm() {
-    // Implementation for bulk priority change
     showToast('Bulk priority change feature coming soon', 'info');
 }
 
@@ -1088,14 +1103,12 @@ function exportSelected() {
         showToast('Please select applications to export', 'error');
         return;
     }
-    // Implementation for exporting selected applications
     showToast('Export feature coming soon', 'info');
 }
 
 function exportApplications() {
-    // Export all applications with current filters
     const params = new URLSearchParams(currentFilters);
-    window.location.href = `/applications/review/api/applications/export/?${params}`;
+    window.location.href = `{% url 'applications:api_export_applications' %}?${params}`;
 }
 
 function refreshData() {
@@ -1115,8 +1128,20 @@ function showToast(message, type = 'info') {
         'info': 'bg-blue-500'
     };
     
-    toast.className = `${typeClasses[type]} text-white px-4 py-2 rounded-lg shadow-lg mb-2 transform transition-all duration-300 translate-x-full`;
-    toast.textContent = message;
+    const iconClasses = {
+        'success': 'fa-check-circle',
+        'error': 'fa-times-circle',
+        'warning': 'fa-exclamation-triangle',
+        'info': 'fa-info-circle'
+    };
+    
+    toast.className = `${typeClasses[type]} text-white px-6 py-3 rounded-lg shadow-lg mb-2 transform transition-all duration-300 translate-x-full`;
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${iconClasses[type]} mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
     
     toastContainer.appendChild(toast);
     
@@ -1129,7 +1154,9 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.classList.add('translate-x-full');
         setTimeout(() => {
-            toastContainer.removeChild(toast);
+            if (toastContainer.contains(toast)) {
+                toastContainer.removeChild(toast);
+            }
         }, 300);
     }, 5000);
 }

@@ -1,3 +1,4 @@
+# File: core/decorators.py (Updated)
 from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied

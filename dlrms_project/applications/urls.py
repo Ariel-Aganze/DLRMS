@@ -1,6 +1,5 @@
-# applications/urls.py
+# File: applications/urls.py (Updated)
 from django.urls import include, path
-
 from . import reviewviews
 from . import views
 
@@ -25,6 +24,7 @@ urlpatterns = [
     path('titles/', views.ParcelTitleListView.as_view(), name='parcel_title_list'),
     path('titles/<int:pk>/', views.ParcelTitleDetailView.as_view(), name='parcel_title_detail'),
 
+    # Review Dashboard URLs
     path('review/', include([
         path('dashboard/', 
              reviewviews.ApplicationsReviewDashboardView.as_view(), 
@@ -35,30 +35,8 @@ urlpatterns = [
         path('api/applications/<int:application_id>/quick-review/', 
              reviewviews.quick_application_review, 
              name='api_quick_review'),
-        path('api/applications/<int:application_id>/comments/', 
-             reviewviews.application_comments, 
-             name='api_application_comments'),
-        path('api/applications/bulk-assign/', 
-             reviewviews.assign_field_agent_bulk, 
-             name='api_bulk_assign'),
-        path('api/applications/change-priority/', 
-             reviewviews.change_application_priority, 
-             name='api_change_priority'),
         path('api/applications/export/', 
              reviewviews.export_applications, 
              name='api_export_applications'),
-        path('api/applications/analytics/', 
-             reviewviews.application_analytics, 
-             name='api_analytics'),
-        path('api/workload-distribution/', 
-             reviewviews.applications_workload_distribution, 
-             name='api_workload_distribution'),
-        path('<int:pk>/detailed-review/', 
-             reviewviews.ApplicationDetailReviewView.as_view(), 
-             name='detailed_review'),
-        path('reports/', 
-             reviewviews.ApplicationsReportView.as_view(), 
-             name='reports'),
     ])),
-
 ]

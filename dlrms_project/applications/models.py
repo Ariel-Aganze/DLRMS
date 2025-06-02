@@ -1,6 +1,9 @@
+# File: applications/models.py (Updated with fixes)
 from django.db import models
 from django.contrib.auth import get_user_model
 from land_management.models import LandParcel
+import uuid
+from datetime import datetime
 
 User = get_user_model()
 
@@ -72,7 +75,7 @@ class ParcelApplication(models.Model):
     ]
     
     # Basic Information
-    application_number = models.CharField(max_length=50, unique=True)
+    application_number = models.CharField(max_length=50, unique=True, blank=True)
     applicant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='parcel_applications')
     
     # Application Details
@@ -102,12 +105,25 @@ class ParcelApplication(models.Model):
         if not self.application_number:
             # Generate a unique application number
             prefix = "PC" if self.application_type == "property_contract" else "PCA"
-            last_application = ParcelApplication.objects.order_by('-id').first()
+            year = datetime.now().year
+            
+            # Find the last application for this year and type
+            last_application = ParcelApplication.objects.filter(
+                application_number__startswith=f"{prefix}-{year}"
+            ).order_by('-id').first()
+            
             if last_application:
-                last_id = last_application.id
+                # Extract the sequential number from the last application
+                try:
+                    last_seq = int(last_application.application_number.split('-')[-1])
+                    new_seq = last_seq + 1
+                except (ValueError, IndexError):
+                    new_seq = 1
             else:
-                last_id = 0
-            self.application_number = f"{prefix}-{last_id + 1:06d}"
+                new_seq = 1
+            
+            self.application_number = f"{prefix}-{year}-{new_seq:06d}"
+        
         super().save(*args, **kwargs)
     
     class Meta:
@@ -146,7 +162,7 @@ class ParcelTitle(models.Model):
         ('parcel_certificate', 'Parcel Certificate'),
     ]
     
-    title_number = models.CharField(max_length=50, unique=True)
+    title_number = models.CharField(max_length=50, unique=True, blank=True)
     parcel = models.ForeignKey('land_management.LandParcel', on_delete=models.CASCADE, related_name='titles')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='parcel_titles')
     title_type = models.CharField(max_length=30, choices=TITLE_TYPE_CHOICES)
@@ -160,13 +176,24 @@ class ParcelTitle(models.Model):
     def save(self, *args, **kwargs):
         if not self.title_number:
             # Generate a unique title number
-            prefix = "PC" if self.title_type == "property_contract" else "PCA"
-            last_title = ParcelTitle.objects.order_by('-id').first()
+            prefix = "PCT" if self.title_type == "property_contract" else "PCA"
+            year = datetime.now().year
+            
+            # Find the last title for this year and type
+            last_title = ParcelTitle.objects.filter(
+                title_number__startswith=f"{prefix}-{year}"
+            ).order_by('-id').first()
+            
             if last_title:
-                last_id = last_title.id
+                try:
+                    last_seq = int(last_title.title_number.split('-')[-1])
+                    new_seq = last_seq + 1
+                except (ValueError, IndexError):
+                    new_seq = 1
             else:
-                last_id = 0
-            self.title_number = f"{prefix}-{last_id + 1:06d}"
+                new_seq = 1
+            
+            self.title_number = f"{prefix}-{year}-{new_seq:06d}"
             
         # Set expiry date for Property Contract (3 years from issue date)
         if self.title_type == 'property_contract' and not self.expiry_date:
