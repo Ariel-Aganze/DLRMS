@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Submit Parcel Application - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Include sidebar navigation -->
+        {% include 'includes/sidebar.html' with active_page='parcel_application_create' %}
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-6">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-900">Submit Parcel Registration Application</h1>
+                    <p class="text-sm text-gray-600 mt-1">Apply for a Property Contract or Parcel Certificate</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <form method="post" enctype="multipart/form-data" class="space-y-6">
+                        {% csrf_token %}
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-4">
+                                <h2 class="text-lg font-semibold text-gray-800">Owner Information</h2>
+                                {{ form.owner_first_name|as_crispy_field }}
+                                {{ form.owner_last_name|as_crispy_field }}
+                                {{ form.owner_id|as_crispy_field }}
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <h2 class="text-lg font-semibold text-gray-800">Property Information</h2>
+                                {{ form.property_address|as_crispy_field }}
+                                {{ form.property_type|as_crispy_field }}
+                                {{ form.sale_deed|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="border-t border-gray-200 pt-6">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Application Type</h2>
+                            <div class="space-y-4">
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    {{ form.application_type|as_crispy_field }}
+                                </div>
+                                
+                                <div id="previous-contract-container" class="hidden bg-yellow-50 p-4 rounded-lg">
+                                    <h3 class="text-md font-medium text-gray-800 mb-2">Previous Property Contract</h3>
+                                    <p class="text-sm text-gray-600 mb-3">If you're applying for a Parcel Certificate and already have a Property Contract, upload it here.</p>
+                                    {{ form.previous_contract|as_crispy_field }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4 pt-4">
+                            <a href="{% url 'applications:parcel_application_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Cancel
+                            </a>
+                            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Submit Application
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show/hide the previous contract upload field based on application type
+        const applicationTypeInputs = document.querySelectorAll('input[name="application_type"]');
+        const previousContractContainer = document.getElementById('previous-contract-container');
+        
+        applicationTypeInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                if (this.value === 'parcel_certificate') {
+                    previousContractContainer.classList.remove('hidden');
+                } else {
+                    previousContractContainer.classList.add('hidden');
+                }
+            });
+        });
+        
+        // Check initial state
+        applicationTypeInputs.forEach(input => {
+            if (input.checked && input.value === 'parcel_certificate') {
+                previousContractContainer.classList.remove('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

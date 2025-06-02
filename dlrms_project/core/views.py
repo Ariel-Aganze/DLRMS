@@ -1,8 +1,11 @@
+# core/views.py
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.utils import timezone
+from applications.models import ParcelApplication, ParcelTitle
 
 User = get_user_model()
 
@@ -23,11 +26,23 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context['unread_notifications_count'] = user.notifications.filter(is_read=False).count()
         
         # Add recent applications and parcels
-        context['recent_applications'] = user.applications.all().order_by('-submitted_at')[:3]
+        context['recent_applications'] = ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')[:4]
         context['recent_parcels'] = user.land_parcels.all().order_by('-created_at')[:3]
         
-        # Add pending applications count (calculated in view to avoid template filter issues)
-        context['pending_applications_count'] = user.applications.filter(status='submitted').count()
+        # Add pending applications count 
+        context['pending_applications_count'] = ParcelApplication.objects.filter(
+            applicant=user, 
+            status__in=['submitted', 'under_review', 'field_inspection']
+        ).count()
+        
+        # Add parcel titles count
+        context['parcel_titles_count'] = ParcelTitle.objects.filter(
+            owner=user,
+            is_active=True
+        ).count()
+        
+        # Add today's date for expiry checks
+        context['today'] = timezone.now().date()
         
         # Admin-specific data (only for admin and registry_officer roles)
         if user.role in ['admin', 'registry_officer']:

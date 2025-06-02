@@ -13,7 +13,7 @@ class LandParcel(models.Model):
         ('transferred', 'Transfer in Progress'),
     ]
     
-    LAND_USE_CHOICES = [
+    PROPERTY_TYPE_CHOICES = [
         ('residential', 'Residential'),
         ('commercial', 'Commercial'),
         ('agricultural', 'Agricultural'),
@@ -27,7 +27,7 @@ class LandParcel(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='land_parcels')
     
     # Location Information
-    location = models.CharField(max_length=200)
+    location = models.CharField(max_length=200)  # Property address
     district = models.CharField(max_length=100)
     sector = models.CharField(max_length=100)
     cell = models.CharField(max_length=100)
@@ -35,25 +35,24 @@ class LandParcel(models.Model):
     
     # Parcel Details
     size_hectares = models.DecimalField(max_digits=10, decimal_places=4)
-    land_use = models.CharField(max_length=20, choices=LAND_USE_CHOICES)
+    property_type = models.CharField(max_length=20, choices=PROPERTY_TYPE_CHOICES, default='residential')
     status = models.CharField(max_length=20, choices=PARCEL_STATUS_CHOICES, default='pending')
     
-    # Basic GIS Fields - Simple PostGIS integration
-    # Point geometry for parcel center/reference point
-    location_point = models.PointField(srid=4326, blank=True, null=True, help_text="GPS coordinates of parcel center")
-    
-    # Legacy coordinate fields (kept for backward compatibility)
+    # GIS Fields - Simple PostGIS integration
     latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
-    
-    # Survey Information
-    survey_date = models.DateField(blank=True, null=True)
-    surveyor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='surveyed_parcels')
-    survey_accuracy = models.CharField(max_length=50, blank=True, null=True, help_text="GPS accuracy in meters")
     
     # Registration Information
     registration_date = models.DateTimeField(blank=True, null=True)
     registered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='registered_parcels')
+    
+    # Active title tracking
+    active_title_type = models.CharField(max_length=30, blank=True, null=True, 
+                                         choices=[
+                                             ('property_contract', 'Property Contract'),
+                                             ('parcel_certificate', 'Parcel Certificate'),
+                                         ])
+    active_title_expiry = models.DateField(blank=True, null=True)  # For Property Contracts
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -63,23 +62,26 @@ class LandParcel(models.Model):
         return f"Parcel {self.parcel_id} - {self.owner.username}"
     
     def save(self, *args, **kwargs):
-        """Override save to update calculated fields"""
-        # Update location_point from lat/lng if needed
-        if self.latitude and self.longitude and not self.location_point:
-            from django.contrib.gis.geos import Point
-            self.location_point = Point(float(self.longitude), float(self.latitude), srid=4326)
+        if not self.parcel_id:
+            # Generate a unique parcel ID
+            last_parcel = LandParcel.objects.order_by('-id').first()
+            if last_parcel:
+                last_id = last_parcel.id
+            else:
+                last_id = 0
+            self.parcel_id = f"PAR-{last_id + 1:06d}"
         
         super().save(*args, **kwargs)
+    
+    def get_active_title(self):
+        """Returns the active title for this parcel"""
+        from applications.models import ParcelTitle
+        return ParcelTitle.objects.filter(parcel=self, is_active=True).first()
     
     @property
     def coordinates(self):
         """Return coordinates as dict"""
-        if self.location_point:
-            return {
-                'lat': self.location_point.y,
-                'lng': self.location_point.x
-            }
-        elif self.latitude and self.longitude:
+        if self.latitude and self.longitude:
             return {
                 'lat': float(self.latitude),
                 'lng': float(self.longitude)

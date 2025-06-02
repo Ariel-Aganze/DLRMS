@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}My Land Titles - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Include sidebar navigation -->
+        {% include 'includes/sidebar.html' with active_page='parcel_title_list' %}
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">My Land Titles</h1>
+                        <p class="text-sm text-gray-600 mt-1">View your property contracts and parcel certificates</p>
+                    </div>
+                    
+                    <a href="{% url 'applications:parcel_application_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>New Application
+                    </a>
+                </div>
+
+                {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %} rounded-lg">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    {% if titles %}
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title Number
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Parcel ID
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Location
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Title Type
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Issue Date
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Expiry Date
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for title in titles %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                        {{ title.title_number }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ title.parcel.parcel_id }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ title.parcel.location }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                        {% if title.title_type == 'property_contract' %}bg-yellow-100 text-yellow-800
+                                        {% elif title.title_type == 'parcel_certificate' %}bg-green-100 text-green-800
+                                        {% endif %}">
+                                            {{ title.get_title_type_display }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {{ title.issue_date|date:"M d, Y" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {% if title.expiry_date %}
+                                            {{ title.expiry_date|date:"M d, Y" }}
+                                            {% if title.expiry_date < today %}
+                                                <span class="text-red-600 ml-1">(Expired)</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-green-600">Lifetime</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <a href="{% url 'applications:parcel_title_detail' title.id %}" class="text-blue-600 hover:text-blue-900">
+                                            View Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="p-6 text-center">
+                            <p class="text-gray-500 mb-4">You don't have any land titles yet.</p>
+                            <a href="{% url 'applications:parcel_application_create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>Apply for Land Title
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
