@@ -223,7 +223,7 @@
                             <tbody id="applications-tbody" class="bg-white divide-y divide-gray-200">
                                 <!-- Applications will be loaded here via AJAX -->
                                 <tr>
-                                    <td colspan="8" class="px-6 py-12 text-center">
+                                    <td colspan="9" class="px-6 py-12 text-center">
                                         <div class="flex flex-col items-center">
                                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
                                             <p class="text-gray-500">Loading applications...</p>
@@ -406,61 +406,81 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
     // Search input with debounce
     const searchInput = document.getElementById('search-input');
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            currentFilters.search = this.value;
-            currentPage = 1;
-            loadApplications();
-        }, 300);
-    });
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentFilters.search = this.value;
+                currentPage = 1;
+                loadApplications();
+            }, 300);
+        });
+    }
 
     // Filter dropdowns
-    document.getElementById('status-filter').addEventListener('change', function() {
-        currentFilters.status = this.value;
-        currentPage = 1;
-        loadApplications();
-    });
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            currentFilters.status = this.value;
+            currentPage = 1;
+            loadApplications();
+        });
+    }
 
-    document.getElementById('type-filter').addEventListener('change', function() {
-        currentFilters.type = this.value;
-        currentPage = 1;
-        loadApplications();
-    });
+    const typeFilter = document.getElementById('type-filter');
+    if (typeFilter) {
+        typeFilter.addEventListener('change', function() {
+            currentFilters.type = this.value;
+            currentPage = 1;
+            loadApplications();
+        });
+    }
 
     // Date filters
-    document.getElementById('date-from').addEventListener('change', function() {
-        currentFilters.date_from = this.value;
-        currentPage = 1;
-        loadApplications();
-    });
+    const dateFrom = document.getElementById('date-from');
+    if (dateFrom) {
+        dateFrom.addEventListener('change', function() {
+            currentFilters.date_from = this.value;
+            currentPage = 1;
+            loadApplications();
+        });
+    }
 
-    document.getElementById('date-to').addEventListener('change', function() {
-        currentFilters.date_to = this.value;
-        currentPage = 1;
-        loadApplications();
-    });
+    const dateTo = document.getElementById('date-to');
+    if (dateTo) {
+        dateTo.addEventListener('change', function() {
+            currentFilters.date_to = this.value;
+            currentPage = 1;
+            loadApplications();
+        });
+    }
 
     // Per page selector
-    document.getElementById('per-page').addEventListener('change', function() {
-        currentPage = 1;
-        loadApplications();
-    });
+    const perPage = document.getElementById('per-page');
+    if (perPage) {
+        perPage.addEventListener('change', function() {
+            currentPage = 1;
+            loadApplications();
+        });
+    }
 
     // Select all checkbox
-    document.getElementById('select-all').addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
-        checkboxes.forEach(cb => {
-            cb.checked = this.checked;
-            if (this.checked) {
-                selectedApplications.add(parseInt(cb.value));
-            } else {
-                selectedApplications.delete(parseInt(cb.value));
-            }
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked;
+                if (this.checked) {
+                    selectedApplications.add(parseInt(cb.value));
+                } else {
+                    selectedApplications.delete(parseInt(cb.value));
+                }
+            });
+            updateSelectionCount();
         });
-        updateSelectionCount();
-    });
+    }
 
     // Close modals when clicking outside
     window.addEventListener('click', function(e) {
@@ -479,11 +499,11 @@ async function loadApplications(page = currentPage) {
     try {
         const params = new URLSearchParams({
             page: page,
-            per_page: document.getElementById('per-page').value,
+            per_page: document.getElementById('per-page').value || 20,
             ...currentFilters
         });
 
-        const response = await fetch(`{% url 'applications_review:api_applications_list' %}?${params}`, {
+        const response = await fetch(`/applications/review/api/applications/?${params}`, {
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
             }
@@ -492,9 +512,9 @@ async function loadApplications(page = currentPage) {
         const data = await response.json();
         
         if (data.success) {
-            renderApplicationsTable(data.applications);
-            renderPagination(data.pagination);
-            updateResultsCount(data.pagination);
+            renderApplicationsTable(data.applications || []);
+            renderPagination(data.pagination || {});
+            updateResultsCount(data.pagination || {});
         } else {
             showToast('Error loading applications', 'error');
         }
@@ -508,10 +528,10 @@ async function loadApplications(page = currentPage) {
 function renderApplicationsTable(applications) {
     const tbody = document.getElementById('applications-tbody');
     
-    if (applications.length === 0) {
+    if (!applications || applications.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="px-6 py-12 text-center">
+                <td colspan="9" class="px-6 py-12 text-center">
                     <div class="flex flex-col items-center">
                         <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
                         <p class="text-gray-500">No applications found</p>
@@ -671,7 +691,7 @@ function getPriorityColor(priority) {
 function renderPagination(pagination) {
     const container = document.getElementById('pagination-container');
     
-    if (pagination.total_pages <= 1) {
+    if (!pagination || pagination.total_pages <= 1) {
         container.innerHTML = '';
         return;
     }
@@ -723,21 +743,30 @@ function renderPagination(pagination) {
 
 // Update results count
 function updateResultsCount(pagination) {
-    document.getElementById('results-count').textContent = 
-        `${pagination.total_count} application${pagination.total_count !== 1 ? 's' : ''}`;
+    const resultsCount = document.getElementById('results-count');
+    if (resultsCount && pagination) {
+        resultsCount.textContent = 
+            `${pagination.total_count || 0} application${(pagination.total_count !== 1) ? 's' : ''}`;
+    }
 }
 
 // Update selection count
 function updateSelectionCount() {
-    document.getElementById('selectedCount').textContent = selectedApplications.size;
+    const selectedCountElement = document.getElementById('selectedCount');
+    if (selectedCountElement) {
+        selectedCountElement.textContent = selectedApplications.size;
+    }
 }
 
 // Filter functions
 function filterByStatus(status) {
-    document.getElementById('status-filter').value = status;
-    currentFilters.status = status;
-    currentPage = 1;
-    loadApplications();
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.value = status;
+        currentFilters.status = status;
+        currentPage = 1;
+        loadApplications();
+    }
 }
 
 function showOverdueApplications() {
@@ -745,8 +774,11 @@ function showOverdueApplications() {
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
     
-    document.getElementById('date-to').value = fiveDaysAgo.toISOString().split('T')[0];
-    document.getElementById('status-filter').value = 'submitted';
+    const dateTo = document.getElementById('date-to');
+    const statusFilter = document.getElementById('status-filter');
+    
+    if (dateTo) dateTo.value = fiveDaysAgo.toISOString().split('T')[0];
+    if (statusFilter) statusFilter.value = 'submitted';
     
     currentFilters.date_to = fiveDaysAgo.toISOString().split('T')[0];
     currentFilters.status = 'submitted';
@@ -822,6 +854,11 @@ function reviewApplication(appId) {
     window.location.href = `{% url 'applications:parcel_application_detail' 0 %}`.replace('0', appId);
 }
 
+function trackInspection(appId) {
+    // Navigate to inspection tracking page
+    window.location.href = `{% url 'applications:parcel_application_detail' 0 %}`.replace('0', appId);
+}
+
 // Modal functions
 function closeQuickReview() {
     document.getElementById('quickReviewModal').classList.add('hidden');
@@ -833,6 +870,10 @@ function closeAssignModal() {
 
 function closeBulkModal() {
     document.getElementById('bulkActionsModal').classList.add('hidden');
+}
+
+function showBulkActions() {
+    document.getElementById('bulkActionsModal').classList.remove('hidden');
 }
 
 async function confirmAssignment() {
@@ -847,7 +888,7 @@ async function confirmAssignment() {
     }
 
     try {
-        const response = await fetch(`{% url 'applications_review:api_quick_review' 0 %}`.replace('0', currentApplicationId), {
+        const response = await fetch(`/applications/review/api/applications/${currentApplicationId}/quick-review/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -871,4 +912,128 @@ async function confirmAssignment() {
         }
     } catch (error) {
         console.error('Error:', error);
-        showToast('Error ass
+        showToast('Error assigning field agent', 'error');
+    }
+}
+
+// Quick actions
+function quickApprove(appId) {
+    if (confirm('Are you sure you want to quickly approve this application?')) {
+        performQuickAction(appId, 'approve');
+    }
+}
+
+function quickReject(appId) {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (reason) {
+        performQuickAction(appId, 'reject', reason);
+    }
+}
+
+async function performQuickAction(appId, action, notes = '') {
+    try {
+        const response = await fetch(`/applications/review/api/applications/${appId}/quick-review/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: action,
+                notes: notes
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            closeQuickReview();
+            loadApplications();
+        } else {
+            showToast(data.message || `Error ${action}ing application`, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast(`Error ${action}ing application`, 'error');
+    }
+}
+
+// Bulk actions
+function showBulkAssignForm() {
+    // Implementation for bulk assignment
+    showToast('Bulk assignment feature coming soon', 'info');
+}
+
+function showBulkPriorityForm() {
+    // Implementation for bulk priority change
+    showToast('Bulk priority change feature coming soon', 'info');
+}
+
+function exportSelected() {
+    if (selectedApplications.size === 0) {
+        showToast('Please select applications to export', 'error');
+        return;
+    }
+    // Implementation for exporting selected applications
+    showToast('Export feature coming soon', 'info');
+}
+
+function exportApplications() {
+    // Export all applications with current filters
+    const params = new URLSearchParams(currentFilters);
+    window.location.href = `/applications/review/api/applications/export/?${params}`;
+}
+
+function refreshData() {
+    loadApplications();
+    showToast('Data refreshed', 'success');
+}
+
+// Utility functions
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    
+    const typeClasses = {
+        'success': 'bg-green-500',
+        'error': 'bg-red-500',
+        'warning': 'bg-yellow-500',
+        'info': 'bg-blue-500'
+    };
+    
+    toast.className = `${typeClasses[type]} text-white px-4 py-2 rounded-lg shadow-lg mb-2 transform transition-all duration-300 translate-x-full`;
+    toast.textContent = message;
+    
+    toastContainer.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            toastContainer.removeChild(toast);
+        }, 300);
+    }, 5000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

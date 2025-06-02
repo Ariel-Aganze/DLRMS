@@ -37,7 +37,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -203,3 +203,9 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
     }
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://yourdomain.com',
+    'https://76a3-2c0f-eb68-64d-8500-d9cb-9ee3-aa12-f2f1.ngrok-free.app',  # Remove the trailing slash
+    # Add other trusted origins if needed
+]
