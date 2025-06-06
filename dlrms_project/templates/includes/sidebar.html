@@ -108,12 +108,12 @@
             <!-- SURVEYOR NAVIGATION -->
             {% elif user.role == 'surveyor' %}
                 
-                <!-- Assigned Applications -->
-                <a href="{% url 'applications:parcel_application_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'assigned_applications' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'assigned_applications' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Field Inspections -->
+                <a href="{% url 'applications:surveyor_inspections' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'surveyor_inspections' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                    <svg class="mr-3 h-5 w-5 {% if active_page == 'surveyor_inspections' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                     </svg>
-                    <span class="text-sm font-medium">My Assignments</span>
+                    <span class="text-sm font-medium">Field Inspections</span>
                 </a>
 
                 <!-- Field Inspections -->

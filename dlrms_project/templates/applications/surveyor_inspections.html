@@ -1,0 +1,504 @@
+{% extends 'base.html' %}
+
+{% block title %}Field Inspections - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Include sidebar navigation -->
+        {% include 'includes/sidebar.html' with active_page='surveyor_inspections' %}
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Field Inspections</h1>
+                        <p class="text-sm text-gray-600 mt-1">Manage your assigned field inspections</p>
+                    </div>
+                </div>
+
+                {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %} rounded-lg">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Pending Inspections -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Pending Inspections</h2>
+                    
+                    {% if inspections %}
+                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Application
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Applicant
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Property
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Type
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Assigned On
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for app in inspections %}
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <a href="#" onclick="openInspectionModal({{ app.id }})" class="text-blue-600 hover:text-blue-800">
+                                                {{ app.application_number }}
+                                            </a>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-8 w-8">
+                                                    <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                                        <span class="text-xs font-medium text-white">
+                                                            {{ app.owner_first_name.0 }}{{ app.owner_last_name.0 }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ app.owner_first_name }} {{ app.owner_last_name }}
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">{{ app.applicant.email }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ app.property_address }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                {% if app.application_type == 'property_contract' %}bg-blue-100 text-blue-800
+                                                {% else %}bg-green-100 text-green-800{% endif %}">
+                                                {{ app.get_application_type_display }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ app.updated_at|date:"M d, Y" }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button onclick="openInspectionModal({{ app.id }})" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                Inspect Property
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+                            <p class="text-gray-500 mb-4">You don't have any pending inspections.</p>
+                            <p class="text-sm text-gray-600">New inspections will appear here once they are assigned to you.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Recently Completed Inspections -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Recently Completed Inspections</h2>
+                    
+                    {% if completed_inspections %}
+                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Application
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Applicant
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Property
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Completed On
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for app in completed_inspections %}
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                            {{ app.application_number }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ app.owner_first_name }} {{ app.owner_last_name }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ app.property_address }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                {% if app.status == 'approved' %}bg-green-100 text-green-800
+                                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                                {{ app.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ app.review_date|date:"M d, Y" }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <a href="#" onclick="viewCompletedInspection({{ app.id }})" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-800">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                View Details
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+                            <p class="text-gray-500 mb-4">You haven't completed any inspections yet.</p>
+                            <p class="text-sm text-gray-600">Completed inspections will appear here after you've reviewed and submitted them.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inspection Modal -->
+<div id="inspection-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b border-gray-200 p-4">
+            <h3 class="text-lg font-semibold text-gray-900" id="modal-title">Field Inspection</h3>
+            <button onclick="closeInspectionModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Modal Content will be loaded here -->
+        <div id="modal-content" class="p-6">
+            <div class="flex justify-center">
+                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Function to open inspection modal and load application details
+    function openInspectionModal(applicationId) {
+        // Show the modal
+        document.getElementById('inspection-modal').classList.remove('hidden');
+        
+        // Set loading state
+        document.getElementById('modal-content').innerHTML = `
+            <div class="flex justify-center">
+                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        `;
+        
+        // Fetch application details
+        fetch(`/applications/api/inspection/${applicationId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update modal title
+                    document.getElementById('modal-title').textContent = `Field Inspection - ${data.application.application_number}`;
+                    
+                    // Update modal content
+                    document.getElementById('modal-content').innerHTML = generateInspectionForm(data.application);
+                } else {
+                    document.getElementById('modal-content').innerHTML = `
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <p class="text-red-800">${data.message || 'Error loading application details'}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading application details:', error);
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="bg-red-100 p-4 rounded-lg">
+                        <p class="text-red-800">An error occurred while loading application details.</p>
+                    </div>
+                `;
+            });
+    }
+    
+    // Function to generate inspection form HTML
+    function generateInspectionForm(application) {
+        return `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Application Details -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Application Type:</span>
+                            <span class="font-medium">${application.application_type_display}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Applicant:</span>
+                            <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Email:</span>
+                            <span class="font-medium">${application.applicant_email}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Submitted On:</span>
+                            <span class="font-medium">${application.submitted_at}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Property Information -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Address:</span>
+                            <span class="font-medium">${application.property_address}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Property Type:</span>
+                            <span class="font-medium">${application.property_type}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Inspection Form -->
+            <form id="inspection-form" action="/applications/parcel/${application.id}/review/" method="post" class="space-y-4">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
+                
+                <div>
+                    <h4 class="text-md font-semibold text-gray-800 mb-4">Field Inspection Report</h4>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Property Coordinates</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label for="latitude" class="block text-xs text-gray-500">Latitude</label>
+                                    <input type="number" step="0.0000001" name="latitude" id="latitude" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                           required>
+                                </div>
+                                <div>
+                                    <label for="longitude" class="block text-xs text-gray-500">Longitude</label>
+                                    <input type="number" step="0.0000001" name="longitude" id="longitude" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                           required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="size_hectares" class="block text-sm font-medium text-gray-700 mb-1">
+                                Land Size (hectares)
+                            </label>
+                            <input type="number" step="0.0001" name="size_hectares" id="size_hectares" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                   required>
+                        </div>
+                        
+                        <div>
+                            <label for="decision" class="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+                            <div class="space-y-2">
+                                <div class="flex items-center">
+                                    <input type="radio" id="approve" name="decision" value="approve" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" required>
+                                    <label for="approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" id="reject" name="decision" value="reject" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                    <label for="reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="review_notes" class="block text-sm font-medium text-gray-700 mb-1">Inspection Notes</label>
+                            <textarea id="review_notes" name="review_notes" rows="3" 
+                                      placeholder="Enter your observations and findings from the field inspection..."
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end pt-4 border-t border-gray-200">
+                    <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                        Submit Inspection Report
+                    </button>
+                </div>
+            </form>
+        `;
+    }
+    
+    // Function to view completed inspection
+    function viewCompletedInspection(applicationId) {
+        // Show the modal
+        document.getElementById('inspection-modal').classList.remove('hidden');
+        
+        // Set loading state
+        document.getElementById('modal-content').innerHTML = `
+            <div class="flex justify-center">
+                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        `;
+        
+        // Fetch application details
+        fetch(`/applications/api/completed-inspection/${applicationId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update modal title
+                    document.getElementById('modal-title').textContent = `Completed Inspection - ${data.application.application_number}`;
+                    
+                    // Update modal content with completed inspection details
+                    document.getElementById('modal-content').innerHTML = generateCompletedInspectionView(data.application);
+                } else {
+                    document.getElementById('modal-content').innerHTML = `
+                        <div class="bg-red-100 p-4 rounded-lg">
+                            <p class="text-red-800">${data.message || 'Error loading completed inspection details'}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading completed inspection details:', error);
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="bg-red-100 p-4 rounded-lg">
+                        <p class="text-red-800">An error occurred while loading completed inspection details.</p>
+                    </div>
+                `;
+            });
+    }
+    
+    // Function to generate completed inspection view HTML
+    function generateCompletedInspectionView(application) {
+        return `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Application Details -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Application Type:</span>
+                            <span class="font-medium">${application.application_type_display}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Applicant:</span>
+                            <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Status:</span>
+                            <span class="font-medium ${application.status === 'approved' ? 'text-green-600' : 'text-red-600'}">${application.status_display}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Property Information -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Address:</span>
+                            <span class="font-medium">${application.property_address}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Property Type:</span>
+                            <span class="font-medium">${application.property_type}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Size:</span>
+                            <span class="font-medium">${application.size_hectares} hectares</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Inspection Details -->
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-gray-500 mb-3">Inspection Details</h4>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Coordinates:</span>
+                        <span class="font-medium">Lat: ${application.latitude}, Long: ${application.longitude}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Completed On:</span>
+                        <span class="font-medium">${application.review_date}</span>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-gray-500">Inspection Notes:</span>
+                        <p class="mt-1 text-sm">${application.review_notes || 'No notes provided'}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end pt-4 border-t border-gray-200">
+                <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Close
+                </button>
+            </div>
+        `;
+    }
+    
+    // Function to close the inspection modal
+    function closeInspectionModal() {
+        document.getElementById('inspection-modal').classList.add('hidden');
+    }
+    
+    // Helper function to get CSRF token
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+</script>
+{% endblock %}

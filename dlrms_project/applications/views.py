@@ -1,19 +1,21 @@
 # applications/views.py
-import datetime
+# Make sure these imports are at the top of your applications/views.py file
+
+from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.utils import timezone
 from django.db import transaction
+from django.contrib.auth.decorators import login_required
 
 from .models import ParcelApplication, ParcelDocument, ParcelTitle, User
 from .forms import ParcelApplicationForm, ApplicationAssignmentForm, ApplicationReviewForm
 from land_management.models import LandParcel
 from core.mixins import RoleRequiredMixin
-from django.http import JsonResponse
 import json
 
 # Landowner Views
@@ -169,7 +171,7 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
     template_name = 'applications/review_application.html'
     
     def get_success_url(self):
-        return reverse('applications:parcel_application_detail', kwargs={'pk': self.kwargs['pk']})
+        return reverse('applications:surveyor_inspections')
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -185,6 +187,9 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
         
         decision = form.cleaned_data['decision']
         review_notes = form.cleaned_data['review_notes']
+        latitude = form.cleaned_data['latitude']
+        longitude = form.cleaned_data['longitude']
+        size_hectares = form.cleaned_data['size_hectares']
         
         with transaction.atomic():
             # Update application status
@@ -205,13 +210,17 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
                     sector='Default Sector',
                     cell='Default Cell',
                     village='Default Village',
-                    size_hectares=form.cleaned_data['size_hectares'],
-                    latitude=form.cleaned_data['latitude'],
-                    longitude=form.cleaned_data['longitude'],
+                    size_hectares=size_hectares,
+                    latitude=latitude,
+                    longitude=longitude,
                     status='registered',
                     registration_date=timezone.now(),
                     registered_by=self.request.user
                 )
+                
+                # Link parcel to application
+                application.parcel = parcel
+                application.save()
                 
                 # Create title based on application type
                 title_type = application.application_type
@@ -240,6 +249,28 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
                 messages.info(self.request, 'Application has been rejected.')
         
         return super().form_valid(form)
+    
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests: instantiate a form instance with the passed
+        POST variables and then check if it's valid."""
+        form = self.get_form()
+        
+        # Extract form data
+        data = {
+            'decision': request.POST.get('decision'),
+            'review_notes': request.POST.get('review_notes'),
+            'latitude': request.POST.get('latitude'),
+            'longitude': request.POST.get('longitude'),
+            'size_hectares': request.POST.get('size_hectares'),
+        }
+        
+        # Create a form with the data
+        form = self.form_class(data)
+        
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
 
 
 # View Titles
@@ -350,3 +381,152 @@ class ApplicationReviewView(RoleRequiredMixin, LoginRequiredMixin, FormView):
     
     def get_success_url(self):
         return reverse('applications:application_detail', kwargs={'pk': self.kwargs['pk']})
+    
+# Add this to your applications/views.py file
+
+class ParcelTitleListView(LoginRequiredMixin, ListView):
+    """View for listing parcel titles"""
+    model = ParcelTitle
+    template_name = 'applications/parcel_title_list.html'
+    context_object_name = 'titles'
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        # For surveyors - show titles related to their inspections
+        if user.role == 'surveyor':
+            # Get parcels from applications that this surveyor has inspected
+            inspected_applications = ParcelApplication.objects.filter(
+                field_agent=user,
+                status='approved'
+            )
+            
+            # Get the titles for these parcels
+            return ParcelTitle.objects.filter(
+                parcel__in=[app.parcel for app in inspected_applications if app.parcel]
+            ).order_by('-issue_date')
+        
+        # For landowners - show only their titles
+        return ParcelTitle.objects.filter(owner=self.request.user).order_by('-issue_date')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['today'] = timezone.now().date()  # For expiry date comparison
+        return context  
+    
+
+class SurveyorInspectionsView(RoleRequiredMixin, LoginRequiredMixin, ListView):
+    """View for surveyors to see their assigned inspections"""
+    allowed_roles = ['surveyor', 'admin']
+    model = ParcelApplication
+    template_name = 'applications/surveyor_inspections.html'
+    context_object_name = 'inspections'
+    
+    def get_queryset(self):
+        # Get applications assigned to this surveyor for field inspection
+        return ParcelApplication.objects.filter(
+            field_agent=self.request.user,
+            status='field_inspection'
+        ).order_by('-submitted_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Add completed inspections
+        context['completed_inspections'] = ParcelApplication.objects.filter(
+            field_agent=self.request.user,
+            status__in=['approved', 'rejected']
+        ).order_by('-review_date')[:10]  # Show last 10 completed
+        
+        return context
+    
+# Add these functions to your applications/views.py file
+
+@login_required
+def get_inspection_details(request, application_id):
+    """API endpoint to get inspection details for modal"""
+    if request.user.role not in ['surveyor', 'admin']:
+        return JsonResponse({
+            'success': False,
+            'message': 'You do not have permission to access this resource.'
+        }, status=403)
+    
+    try:
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        
+        # Check if this application is assigned to the current surveyor
+        if application.field_agent != request.user and request.user.role != 'admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'This application is not assigned to you.'
+            }, status=403)
+        
+        # Return application data for the modal
+        return JsonResponse({
+            'success': True,
+            'application': {
+                'id': application.id,
+                'application_number': application.application_number,
+                'owner_first_name': application.owner_first_name,
+                'owner_last_name': application.owner_last_name,
+                'applicant_email': application.applicant.email,
+                'property_address': application.property_address,
+                'property_type': application.property_type,
+                'application_type': application.application_type,
+                'application_type_display': application.get_application_type_display(),
+                'status': application.status,
+                'status_display': application.get_status_display(),
+                'submitted_at': application.submitted_at.strftime('%b %d, %Y')
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500)
+
+@login_required
+def get_completed_inspection_details(request, application_id):
+    """API endpoint to get completed inspection details for modal"""
+    if request.user.role not in ['surveyor', 'admin']:
+        return JsonResponse({
+            'success': False,
+            'message': 'You do not have permission to access this resource.'
+        }, status=403)
+    
+    try:
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        
+        # Check if this application was inspected by the current surveyor
+        if application.field_agent != request.user and request.user.role != 'admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'This application was not inspected by you.'
+            }, status=403)
+        
+        # Return application data for the modal
+        return JsonResponse({
+            'success': True,
+            'application': {
+                'id': application.id,
+                'application_number': application.application_number,
+                'owner_first_name': application.owner_first_name,
+                'owner_last_name': application.owner_last_name,
+                'property_address': application.property_address,
+                'property_type': application.property_type,
+                'application_type': application.application_type,
+                'application_type_display': application.get_application_type_display(),
+                'status': application.status,
+                'status_display': application.get_status_display(),
+                'latitude': application.parcel.latitude if application.parcel else None,
+                'longitude': application.parcel.longitude if application.parcel else None,
+                'size_hectares': application.parcel.size_hectares if application.parcel else None,
+                'review_date': application.review_date.strftime('%b %d, %Y') if application.review_date else None,
+                'review_notes': application.review_notes
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500)

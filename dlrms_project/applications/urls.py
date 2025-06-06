@@ -1,4 +1,4 @@
-# File: applications/urls.py (Updated)
+# File: applications/urls.py (Updated with API endpoints for inspection modal)
 from django.urls import include, path
 from . import reviewviews
 from . import views
@@ -23,6 +23,13 @@ urlpatterns = [
     # Parcel title URLs
     path('titles/', views.ParcelTitleListView.as_view(), name='parcel_title_list'),
     path('titles/<int:pk>/', views.ParcelTitleDetailView.as_view(), name='parcel_title_detail'),
+    
+    # Surveyor specific URLs
+    path('inspections/', views.SurveyorInspectionsView.as_view(), name='surveyor_inspections'),
+    
+    # API Endpoints for inspection modal
+    path('api/inspection/<int:application_id>/', views.get_inspection_details, name='api_inspection_details'),
+    path('api/completed-inspection/<int:application_id>/', views.get_completed_inspection_details, name='api_completed_inspection_details'),
 
     # Review Dashboard URLs
     path('review/', include([
