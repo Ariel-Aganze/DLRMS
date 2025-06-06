@@ -9,10 +9,12 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.db import transaction
 
-from .models import ParcelApplication, ParcelDocument, ParcelTitle
+from .models import ParcelApplication, ParcelDocument, ParcelTitle, User
 from .forms import ParcelApplicationForm, ApplicationAssignmentForm, ApplicationReviewForm
 from land_management.models import LandParcel
 from core.mixins import RoleRequiredMixin
+from django.http import JsonResponse
+import json
 
 # Landowner Views
 class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
@@ -73,6 +75,8 @@ class ParcelApplicationDetailView(LoginRequiredMixin, DetailView):
 
 
 # Registry Officer Views - FIXED MRO by putting RoleRequiredMixin first
+
+
 class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
     """View for registry officers to assign field agents to applications"""
     allowed_roles = ['registry_officer', 'admin']
@@ -91,7 +95,70 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
         application.save()
         
         messages.success(self.request, f'Field agent {application.field_agent.get_full_name()} assigned successfully.')
+        
+        # If it's an AJAX request, return JSON response
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in self.request.headers.get('Content-Type', ''):
+            return JsonResponse({
+                'success': True,
+                'message': f'Field agent {application.field_agent.get_full_name()} assigned successfully.'
+            })
+        
         return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        # If it's an AJAX request, return JSON response
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in self.request.headers.get('Content-Type', ''):
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid form data',
+                'errors': form.errors.as_json()
+            }, status=400)
+        
+        return super().form_invalid(form)
+    
+    def post(self, request, *args, **kwargs):
+        # Handle raw JSON if present
+        if 'application/json' in request.headers.get('Content-Type', ''):
+            try:
+                data = json.loads(request.body)
+                application = get_object_or_404(ParcelApplication, pk=self.kwargs['pk'])
+                agent_id = data.get('agent_id')
+                notes = data.get('notes', '')
+                
+                if not agent_id:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Field agent is required'
+                    }, status=400)
+                
+                field_agent = get_object_or_404(User, id=agent_id, role='surveyor')
+                
+                # Update application
+                application.field_agent = field_agent
+                application.status = 'field_inspection'
+                if notes:
+                    if application.review_notes:
+                        application.review_notes += f"\n\nField Agent Assignment Note: {notes}"
+                    else:
+                        application.review_notes = f"Field Agent Assignment Note: {notes}"
+                application.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Field agent {field_agent.get_full_name()} assigned successfully.'
+                })
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid JSON data'
+                }, status=400)
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': str(e)
+                }, status=500)
+        
+        return super().post(request, *args, **kwargs)
 
 
 # Field Agent (Surveyor) Views - FIXED MRO by putting RoleRequiredMixin first
@@ -176,18 +243,45 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
 
 
 # View Titles
-class ParcelTitleListView(LoginRequiredMixin, ListView):
-    """View for listing user's parcel titles"""
-    model = ParcelTitle
-    template_name = 'applications/parcel_title_list.html'
-    context_object_name = 'titles'
+class ParcelApplicationListView(LoginRequiredMixin, ListView):
+    """View for listing parcel applications"""
+    model = ParcelApplication
+    template_name = 'applications/parcel_application_list.html'
+    context_object_name = 'applications'
     
     def get_queryset(self):
-        return ParcelTitle.objects.filter(owner=self.request.user, is_active=True)
+        user = self.request.user
+        
+        # For surveyors - show only applications assigned to them
+        if user.role == 'surveyor':
+            return ParcelApplication.objects.filter(
+                field_agent=user,
+                status__in=['field_inspection', 'approved', 'rejected']
+            ).order_by('-submitted_at')
+        
+        # For landowners - show only their applications
+        elif user.role == 'landowner':
+            return ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')
+        
+        # For registry officers and admin - show all applications
+        else:
+            return ParcelApplication.objects.all().order_by('-submitted_at')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['today'] = timezone.now().date()
+        
+        user = self.request.user
+        
+        # Add different context based on user role
+        if user.role == 'surveyor':
+            context['pending_inspections'] = self.get_queryset().filter(status='field_inspection')
+            context['completed_inspections'] = self.get_queryset().filter(status__in=['approved', 'rejected'])
+            context['is_surveyor'] = True
+        elif user.role in ['registry_officer', 'admin']:
+            context['is_admin'] = True
+        else:
+            context['is_landowner'] = True
+        
         return context
 
 

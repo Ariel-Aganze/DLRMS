@@ -77,7 +77,7 @@ class ApplicationsReviewDashboardView(RoleRequiredMixin, LoginRequiredMixin, Tem
             'today': today,
         })
         
-        return context
+        return context  
 
 
 @login_required
@@ -95,11 +95,40 @@ def applications_api_list(request):
     type_filter = request.GET.get('type', '')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
+    app_id = request.GET.get('app_id', '')
     
     # Base queryset
     applications = ParcelApplication.objects.select_related(
         'applicant', 'field_agent', 'reviewed_by'
     ).prefetch_related('documents')
+    
+    # Single application lookup
+    if app_id:
+        try:
+            app = applications.get(pk=app_id)
+            return JsonResponse({
+                'success': True,
+                'application': {
+                    'id': app.id,
+                    'application_number': app.application_number,
+                    'owner_first_name': app.owner_first_name,
+                    'owner_last_name': app.owner_last_name,
+                    'property_address': app.property_address,
+                    'property_type': app.property_type,
+                    'application_type': app.application_type,
+                    'application_type_display': app.get_application_type_display(),
+                    'status': app.status,
+                    'status_display': app.get_status_display(),
+                    'submitted_at': app.submitted_at.strftime('%Y-%m-%d'),
+                    'applicant_email': app.applicant.email,
+                    'document_count': app.documents.count(),
+                }
+            })
+        except ParcelApplication.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Application not found'
+            }, status=404)
     
     # Apply filters
     if search:
@@ -242,27 +271,15 @@ def quick_application_review(request, application_id):
     if request.user.role not in ['registry_officer', 'admin', 'surveyor']:
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
-    application = get_object_or_404(ParcelApplication, id=application_id)
+    application = get_object_or_404(ParcelApplication, pk=application_id)
     
     try:
         data = json.loads(request.body)
         action = data.get('action')  # 'approve', 'reject', 'assign'
         notes = data.get('notes', '')
-        agent_id = data.get('agent_id')
         
         with transaction.atomic():
-            if action == 'assign' and request.user.role in ['registry_officer', 'admin']:
-                if not agent_id:
-                    return JsonResponse({'error': 'Agent ID required'}, status=400)
-                
-                field_agent = get_object_or_404(User, id=agent_id, role='surveyor')
-                application.field_agent = field_agent
-                application.status = 'field_inspection'
-                application.save()
-                
-                message = f'Application assigned to {field_agent.get_full_name()}'
-                
-            elif action == 'approve' and request.user.role in ['surveyor', 'admin', 'registry_officer']:
+            if action == 'approve':
                 # Quick approve (simplified version)
                 application.status = 'approved'
                 application.review_notes = notes
@@ -270,12 +287,12 @@ def quick_application_review(request, application_id):
                 application.reviewed_by = request.user
                 application.save()
                 
-                # Create basic land parcel (you might want to collect more details)
+                # Create basic land parcel
                 parcel = LandParcel.objects.create(
                     owner=application.applicant,
                     location=application.property_address,
                     property_type=application.property_type,
-                    district='North Kivu',
+                    district='North Kivu',  # Default value
                     sector='Default Sector',
                     cell='Default Cell',
                     village='Default Village',
@@ -286,12 +303,18 @@ def quick_application_review(request, application_id):
                 )
                 
                 # Create title
-                ParcelTitle.objects.create(
+                title = ParcelTitle.objects.create(
                     parcel=parcel,
                     owner=application.applicant,
                     title_type=application.application_type,
                     is_active=True
                 )
+                
+                # Set active title on parcel
+                parcel.active_title_type = application.application_type
+                if application.application_type == 'property_contract':
+                    parcel.active_title_expiry = title.expiry_date
+                parcel.save()
                 
                 message = 'Application approved and title issued'
                 
@@ -305,7 +328,7 @@ def quick_application_review(request, application_id):
                 message = 'Application rejected'
                 
             else:
-                return JsonResponse({'error': 'Invalid action or insufficient permissions'}, status=400)
+                return JsonResponse({'success': False, 'message': 'Invalid action'}, status=400)
         
         return JsonResponse({
             'success': True,
@@ -314,9 +337,9 @@ def quick_application_review(request, application_id):
         })
         
     except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 @login_required
@@ -383,69 +406,6 @@ def export_applications(request):
     
     return response
 
-@login_required
-def export_applications(request):
-    """Export applications to CSV"""
-    if request.user.role not in ['registry_officer', 'admin']:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
-    # Get filter parameters
-    status_filter = request.GET.get('status', '')
-    type_filter = request.GET.get('type', '')
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-    
-    # Build queryset
-    applications = ParcelApplication.objects.select_related(
-        'applicant', 'field_agent', 'reviewed_by'
-    ).order_by('-submitted_at')
-    
-    if status_filter:
-        applications = applications.filter(status=status_filter)
-    if type_filter:
-        applications = applications.filter(application_type=type_filter)
-    if date_from:
-        applications = applications.filter(submitted_at__date__gte=date_from)
-    if date_to:
-        applications = applications.filter(submitted_at__date__lte=date_to)
-    
-    # Create CSV response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="applications_export_{timezone.now().strftime("%Y%m%d_%H%M")}.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow([
-        'Application Number',
-        'Applicant Name',
-        'Applicant Email',
-        'Property Address',
-        'Property Type',
-        'Application Type',
-        'Status',
-        'Field Agent',
-        'Reviewed By',
-        'Submitted Date',
-        'Review Date',
-        'Review Notes'
-    ])
-    
-    for app in applications:
-        writer.writerow([
-            app.application_number,
-            f"{app.owner_first_name} {app.owner_last_name}",
-            app.applicant.email,
-            app.property_address,
-            app.property_type,
-            app.get_application_type_display(),
-            app.get_status_display(),
-            app.field_agent.get_full_name() if app.field_agent else '',
-            app.reviewed_by.get_full_name() if app.reviewed_by else '',
-            app.submitted_at.strftime('%Y-%m-%d %H:%M'),
-            app.review_date.strftime('%Y-%m-%d %H:%M') if app.review_date else '',
-            app.review_notes or ''
-        ])
-    
-    return response
 
 
 @login_required

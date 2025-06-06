@@ -25,21 +25,54 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # Add count of unread notifications
         context['unread_notifications_count'] = user.notifications.filter(is_read=False).count()
         
-        # Add recent applications and parcels
-        context['recent_applications'] = ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')[:4]
-        context['recent_parcels'] = user.land_parcels.all().order_by('-created_at')[:3]
-        
-        # Add pending applications count 
-        context['pending_applications_count'] = ParcelApplication.objects.filter(
-            applicant=user, 
-            status__in=['submitted', 'under_review', 'field_inspection']
-        ).count()
-        
-        # Add parcel titles count
-        context['parcel_titles_count'] = ParcelTitle.objects.filter(
-            owner=user,
-            is_active=True
-        ).count()
+        # Different context data based on user role
+        if user.role == 'surveyor':
+            # For surveyors, show assigned applications for field inspection
+            context['assigned_applications'] = ParcelApplication.objects.filter(
+                field_agent=user,
+                status='field_inspection'
+            ).order_by('-submitted_at')
+            
+            # Count of pending field inspections
+            context['pending_inspections_count'] = context['assigned_applications'].count()
+            
+            # Completed inspections (applications that were assigned to this surveyor and are now approved/rejected)
+            context['completed_inspections'] = ParcelApplication.objects.filter(
+                field_agent=user,
+                status__in=['approved', 'rejected']
+            ).order_by('-review_date')[:5]
+            
+            context['completed_inspections_count'] = ParcelApplication.objects.filter(
+                field_agent=user,
+                status__in=['approved', 'rejected']
+            ).count()
+            
+            # Applications awaiting field inspection (system-wide)
+            if user.is_staff or user.role in ['admin', 'registry_officer']:
+                context['pending_applications'] = ParcelApplication.objects.filter(
+                    status='submitted'
+                ).order_by('-submitted_at')[:5]
+                
+                context['pending_applications_count'] = ParcelApplication.objects.filter(
+                    status='submitted'
+                ).count()
+            
+        else:
+            # For landowners and other roles
+            context['recent_applications'] = ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')[:4]
+            context['recent_parcels'] = user.land_parcels.all().order_by('-created_at')[:3]
+            
+            # Add pending applications count 
+            context['pending_applications_count'] = ParcelApplication.objects.filter(
+                applicant=user, 
+                status__in=['submitted', 'under_review', 'field_inspection']
+            ).count()
+            
+            # Add parcel titles count
+            context['parcel_titles_count'] = ParcelTitle.objects.filter(
+                owner=user,
+                is_active=True
+            ).count()
         
         # Add today's date for expiry checks
         context['today'] = timezone.now().date()

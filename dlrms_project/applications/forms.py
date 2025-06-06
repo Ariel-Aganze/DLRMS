@@ -117,11 +117,17 @@ class ApplicationAssignmentForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
     
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        label="Notes for Field Agent",
+        required=False
+    )
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Get users with 'surveyor' role for field inspection
-        User = LandParcel.owner.field.related_model
-        self.fields['field_agent'].queryset = User.objects.filter(role='surveyor')
+        User = get_user_model()
+        self.fields['field_agent'].queryset = User.objects.filter(role='surveyor', is_active=True)
 
 
 class ApplicationReviewForm(forms.Form):
