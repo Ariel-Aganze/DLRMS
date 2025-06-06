@@ -266,117 +266,226 @@
     }
     
     // Function to generate inspection form HTML
-    function generateInspectionForm(application) {
-        return `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- Application Details -->
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
-                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Application Type:</span>
-                            <span class="font-medium">${application.application_type_display}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Applicant:</span>
-                            <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Email:</span>
-                            <span class="font-medium">${application.applicant_email}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Submitted On:</span>
-                            <span class="font-medium">${application.submitted_at}</span>
-                        </div>
+    // Modify the inspection form HTML to include the onsubmit event handler
+function generateInspectionForm(application) {
+    return `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Application Details -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Application Type:</span>
+                        <span class="font-medium">${application.application_type_display}</span>
                     </div>
-                </div>
-                
-                <!-- Property Information -->
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
-                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Address:</span>
-                            <span class="font-medium">${application.property_address}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Property Type:</span>
-                            <span class="font-medium">${application.property_type}</span>
-                        </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Applicant:</span>
+                        <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Email:</span>
+                        <span class="font-medium">${application.applicant_email}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Submitted On:</span>
+                        <span class="font-medium">${application.submitted_at}</span>
                     </div>
                 </div>
             </div>
             
-            <!-- Inspection Form -->
-            <form id="inspection-form" action="/applications/parcel/${application.id}/review/" method="post" class="space-y-4">
-                <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
-                
-                <div>
-                    <h4 class="text-md font-semibold text-gray-800 mb-4">Field Inspection Report</h4>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Property Coordinates</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label for="latitude" class="block text-xs text-gray-500">Latitude</label>
-                                    <input type="number" step="0.0000001" name="latitude" id="latitude" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                           required>
-                                </div>
-                                <div>
-                                    <label for="longitude" class="block text-xs text-gray-500">Longitude</label>
-                                    <input type="number" step="0.0000001" name="longitude" id="longitude" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                           required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label for="size_hectares" class="block text-sm font-medium text-gray-700 mb-1">
-                                Land Size (hectares)
-                            </label>
-                            <input type="number" step="0.0001" name="size_hectares" id="size_hectares" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                   required>
-                        </div>
-                        
-                        <div>
-                            <label for="decision" class="block text-sm font-medium text-gray-700 mb-1">Decision</label>
-                            <div class="space-y-2">
-                                <div class="flex items-center">
-                                    <input type="radio" id="approve" name="decision" value="approve" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" required>
-                                    <label for="approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
-                                </div>
-                                <div class="flex items-center">
-                                    <input type="radio" id="reject" name="decision" value="reject" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                                    <label for="reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label for="review_notes" class="block text-sm font-medium text-gray-700 mb-1">Inspection Notes</label>
-                            <textarea id="review_notes" name="review_notes" rows="3" 
-                                      placeholder="Enter your observations and findings from the field inspection..."
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"></textarea>
-                        </div>
+            <!-- Property Information -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Address:</span>
+                        <span class="font-medium">${application.property_address}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Property Type:</span>
+                        <span class="font-medium">${application.property_type}</span>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Inspection Form -->
+        <form id="inspection-form" onsubmit="submitInspectionForm(event, ${application.id})" class="space-y-4">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
+            
+            <div>
+                <h4 class="text-md font-semibold text-gray-800 mb-4">Field Inspection Report</h4>
                 
-                <div class="flex justify-end pt-4 border-t border-gray-200">
-                    <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 mr-2">
-                        Cancel
-                    </button>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                        Submit Inspection Report
-                    </button>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Property Coordinates</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label for="latitude" class="block text-xs text-gray-500">Latitude</label>
+                                <input type="number" step="0.0000001" name="latitude" id="latitude" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                       required>
+                            </div>
+                            <div>
+                                <label for="longitude" class="block text-xs text-gray-500">Longitude</label>
+                                <input type="number" step="0.0000001" name="longitude" id="longitude" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                       required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="size_hectares" class="block text-sm font-medium text-gray-700 mb-1">
+                            Land Size (hectares)
+                        </label>
+                        <input type="number" step="0.0001" name="size_hectares" id="size_hectares" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                               required>
+                    </div>
+                    
+                    <div>
+                        <label for="decision" class="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="approve" name="decision" value="approve" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" required>
+                                <label for="approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="reject" name="decision" value="reject" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                <label for="reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="review_notes" class="block text-sm font-medium text-gray-700 mb-1">Inspection Notes</label>
+                        <textarea id="review_notes" name="review_notes" rows="3" 
+                                  placeholder="Enter your observations and findings from the field inspection..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"></textarea>
+                    </div>
                 </div>
-            </form>
-        `;
+            </div>
+            
+            <div class="flex justify-end pt-4 border-t border-gray-200">
+                <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 mr-2">
+                    Cancel
+                </button>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                    Submit Inspection Report
+                </button>
+            </div>
+        </form>
+    `;
+}
+
+// Function to handle the form submission via AJAX
+function submitInspectionForm(event, applicationId) {
+    event.preventDefault();
+    
+    // Show loading state
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Processing...
+    `;
+    submitButton.disabled = true;
+    
+    // Get form data
+    const form = document.getElementById('inspection-form');
+    const formData = new FormData(form);
+    
+    // Submit the form via AJAX
+    fetch(`/applications/parcel/${applicationId}/review/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showToast(data.message, 'success');
+            
+            // Close the modal
+            closeInspectionModal();
+            
+            // Reload the page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            // Show error message
+            showToast(data.message || 'An error occurred', 'error');
+            
+            // Reset button
+            submitButton.innerHTML = originalButtonText;
+            submitButton.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting form:', error);
+        showToast('An error occurred while submitting the form', 'error');
+        
+        // Reset button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
+    });
+}
+
+// Toast notification function
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
+        document.body.appendChild(toastContainer);
     }
+    
+    // Create toast
+    const toast = document.createElement('div');
+    toast.className = `px-4 py-2 rounded-lg text-white shadow-lg transform transition-all duration-300 translate-x-full ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 
+        'bg-blue-500'
+    }`;
+    
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas fa-${
+                type === 'success' ? 'check-circle' : 
+                type === 'error' ? 'exclamation-circle' : 
+                'info-circle'
+            } mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Add to container
+    toastContainer.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 4000);
+}
     
     // Function to view completed inspection
     function viewCompletedInspection(applicationId) {

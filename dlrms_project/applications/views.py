@@ -17,7 +17,7 @@ from .forms import ParcelApplicationForm, ApplicationAssignmentForm, Application
 from land_management.models import LandParcel
 from core.mixins import RoleRequiredMixin
 import json
-
+from django.views.generic import View
 # Landowner Views
 class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
     """View for landowners to submit parcel applications"""
@@ -164,32 +164,52 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
 
 
 # Field Agent (Surveyor) Views - FIXED MRO by putting RoleRequiredMixin first
-class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
+class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
     """View for field agents to review and approve/reject applications"""
     allowed_roles = ['surveyor', 'admin']
-    form_class = ApplicationReviewForm
-    template_name = 'applications/review_application.html'
     
-    def get_success_url(self):
-        return reverse('applications:surveyor_inspections')
+    def get(self, request, *args, **kwargs):
+        # If GET request is made directly, redirect to surveyor inspections
+        return redirect('applications:surveyor_inspections')
     
-    def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        return form
-    
-    def form_valid(self, form):
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests from the inspection form"""
         application = get_object_or_404(ParcelApplication, pk=self.kwargs['pk'])
         
         # Only the assigned field agent can review
         if application.field_agent != self.request.user and not self.request.user.is_superuser:
-            messages.error(self.request, 'You are not authorized to review this application.')
-            return redirect(self.get_success_url())
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'You are not authorized to review this application.'
+                }, status=403)
+            messages.error(request, 'You are not authorized to review this application.')
+            return redirect('applications:surveyor_inspections')
         
-        decision = form.cleaned_data['decision']
-        review_notes = form.cleaned_data['review_notes']
-        latitude = form.cleaned_data['latitude']
-        longitude = form.cleaned_data['longitude']
-        size_hectares = form.cleaned_data['size_hectares']
+        # Extract form data
+        decision = request.POST.get('decision')
+        review_notes = request.POST.get('review_notes')
+        try:
+            latitude = float(request.POST.get('latitude'))
+            longitude = float(request.POST.get('longitude'))
+            size_hectares = float(request.POST.get('size_hectares'))
+        except (ValueError, TypeError):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid coordinates or land size values.'
+                }, status=400)
+            messages.error(request, 'Invalid coordinates or land size values.')
+            return redirect('applications:surveyor_inspections')
+        
+        if decision not in ['approve', 'reject']:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid decision. Must be either "approve" or "reject".'
+                }, status=400)
+            messages.error(request, 'Invalid decision. Must be either "approve" or "reject".')
+            return redirect('applications:surveyor_inspections')
         
         with transaction.atomic():
             # Update application status
@@ -244,33 +264,21 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, FormView):
                 parcel.active_title_expiry = expiry_date
                 parcel.save()
                 
-                messages.success(self.request, f'Application approved and {title.get_title_type_display()} issued successfully.')
+                message = f'Application approved and {title.get_title_type_display()} issued successfully.'
             else:
-                messages.info(self.request, 'Application has been rejected.')
+                message = 'Application has been rejected.'
         
-        return super().form_valid(form)
-    
-    def post(self, request, *args, **kwargs):
-        """Handle POST requests: instantiate a form instance with the passed
-        POST variables and then check if it's valid."""
-        form = self.get_form()
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'status': application.status
+            })
         
-        # Extract form data
-        data = {
-            'decision': request.POST.get('decision'),
-            'review_notes': request.POST.get('review_notes'),
-            'latitude': request.POST.get('latitude'),
-            'longitude': request.POST.get('longitude'),
-            'size_hectares': request.POST.get('size_hectares'),
-        }
-        
-        # Create a form with the data
-        form = self.form_class(data)
-        
-        if form.is_valid():
-            return self.form_valid(form)
-        else:
-            return self.form_invalid(form)
+        # Add message and redirect for non-AJAX requests
+        messages.success(request, message)
+        return redirect('applications:surveyor_inspections')
 
 
 # View Titles
