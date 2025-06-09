@@ -18,6 +18,7 @@ from land_management.models import LandParcel
 from core.mixins import RoleRequiredMixin
 import json
 from django.views.generic import View
+from datetime import datetime, timedelta
 # Landowner Views
 class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
     """View for landowners to submit parcel applications"""
@@ -163,19 +164,20 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
         return super().post(request, *args, **kwargs)
 
 
-# Field Agent (Surveyor) Views - FIXED MRO by putting RoleRequiredMixin first
+
 class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
     """View for field agents to review and approve/reject applications"""
+
     allowed_roles = ['surveyor', 'admin']
-    
+
     def get(self, request, *args, **kwargs):
         # If GET request is made directly, redirect to surveyor inspections
         return redirect('applications:surveyor_inspections')
-    
+
     def post(self, request, *args, **kwargs):
         """Handle POST requests from the inspection form"""
         application = get_object_or_404(ParcelApplication, pk=self.kwargs['pk'])
-        
+
         # Only the assigned field agent can review
         if application.field_agent != self.request.user and not self.request.user.is_superuser:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -185,7 +187,7 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
                 }, status=403)
             messages.error(request, 'You are not authorized to review this application.')
             return redirect('applications:surveyor_inspections')
-        
+
         # Extract form data
         decision = request.POST.get('decision')
         review_notes = request.POST.get('review_notes')
@@ -201,7 +203,7 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
                 }, status=400)
             messages.error(request, 'Invalid coordinates or land size values.')
             return redirect('applications:surveyor_inspections')
-        
+
         if decision not in ['approve', 'reject']:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
@@ -210,75 +212,83 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
                 }, status=400)
             messages.error(request, 'Invalid decision. Must be either "approve" or "reject".')
             return redirect('applications:surveyor_inspections')
-        
-        with transaction.atomic():
-            # Update application status
-            application.status = 'approved' if decision == 'approve' else 'rejected'
-            application.review_notes = review_notes
-            application.review_date = timezone.now()
-            application.reviewed_by = self.request.user
-            application.save()
-            
-            # If approved, create land parcel and title
-            if decision == 'approve':
-                # Create land parcel
-                parcel = LandParcel.objects.create(
-                    owner=application.applicant,
-                    location=application.property_address,
-                    property_type=application.property_type,
-                    district='North Kivu',  # Default values
-                    sector='Default Sector',
-                    cell='Default Cell',
-                    village='Default Village',
-                    size_hectares=size_hectares,
-                    latitude=latitude,
-                    longitude=longitude,
-                    status='registered',
-                    registration_date=timezone.now(),
-                    registered_by=self.request.user
-                )
-                
-                # Link parcel to application
-                application.parcel = parcel
+
+        try:
+            with transaction.atomic():
+                # Update application status
+                application.status = 'approved' if decision == 'approve' else 'rejected'
+                application.review_notes = review_notes
+                application.review_date = timezone.now()
+                application.reviewed_by = self.request.user
                 application.save()
-                
-                # Create title based on application type
-                title_type = application.application_type
-                
-                # Calculate expiry date for property contract (3 years)
-                expiry_date = None
-                if title_type == 'property_contract':
-                    expiry_date = timezone.now().date() + datetime.timedelta(days=3*365)
-                
-                # Create title
-                title = ParcelTitle.objects.create(
-                    parcel=parcel,
-                    owner=application.applicant,
-                    title_type=title_type,
-                    expiry_date=expiry_date,
-                    is_active=True
-                )
-                
-                # Update parcel with active title info
-                parcel.active_title_type = title_type
-                parcel.active_title_expiry = expiry_date
-                parcel.save()
-                
-                message = f'Application approved and {title.get_title_type_display()} issued successfully.'
-            else:
-                message = 'Application has been rejected.'
-        
-        # Return JSON response for AJAX requests
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': message,
-                'status': application.status
-            })
-        
-        # Add message and redirect for non-AJAX requests
-        messages.success(request, message)
-        return redirect('applications:surveyor_inspections')
+
+                # If approved, create land parcel and title
+                if decision == 'approve':
+                    parcel = LandParcel.objects.create(
+                        owner=application.applicant,
+                        location=application.property_address,
+                        property_type=application.property_type,
+                        district='North Kivu',  # Default values
+                        sector='Default Sector',
+                        cell='Default Cell',
+                        village='Default Village',
+                        size_hectares=size_hectares,
+                        latitude=latitude,
+                        longitude=longitude,
+                        status='registered',
+                        registration_date=timezone.now(),
+                        registered_by=self.request.user
+                    )
+
+                    # Link parcel to application
+                    application.parcel = parcel
+                    application.save()
+
+                    # Determine title type and expiry
+                    title_type = application.application_type
+                    expiry_date = None
+                    if title_type == 'property_contract':
+                        expiry_date = timezone.now().date() + timedelta(days=3 * 365)
+
+                    # Create title
+                    title = ParcelTitle.objects.create(
+                        parcel=parcel,
+                        owner=application.applicant,
+                        title_type=title_type,
+                        expiry_date=expiry_date,
+                        is_active=True
+                    )
+
+                    # Update parcel with active title info
+                    parcel.active_title_type = title_type
+                    parcel.active_title_expiry = expiry_date
+                    parcel.save()
+
+                    message = f'Application approved and {title.get_title_type_display()} issued successfully.'
+                else:
+                    message = 'Application rejected successfully.'
+
+                messages.success(request, message)
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': message,
+                        'redirect_url': reverse('applications:surveyor_inspections')
+                    })
+
+                return redirect('applications:surveyor_inspections')
+
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error processing inspection: {str(e)}'
+                }, status=500)
+
+            messages.error(request, f'Error processing inspection: {str(e)}')
+            return redirect('applications:surveyor_inspections')
+
 
 
 # View Titles
@@ -512,6 +522,27 @@ def get_completed_inspection_details(request, application_id):
                 'message': 'This application was not inspected by you.'
             }, status=403)
         
+        # Get the latitude, longitude, and size from either the parcel or directly from the inspection notes
+        # This is the key fix - handling cases where the parcel might not exist
+        latitude = None
+        longitude = None
+        size_hectares = None
+        
+        # If a parcel was created during approval
+        if hasattr(application, 'parcel') and application.parcel:
+            latitude = application.parcel.latitude
+            longitude = application.parcel.longitude
+            size_hectares = application.parcel.size_hectares
+        else:
+            # Try to extract coordinates from review notes or use defaults
+            # This is a fallback when the parcel wasn't created or linked properly
+            latitude = 0
+            longitude = 0
+            size_hectares = 0
+            
+            # You could implement more sophisticated parsing of the review_notes
+            # to extract coordinates if they were saved there
+        
         # Return application data for the modal
         return JsonResponse({
             'success': True,
@@ -526,15 +557,15 @@ def get_completed_inspection_details(request, application_id):
                 'application_type_display': application.get_application_type_display(),
                 'status': application.status,
                 'status_display': application.get_status_display(),
-                'latitude': application.parcel.latitude if application.parcel else None,
-                'longitude': application.parcel.longitude if application.parcel else None,
-                'size_hectares': application.parcel.size_hectares if application.parcel else None,
+                'latitude': latitude,
+                'longitude': longitude,
+                'size_hectares': size_hectares,
                 'review_date': application.review_date.strftime('%b %d, %Y') if application.review_date else None,
-                'review_notes': application.review_notes
+                'review_notes': application.review_notes or "No notes provided"
             }
         })
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'message': str(e)
+            'message': f"Error retrieving inspection details: {str(e)}"
         }, status=500)

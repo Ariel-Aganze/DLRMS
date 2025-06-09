@@ -268,6 +268,8 @@
     // Function to generate inspection form HTML
     // Modify the inspection form HTML to include the onsubmit event handler
 function generateInspectionForm(application) {
+    const csrfToken = getCsrfToken();
+    
     return `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Application Details -->
@@ -311,7 +313,8 @@ function generateInspectionForm(application) {
         
         <!-- Inspection Form -->
         <form id="inspection-form" onsubmit="submitInspectionForm(event, ${application.id})" class="space-y-4">
-            <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
+            <!-- Properly include the CSRF token in the form -->
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
             
             <div>
                 <h4 class="text-md font-semibold text-gray-800 mb-4">Field Inspection Report</h4>
@@ -399,20 +402,33 @@ function submitInspectionForm(event, applicationId) {
     const form = document.getElementById('inspection-form');
     const formData = new FormData(form);
     
-    // Submit the form via AJAX
+    // Submit the form via AJAX - REMOVE Content-Type header to let browser set it automatically with boundary
     fetch(`/applications/parcel/${applicationId}/review/`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRFToken': getCsrfToken()
+            // Important: Do NOT set Content-Type header when using FormData
+            // The browser will set it automatically with the correct boundary
         },
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(response => {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json().then(data => ({ status: response.status, data }));
+        } else {
+            return response.text().then(text => ({ 
+                status: response.status, 
+                data: { success: response.ok, message: text } 
+            }));
+        }
+    })
+    .then(({ status, data }) => {
         if (data.success) {
             // Show success message
-            showToast(data.message, 'success');
+            showToast(data.message || 'Inspection submitted successfully', 'success');
             
             // Close the modal
             closeInspectionModal();
@@ -423,7 +439,7 @@ function submitInspectionForm(event, applicationId) {
             }, 1500);
         } else {
             // Show error message
-            showToast(data.message || 'An error occurred', 'error');
+            showToast(data.message || `Error (${status}): An error occurred`, 'error');
             
             // Reset button
             submitButton.innerHTML = originalButtonText;
@@ -439,6 +455,30 @@ function submitInspectionForm(event, applicationId) {
         submitButton.disabled = false;
     });
 }
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+    // Try to get token from meta tag
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    if (metaTag) {
+        return metaTag.getAttribute('content');
+    }
+    
+    // Try to get from the form itself
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    
+    // Fallback: Get from cookie
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+        
+    return cookieValue || '';
+}
+
 
 // Toast notification function
 function showToast(message, type = 'info') {
@@ -606,8 +646,148 @@ function showToast(message, type = 'info') {
     }
     
     // Helper function to get CSRF token
-    function getCsrfToken() {
-        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+
+    
+
+    // Debugging helper functions - Add these to your surveyor_inspections.html
+
+// Enable more detailed logging of form submission
+function debugFormSubmission(event, applicationId) {
+    console.group('Form Submission Debug');
+    
+    // Log the event
+    console.log('Submit event:', event);
+    console.log('Application ID:', applicationId);
+    
+    // Get form data
+    const form = document.getElementById('inspection-form');
+    const formData = new FormData(form);
+    
+    // Log all form fields
+    console.log('Form data:');
+    for (const [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
     }
+    
+    // Check CSRF token
+    const csrfToken = getCsrfToken();
+    console.log('CSRF Token:', csrfToken ? 'Present' : 'Missing');
+    if (!csrfToken) {
+        console.warn('⚠️ CSRF Token is missing! This will cause the form submission to fail.');
+    }
+    
+    // Log headers that will be sent
+    console.log('Headers:', {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken
+    });
+    
+    // Check if all required fields are present
+    const requiredFields = ['latitude', 'longitude', 'size_hectares', 'decision'];
+    const missingFields = requiredFields.filter(field => !formData.get(field) || formData.get(field).trim() === '');
+    
+    if (missingFields.length > 0) {
+        console.warn('⚠️ Missing required fields:', missingFields);
+    } else {
+        console.log('✅ All required fields are present');
+    }
+    
+    // Check URL
+    const url = `/applications/parcel/${applicationId}/review/`;
+    console.log('Request URL:', url);
+    
+    // Log browser info
+    console.log('Browser:', navigator.userAgent);
+    
+    console.groupEnd();
+}
+
+// Function to test AJAX request without submitting the form
+async function testAjaxRequest(applicationId) {
+    console.group('AJAX Test Request');
+    
+    // Prepare test data
+    const testData = {
+        latitude: 0.1234567,
+        longitude: 0.1234567,
+        size_hectares: 1.5,
+        decision: 'approve',
+        review_notes: 'Test notes',
+        csrfmiddlewaretoken: getCsrfToken()
+    };
+    
+    // Convert to FormData
+    const formData = new FormData();
+    Object.entries(testData).forEach(([key, value]) => {
+        formData.append(key, value);
+    });
+    
+    console.log('Test FormData prepared');
+    
+    try {
+        // Make a test request
+        console.log('Sending test request...');
+        const response = await fetch(`/applications/parcel/${applicationId}/review/`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': testData.csrfmiddlewaretoken
+            },
+            body: formData
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        // Try to parse response
+        try {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const jsonData = await response.json();
+                console.log('JSON Response:', jsonData);
+            } else {
+                const textData = await response.text();
+                console.log('Text Response:', textData);
+            }
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+        }
+        
+        console.log('✅ Test request completed');
+    } catch (error) {
+        console.error('❌ Test request failed:', error);
+    }
+    
+    console.groupEnd();
+}
+
+// Add a "Debug" button to the modal
+function addDebugButton(applicationId) {
+    const modalContent = document.getElementById('modal-content');
+    const form = modalContent.querySelector('form');
+    
+    if (form) {
+        const debugButton = document.createElement('button');
+        debugButton.type = 'button';
+        debugButton.className = 'px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 mr-2';
+        debugButton.textContent = 'Debug Form';
+        debugButton.onclick = () => {
+            debugFormSubmission(new Event('debug'), applicationId);
+            testAjaxRequest(applicationId);
+        };
+        
+        // Add to form actions
+        const actionDiv = form.querySelector('div.flex.justify-end');
+        if (actionDiv) {
+            actionDiv.prepend(debugButton);
+        }
+    }
+}
+
+// To use this debugging feature, modify the openInspectionModal function to add:
+// addDebugButton(data.application.id);
+// right after the line:
+// document.getElementById('modal-content').innerHTML = generateInspectionForm(data.application);
 </script>
 {% endblock %}
