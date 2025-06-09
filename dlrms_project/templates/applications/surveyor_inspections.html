@@ -496,6 +496,7 @@ function initializeInspectionMap() {
             preferCanvas: true,   // Use Canvas renderer for better performance
             renderer: L.canvas()  // Explicitly set canvas renderer
         }).setView([-1.9441, 30.0619], 13);
+        // -1.9583, 30.1089
         
         // Add tile layers with optimized settings
         const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
