@@ -19,6 +19,13 @@ from core.mixins import RoleRequiredMixin
 import json
 from django.views.generic import View
 from datetime import datetime, timedelta
+import json
+from django.http import JsonResponse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.views.generic import DetailView
+
 # Landowner Views
 class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
     """View for landowners to submit parcel applications"""
@@ -569,3 +576,137 @@ def get_completed_inspection_details(request, application_id):
             'success': False,
             'message': f"Error retrieving inspection details: {str(e)}"
         }, status=500)
+    
+
+
+@login_required
+@csrf_exempt  # Only use this if you're handling CSRF in JavaScript
+def save_polygon_data(request, application_id):
+    """API endpoint to save polygon boundary data for a parcel"""
+    if request.user.role not in ['surveyor', 'admin']:
+        return JsonResponse({
+            'success': False,
+            'message': 'You do not have permission to perform this action.'
+        }, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'message': 'Only POST requests are supported.'
+        }, status=405)
+    
+    try:
+        # Get the application
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        
+        # Check if this application is assigned to the current surveyor
+        if application.field_agent != request.user and request.user.role != 'admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'You are not authorized to modify this application.'
+            }, status=403)
+        
+        # Parse JSON data from request
+        data = json.loads(request.body)
+        polygon_data = data.get('polygon', [])
+        center_lat = data.get('center_lat')
+        center_lng = data.get('center_lng')
+        area_sqm = data.get('area_sqm')
+        area_hectares = data.get('area_hectares')
+        
+        # Create or update GIS data model if you have one
+        # This is optional - only needed if you want to store the actual polygon
+        """
+        from your_gis_app.models import ParcelBoundary
+        
+        boundary, created = ParcelBoundary.objects.get_or_create(
+            application=application,
+            defaults={
+                'polygon_geojson': json.dumps(polygon_data),
+                'center_lat': center_lat,
+                'center_lng': center_lng,
+                'area_sqm': area_sqm,
+                'area_hectares': area_hectares,
+                'created_by': request.user
+            }
+        )
+        
+        if not created:
+            boundary.polygon_geojson = json.dumps(polygon_data)
+            boundary.center_lat = center_lat
+            boundary.center_lng = center_lng
+            boundary.area_sqm = area_sqm
+            boundary.area_hectares = area_hectares
+            boundary.updated_by = request.user
+            boundary.updated_at = timezone.now()
+            boundary.save()
+        """
+        
+        # Update the application with the center coordinates and area
+        application.latitude = center_lat
+        application.longitude = center_lng
+        application.size_hectares = area_hectares
+        application.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Boundary data saved successfully.'
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error saving boundary data: {str(e)}'
+        }, status=500)
+
+
+class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
+    """View for field agents to perform inspections on a separate page"""
+    allowed_roles = ['surveyor', 'admin']
+    model = ParcelApplication
+    template_name = 'applications/field_inspection.html'
+    context_object_name = 'application'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests for submitting inspections"""
+        application = self.get_object()
+        
+        # Only the assigned field agent can review
+        if application.field_agent != self.request.user and not self.request.user.is_superuser:
+            messages.error(request, 'You are not authorized to review this application.')
+            return redirect('applications:surveyor_inspections')
+        
+        # Extract form data
+        decision = request.POST.get('decision')
+        review_notes = request.POST.get('review_notes')
+        
+        try:
+            latitude = float(request.POST.get('latitude'))
+            longitude = float(request.POST.get('longitude'))
+            size_hectares = float(request.POST.get('size_hectares'))
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid coordinates or land size values.')
+            return redirect('applications:field_inspection', pk=application.pk)
+        
+        if decision not in ['approve', 'reject']:
+            messages.error(request, 'Invalid decision. Must be either "approve" or "reject".')
+            return redirect('applications:field_inspection', pk=application.pk)
+        
+        # Update application with inspection data
+        application.latitude = latitude
+        application.longitude = longitude
+        application.size_hectares = size_hectares
+        application.status = decision
+        application.review_notes = review_notes
+        application.review_date = timezone.now()
+        application.save()
+        
+        # Send notification to applicant (you would implement this)
+        # notify_applicant(application)
+        
+        messages.success(request, f'Application {application.application_number} has been {decision}d successfully.')
+        return redirect('applications:surveyor_inspections')

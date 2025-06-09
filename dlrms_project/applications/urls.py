@@ -46,4 +46,8 @@ urlpatterns = [
              reviewviews.export_applications, 
              name='api_export_applications'),
     ])),
+
+    path('api/save-polygon/<int:application_id>/', views.save_polygon_data, name='api_save_polygon'),
+    path('inspection/<int:pk>/', views.FieldInspectionView.as_view(), name='field_inspection'),
+
 ]

@@ -1,0 +1,480 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Field Inspection - DLRMS{% endblock %}
+
+{% block content %}
+<div class="flex">
+    {% include 'includes/sidebar.html' %}    
+    <div class="flex-1 p-6">
+        <div class="mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Field Inspection</h1>
+                    <p class="text-gray-600">Application: {{ application.application_number }}</p>
+                </div>
+                <a href="{% url 'applications:surveyor_inspections' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                    </svg>
+                    Back to Inspections
+                </a>
+            </div>
+        </div>
+        
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %} rounded-lg">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left column with map and form -->
+            <div class="lg:col-span-2">
+                <!-- Application Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Application Details -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
+                        <div class="bg-white shadow-sm rounded-lg p-4 space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Application Type:</span>
+                                <span class="font-medium">{{ application.get_application_type_display }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Applicant:</span>
+                                <span class="font-medium">{{ application.owner_first_name }} {{ application.owner_last_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Submitted On:</span>
+                                <span class="font-medium">{{ application.submitted_at|date:"M d, Y" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Property Information -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
+                        <div class="bg-white shadow-sm rounded-lg p-4 space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Address:</span>
+                                <span class="font-medium">{{ application.property_address }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Property Type:</span>
+                                <span class="font-medium">{{ application.property_type }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map Section - CRITICAL: Using the same structure as your working map.html -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+                    <div id="map" style="height: 600px;"></div>
+                </div>
+                
+                <!-- Area Display Section -->
+                <div class="bg-white shadow-sm rounded-lg p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <span>Property Size:</span>
+                        <div>
+                            <span id="area-hectares" class="font-medium">0</span> hectares
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right column with form controls -->
+            <div class="lg:col-span-1">
+                <div class="bg-white shadow-sm rounded-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Submit Inspection</h2>
+                    
+                    <form id="inspection-form" method="POST" action="{% url 'applications:field_inspection' application.pk %}" class="space-y-6">
+                        {% csrf_token %}
+                        
+                        <!-- Hidden inputs to store the values that will be submitted -->
+                        <input type="hidden" id="latitude" name="latitude" value="0">
+                        <input type="hidden" id="longitude" name="longitude" value="0">
+                        <input type="hidden" id="size_hectares" name="size_hectares" value="0">
+                        
+                        <!-- Map Controls -->
+                        <div class="space-y-3">
+                            <button type="button" id="get-location-btn" class="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                Get My Location
+                            </button>
+                            
+                            <button type="button" id="clear-markers-btn" class="w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Clear Markers
+                            </button>
+                        </div>
+                        
+                        <!-- Current Coordinates Display -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <h3 class="text-md font-medium text-gray-800 mb-2">Location Coordinates</h3>
+                            
+                            <div class="space-y-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Position</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="block text-xs text-gray-500">Latitude</label>
+                                            <input type="text" id="current-latitude" readonly
+                                                   class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500">Longitude</label>
+                                            <input type="text" id="current-longitude" readonly
+                                                   class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Decision Section -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <h3 class="text-md font-medium text-gray-800 mb-2">Inspection Decision</h3>
+                            
+                            <div class="space-y-2">
+                                <div class="flex items-center">
+                                    <input type="radio" id="approve" name="decision" value="approve" class="h-4 w-4 text-blue-600" checked>
+                                    <label for="approve" class="ml-2 text-sm text-gray-700">Approve Application</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" id="reject" name="decision" value="reject" class="h-4 w-4 text-blue-600">
+                                    <label for="reject" class="ml-2 text-sm text-gray-700">Reject Application</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes Section -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <h3 class="text-md font-medium text-gray-800 mb-2">Inspection Notes</h3>
+                            
+                            <textarea id="review_notes" name="review_notes" rows="4" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                      placeholder="Add any relevant notes about the property inspection..."></textarea>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Submit Inspection Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="notification-toast" class="fixed bottom-4 right-4 px-4 py-3 bg-gray-800 text-white rounded-lg shadow-lg transform transition-transform duration-300 translate-y-24 opacity-0">
+    <p id="notification-message"></p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet CSS and JS - USING THE EXACT SAME VERSION AND APPROACH AS YOUR WORKING MAP -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize the map - USING THE EXACT SAME APPROACH AS YOUR WORKING MAP
+        var map = L.map('map').setView([-1.9441, 30.0619], 12); // Default to North Kivu region
+        
+        // Add OpenStreetMap tiles - SAME AS WORKING MAP
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Variables to store markers
+        var currentPositionMarker = null;
+        var selectedPositionMarker = null;
+        var drawnItems = new L.FeatureGroup();
+        var currentPolygon = null;
+        
+        // Add the FeatureGroup to the map
+        map.addLayer(drawnItems);
+        
+        // Initialize the draw control
+        var drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems,
+                poly: {
+                    allowIntersection: false
+                }
+            },
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true
+                },
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            }
+        });
+        
+        // Add the draw control to the map
+        map.addControl(drawControl);
+        
+        // Elements
+        const currentLatInput = document.getElementById('current-latitude');
+        const currentLngInput = document.getElementById('current-longitude');
+        const areaHectaresSpan = document.getElementById('area-hectares');
+        const getLocationBtn = document.getElementById('get-location-btn');
+        const clearMarkersBtn = document.getElementById('clear-markers-btn');
+        const notificationToast = document.getElementById('notification-toast');
+        const notificationMessage = document.getElementById('notification-message');
+        
+        // Show notification toast
+        function showNotification(message, isSuccess = true) {
+            notificationMessage.textContent = message;
+            notificationToast.classList.remove('translate-y-24', 'opacity-0');
+            notificationToast.classList.add('translate-y-0', 'opacity-100');
+            
+            if (isSuccess) {
+                notificationToast.classList.remove('bg-red-600');
+                notificationToast.classList.add('bg-gray-800');
+            } else {
+                notificationToast.classList.remove('bg-gray-800');
+                notificationToast.classList.add('bg-red-600');
+            }
+            
+            setTimeout(() => {
+                notificationToast.classList.remove('translate-y-0', 'opacity-100');
+                notificationToast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+        
+        // Function to get current location
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showNotification('Geolocation is not supported by your browser', false);
+                return;
+            }
+            
+            getLocationBtn.disabled = true;
+            getLocationBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Getting location...';
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Update input fields
+                    currentLatInput.value = lat.toFixed(7);
+                    currentLngInput.value = lng.toFixed(7);
+                    
+                    // Update hidden fields for form submission
+                    document.getElementById('latitude').value = lat.toFixed(7);
+                    document.getElementById('longitude').value = lng.toFixed(7);
+                    
+                    // Center map on current position
+                    map.setView([lat, lng], 18);
+                    
+                    // Add or update marker
+                    if (currentPositionMarker) {
+                        currentPositionMarker.setLatLng([lat, lng]);
+                    } else {
+                        // Use a circleMarker which doesn't rely on external images
+                        currentPositionMarker = L.circleMarker([lat, lng], {
+                            radius: 8,
+                            fillColor: '#3b82f6',
+                            color: '#ffffff',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
+                        
+                        currentPositionMarker.bindPopup('Your Current Location').openPopup();
+                    }
+                    
+                    showNotification('Current location detected');
+                    
+                    // Re-enable button
+                    getLocationBtn.disabled = false;
+                    getLocationBtn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Get My Location';
+                },
+                function(error) {
+                    let errorMsg = 'Unable to retrieve your location';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = 'Location access denied. Please enable location services.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = 'Location information is unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = 'The request to get location timed out.';
+                            break;
+                    }
+                    
+                    showNotification(errorMsg, false);
+                    
+                    // Re-enable button
+                    getLocationBtn.disabled = false;
+                    getLocationBtn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Get My Location';
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+        
+        // Function to clear drawing
+        function clearDrawing() {
+            if (drawnItems) {
+                drawnItems.clearLayers();
+                currentPolygon = null;
+                
+                // Reset area values
+                areaHectaresSpan.textContent = '0';
+                document.getElementById('size_hectares').value = '0';
+                
+                // Clear current position marker if it exists
+                if (currentPositionMarker) {
+                    map.removeLayer(currentPositionMarker);
+                    currentPositionMarker = null;
+                    currentLatInput.value = '';
+                    currentLngInput.value = '';
+                }
+                
+                showNotification('Map cleared');
+            }
+        }
+        
+        // Listen for the created event
+        map.on(L.Draw.Event.CREATED, function(event) {
+            const layer = event.layer;
+            
+            // Remove existing polygon if any
+            if (currentPolygon) {
+                drawnItems.removeLayer(currentPolygon);
+            }
+            
+            // Save reference to current polygon
+            currentPolygon = layer;
+            
+            // Add the layer to the feature group
+            drawnItems.addLayer(layer);
+            
+            // Calculate and display area
+            updateAreaFromPolygon(layer);
+            
+            // Get center coordinates
+            const center = layer.getBounds().getCenter();
+            document.getElementById('latitude').value = center.lat.toFixed(7);
+            document.getElementById('longitude').value = center.lng.toFixed(7);
+        });
+        
+        // Listen for the edited event
+        map.on(L.Draw.Event.EDITED, function(event) {
+            const layers = event.layers;
+            layers.eachLayer(function(layer) {
+                updateAreaFromPolygon(layer);
+                
+                // Update center coordinates
+                const center = layer.getBounds().getCenter();
+                document.getElementById('latitude').value = center.lat.toFixed(7);
+                document.getElementById('longitude').value = center.lng.toFixed(7);
+            });
+        });
+        
+        // Calculate area from polygon
+        function updateAreaFromPolygon(layer) {
+            try {
+                // Make sure L.GeometryUtil is available
+                if (!L.GeometryUtil) {
+                    L.GeometryUtil = L.GeometryUtil || {};
+                    L.GeometryUtil.geodesicArea = function(latLngs) {
+                        let area = 0;
+                        if (latLngs.length > 2) {
+                            for (let i = 0; i < latLngs.length; i++) {
+                                const j = (i + 1) % latLngs.length;
+                                area += latLngs[i].lng * latLngs[j].lat;
+                                area -= latLngs[j].lng * latLngs[i].lat;
+                            }
+                            area = Math.abs(area) * 0.5 * 111319.9 * 111319.9;
+                        }
+                        return area;
+                    };
+                }
+                
+                // Calculate area in square meters
+                const areaInSquareMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                
+                // Convert to hectares (1 hectare = 10,000 square meters)
+                const areaInHectares = areaInSquareMeters / 10000;
+                const roundedHectares = Math.round(areaInHectares * 10000) / 10000; // Round to 4 decimal places
+                
+                // Update the display
+                areaHectaresSpan.textContent = roundedHectares;
+                
+                // Update the hidden field for form submission
+                document.getElementById('size_hectares').value = roundedHectares;
+                
+            } catch (error) {
+                console.error("Error calculating area:", error);
+                areaHectaresSpan.textContent = "Error";
+            }
+        }
+        
+        // Form validation
+        document.getElementById('inspection-form').addEventListener('submit', function(event) {
+            // Get form values
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+            const sizeHectares = parseFloat(document.getElementById('size_hectares').value);
+            
+            // Validate coordinates and size
+            if (isNaN(latitude) || isNaN(longitude) || latitude === 0 || longitude === 0) {
+                event.preventDefault();
+                showNotification('Please set property coordinates using the map or location button', false);
+                return;
+            }
+            
+            if (isNaN(sizeHectares) || sizeHectares <= 0) {
+                event.preventDefault();
+                showNotification('Please define the property area by drawing on the map', false);
+                return;
+            }
+            
+            // If validation passes, form will submit normally
+            // Show loading state
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Submitting...
+            `;
+        });
+        
+        // Add event listeners
+        getLocationBtn.addEventListener('click', getCurrentLocation);
+        clearMarkersBtn.addEventListener('click', clearDrawing);
+        
+        // Try to get location on load
+        getCurrentLocation();
+    });
+</script>
+{% endblock %}

@@ -2,6 +2,83 @@
 
 {% block title %}Field Inspections - DLRMS{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<style>
+    #map-container {
+        height: 400px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .measurement-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .area-display {
+        padding: 10px 15px;
+        background-color: #f3f4f6;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .area-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .area-hectares {
+        color: #4b5563;
+        font-size: 0.9em;
+    }
+    
+    .map-instructions {
+        margin-bottom: 10px;
+        padding: 10px;
+        background-color: #e9f2fe;
+        border-radius: 6px;
+        font-size: 0.9em;
+        color: #1e40af;
+    }
+    
+    .toggle-measure-method {
+        display: flex;
+        margin-bottom: 15px;
+    }
+    
+    .toggle-measure-method button {
+        flex: 1;
+        padding: 8px;
+        background-color: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        color: #4b5563;
+        font-size: 0.9em;
+        transition: all 0.2s;
+    }
+    
+    .toggle-measure-method button:first-child {
+        border-radius: 6px 0 0 6px;
+    }
+    
+    .toggle-measure-method button:last-child {
+        border-radius: 0 6px 6px 0;
+    }
+    
+    .toggle-measure-method button.active {
+        background-color: #2563eb;
+        color: white;
+        border-color: #2563eb;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50">
     <div class="layout-container flex h-full grow flex-col">
@@ -61,7 +138,7 @@
                                     {% for app in inspections %}
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <a href="#" onclick="openInspectionModal({{ app.id }})" class="text-blue-600 hover:text-blue-800">
+                                            <a href="{% url 'applications:field_inspection' app.id %}" class="text-blue-600 hover:text-blue-800">
                                                 {{ app.application_number }}
                                             </a>
                                         </td>
@@ -96,13 +173,13 @@
                                             {{ app.updated_at|date:"M d, Y" }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openInspectionModal({{ app.id }})" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                                            <a href="{% url 'applications:field_inspection' app.id %}" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                 </svg>
-                                                Inspect Property
-                                            </button>
+                                                    Inspect Property
+                                            </a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -221,55 +298,371 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script>
-    // Function to open inspection modal and load application details
-    function openInspectionModal(applicationId) {
-        // Show the modal
-        document.getElementById('inspection-modal').classList.remove('hidden');
-        
-        // Set loading state
-        document.getElementById('modal-content').innerHTML = `
-            <div class="flex justify-center">
-                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        `;
-        
-        // Fetch application details
-        fetch(`/applications/api/inspection/${applicationId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update modal title
-                    document.getElementById('modal-title').textContent = `Field Inspection - ${data.application.application_number}`;
-                    
-                    // Update modal content
-                    document.getElementById('modal-content').innerHTML = generateInspectionForm(data.application);
-                } else {
-                    document.getElementById('modal-content').innerHTML = `
-                        <div class="bg-red-100 p-4 rounded-lg">
-                            <p class="text-red-800">${data.message || 'Error loading application details'}</p>
-                        </div>
-                    `;
-                }
-            })
-            .catch(error => {
-                console.error('Error loading application details:', error);
+    // Complete script to replace the entire script section in surveyor_inspections.html
+let map;
+let drawnItems;
+let drawControl;
+let currentPolygon = null;
+let resizeTimer;
+
+// Function to open inspection modal and load application details with improved map handling
+function openInspectionModal(applicationId) {
+    console.log(`Opening inspection modal for application ${applicationId}`);
+    
+    // Show the modal
+    const modal = document.getElementById('inspection-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('modal-title').textContent = 'Field Inspection';
+    
+    // Set loading state
+    document.getElementById('modal-content').innerHTML = `
+        <div class="flex justify-center">
+            <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    `;
+    
+    // Fetch application details
+    fetch(`/applications/api/inspection/${applicationId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update modal title
+                document.getElementById('modal-title').textContent = `Field Inspection - ${data.application.application_number}`;
+                
+                // Generate form HTML
+                const formHtml = generateInspectionForm(data.application);
+                
+                // Update modal content
+                document.getElementById('modal-content').innerHTML = formHtml;
+                
+                // Properly handle map initialization with a more robust approach
+                initMapWithDelayedRendering(applicationId);
+            } else {
                 document.getElementById('modal-content').innerHTML = `
                     <div class="bg-red-100 p-4 rounded-lg">
-                        <p class="text-red-800">An error occurred while loading application details.</p>
+                        <p class="text-red-800">${data.message || 'Error loading inspection details'}</p>
                     </div>
                 `;
-            });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading inspection:', error);
+            document.getElementById('modal-content').innerHTML = `
+                <div class="bg-red-100 p-4 rounded-lg">
+                    <p class="text-red-800">An error occurred while loading inspection details.</p>
+                </div>
+            `;
+        });
+}
+
+// Improved map initialization with better handling of rendering issues
+function initMapWithDelayedRendering(applicationId) {
+    console.log("Preparing map initialization...");
+    
+    // Make sure the map container is ready and properly sized
+    const mapContainer = document.getElementById('map-container');
+    if (!mapContainer) {
+        console.error("Map container not found");
+        return;
     }
     
-    // Function to generate inspection form HTML
-    // Modify the inspection form HTML to include the onsubmit event handler
-function generateInspectionForm(application) {
-    const csrfToken = getCsrfToken();
+    // Set explicit height to ensure container has dimensions
+    mapContainer.style.height = '400px';
     
+    // Add custom CSS to fix marker icon issues
+    addMarkerIconFixes();
+    
+    // Force layout calculation to ensure DOM is ready
+    void mapContainer.offsetHeight;
+    
+    // Delay initialization slightly to ensure modal is fully rendered
+    setTimeout(() => {
+        initializeInspectionMap();
+        initializeFormSubmit(applicationId);
+    }, 300);
+}
+
+// Add CSS fixes for marker icons
+function addMarkerIconFixes() {
+    // Only add once
+    if (document.getElementById('leaflet-marker-fixes')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'leaflet-marker-fixes';
+    style.textContent = `
+        /* Fix for missing marker icons */
+        .leaflet-default-icon-path {
+            background-image: url(https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png);
+        }
+        
+        /* Custom marker icon path overrides */
+        .leaflet-control-layers-toggle {
+            background-image: url(https://unpkg.com/leaflet@1.7.1/dist/images/layers.png);
+        }
+        
+        .leaflet-retina .leaflet-control-layers-toggle {
+            background-image: url(https://unpkg.com/leaflet@1.7.1/dist/images/layers-2x.png);
+        }
+        
+        /* Prevent map from showing tiling artifacts */
+        .leaflet-container {
+            background: #f8f9fa !important;
+        }
+        
+        .leaflet-tile {
+            visibility: visible !important;
+        }
+        
+        /* Fix modal content sizing */
+        #map-container {
+            position: relative;
+            z-index: 1;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // If needed, explicitly preload marker icons
+    preloadLeafletImages();
+}
+
+// Preload Leaflet marker images to prevent 404 errors
+function preloadLeafletImages() {
+    const iconUrls = [
+        'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+        'https://unpkg.com/leaflet@1.7.1/dist/images/layers.png',
+        'https://unpkg.com/leaflet@1.7.1/dist/images/layers-2x.png'
+    ];
+    
+    iconUrls.forEach(url => {
+        const img = new Image();
+        img.src = url;
+    });
+}
+
+// Improved map initialization with better tile loading
+function initializeInspectionMap() {
+    console.log("Starting map initialization...");
+    
+    // Clean up existing map instance if it exists
+    if (map) {
+        console.log("Removing existing map instance");
+        map.remove();
+        map = null;
+    }
+    
+    // Reset drawn items
+    drawnItems = null;
+    currentPolygon = null;
+    
+    const mapContainer = document.getElementById('map-container');
+    
+    try {
+        console.log("Creating new map instance");
+        
+        // Fix for missing L.GeometryUtil
+        if (!L.GeometryUtil) {
+            console.log("Adding L.GeometryUtil implementation");
+            L.GeometryUtil = L.GeometryUtil || {};
+            L.GeometryUtil.geodesicArea = function(latLngs) {
+                let area = 0;
+                if (latLngs.length > 2) {
+                    for (let i = 0; i < latLngs.length; i++) {
+                        const j = (i + 1) % latLngs.length;
+                        area += latLngs[i].lng * latLngs[j].lat;
+                        area -= latLngs[j].lng * latLngs[i].lat;
+                    }
+                    area = Math.abs(area) * 0.5 * 111319.9 * 111319.9;
+                }
+                return area;
+            };
+        }
+        
+        // Create map with optimized settings to prevent tiling issues
+        map = L.map('map-container', {
+            zoomSnap: 0.25,      // Allow fractional zoom for smoother experience
+            zoomDelta: 0.5,       
+            wheelPxPerZoomLevel: 120,
+            fadeAnimation: false, // Disable animations that might cause tiling
+            zoomAnimation: false, // Disable zoom animations to prevent tiling issues
+            markerZoomAnimation: false,
+            preferCanvas: true,   // Use Canvas renderer for better performance
+            renderer: L.canvas()  // Explicitly set canvas renderer
+        }).setView([-1.9441, 30.0619], 13);
+        
+        // Add tile layers with optimized settings
+        const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19,
+            minZoom: 5,
+            updateWhenIdle: true,
+            updateWhenZooming: false,
+            keepBuffer: 4,         // Increase buffer to prevent white spaces
+            maxNativeZoom: 18,     // Limit max native zoom to prevent tile issues
+            tileSize: 256,         // Explicit tile size
+            crossOrigin: true      // Enable CORS for tiles
+        });
+        
+        osmTiles.addTo(map);
+        console.log("Base map layer added");
+        
+        // Initialize the FeatureGroup to store editable layers
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // Initialize the draw control and pass it the FeatureGroup of editable layers
+        drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems,
+                poly: {
+                    allowIntersection: false
+                }
+            },
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true
+                },
+                polyline: false,
+                circle: false,
+                rectangle: false,
+                marker: false,
+                circlemarker: false
+            }
+        });
+        
+        map.addControl(drawControl);
+        console.log("Draw controls added");
+        
+        // Handle polygon creation
+        map.on(L.Draw.Event.CREATED, function (e) {
+            console.log("Polygon created");
+            if (currentPolygon) {
+                drawnItems.removeLayer(currentPolygon);
+            }
+            
+            const layer = e.layer;
+            currentPolygon = layer;
+            drawnItems.addLayer(layer);
+            
+            // Calculate area
+            updateAreaFromPolygon(layer);
+            
+            // Get the center of the polygon for lat/long
+            const center = layer.getBounds().getCenter();
+            document.getElementById('latitude').value = center.lat;
+            document.getElementById('longitude').value = center.lng;
+        });
+        
+        // Handle polygon editing
+        map.on(L.Draw.Event.EDITED, function (e) {
+            console.log("Polygon edited");
+            const layers = e.layers;
+            layers.eachLayer(function (layer) {
+                updateAreaFromPolygon(layer);
+                
+                // Update center coordinates
+                const center = layer.getBounds().getCenter();
+                document.getElementById('latitude').value = center.lat;
+                document.getElementById('longitude').value = center.lng;
+            });
+        });
+        
+        // Try to get user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    console.log("Got user location");
+                    map.setView([position.coords.latitude, position.coords.longitude], 16);
+                    
+                    // Use custom marker options to avoid missing icon issues
+                    const userMarker = L.marker([position.coords.latitude, position.coords.longitude], {
+                        icon: createCustomMarkerIcon()
+                    }).addTo(map);
+                    
+                    userMarker.bindPopup("Your location").openPopup();
+                }, 
+                function(error) {
+                    console.log("Could not get user location:", error.message);
+                },
+                { 
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        }
+        
+        // Set up method toggle
+        setupMethodToggle();
+        
+        // Apply a more robust approach to invalidate map size
+        applyRobustMapSizeInvalidation();
+        
+        console.log("Map initialization completed");
+    } catch (error) {
+        console.error("Error initializing map:", error);
+        
+        // Attempt recovery if initialization fails
+        setTimeout(() => {
+            console.log("Attempting map recovery...");
+            const mapDiv = document.getElementById('map-container');
+            if (mapDiv) {
+                mapDiv.innerHTML = '<div class="p-4 bg-yellow-100 text-yellow-800 rounded">Map initialization failed. <button id="retry-map" class="underline">Retry</button></div>';
+                document.getElementById('retry-map')?.addEventListener('click', initializeInspectionMap);
+            }
+        }, 500);
+    }
+}
+
+// Create a custom marker icon to avoid missing icon issues
+function createCustomMarkerIcon() {
+    return L.divIcon({
+        className: 'custom-map-marker',
+        html: '<div style="background-color: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+}
+
+// Apply a more robust approach to invalidate map size
+function applyRobustMapSizeInvalidation() {
+    if (!map) return;
+    
+    // Immediate invalidation
+    map.invalidateSize(true);
+    
+    // Series of delayed invalidations with increasing delays
+    const delays = [100, 300, 500, 1000, 2000];
+    
+    delays.forEach(delay => {
+        setTimeout(() => {
+            if (map) {
+                console.log(`Invalidating map size after ${delay}ms`);
+                map.invalidateSize(true);
+                
+                // Force re-render of tiles at longer intervals
+                if (delay >= 500) {
+                    map.eachLayer(function(layer) {
+                        if (layer instanceof L.TileLayer) {
+                            layer.redraw();
+                        }
+                    });
+                }
+            }
+        }, delay);
+    });
+}
+
+// Function to generate inspection form HTML
+function generateInspectionForm(application) {
     return `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Application Details -->
@@ -283,10 +676,6 @@ function generateInspectionForm(application) {
                     <div class="flex justify-between">
                         <span class="text-gray-500">Applicant:</span>
                         <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Email:</span>
-                        <span class="font-medium">${application.applicant_email}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Submitted On:</span>
@@ -312,74 +701,196 @@ function generateInspectionForm(application) {
         </div>
         
         <!-- Inspection Form -->
-        <form id="inspection-form" onsubmit="submitInspectionForm(event, ${application.id})" class="space-y-4">
-            <!-- Properly include the CSRF token in the form -->
-            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+        <form id="inspection-form" class="space-y-4">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
             
             <div>
                 <h4 class="text-md font-semibold text-gray-800 mb-4">Field Inspection Report</h4>
                 
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Property Coordinates</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label for="latitude" class="block text-xs text-gray-500">Latitude</label>
-                                <input type="number" step="0.0000001" name="latitude" id="latitude" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                       required>
+                    <!-- Map Integration Section -->
+                    <div class="mb-4">
+                        <h4 class="text-md font-semibold text-gray-800 mb-2">Land Measurement</h4>
+                        
+                        <div class="toggle-measure-method">
+                            <button type="button" id="method-map" class="active">Map Drawing</button>
+                            <button type="button" id="method-manual">Manual Entry</button>
+                        </div>
+                        
+                        <!-- Map Method -->
+                        <div id="map-method">
+                            <div class="map-instructions">
+                                <p><i class="fas fa-info-circle mr-1"></i> Use the drawing tools to mark the boundaries of the parcel. Draw a polygon by clicking points on the map. Double-click to complete.</p>
                             </div>
-                            <div>
-                                <label for="longitude" class="block text-xs text-gray-500">Longitude</label>
-                                <input type="number" step="0.0000001" name="longitude" id="longitude" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                       required>
+                            
+                            <div id="map-container"></div>
+                            
+                            <div class="area-display">
+                                <div class="flex justify-between items-center">
+                                    <span>Calculated Area:</span>
+                                    <div>
+                                        <span id="area-value" class="area-value">0</span> m²
+                                        <span class="mx-1">|</span>
+                                        <span id="area-hectares" class="area-hectares">0</span> hectares
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Method -->
+                        <div id="manual-method" class="hidden">
+                            <div class="measurement-inputs">
+                                <div>
+                                    <label for="length" class="block text-sm font-medium text-gray-700 mb-1">Length (meters)</label>
+                                    <input type="number" id="length" name="length" min="0" step="0.01" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                           oninput="calculateAreaFromDimensions()">
+                                </div>
+                                <div>
+                                    <label for="width" class="block text-sm font-medium text-gray-700 mb-1">Width (meters)</label>
+                                    <input type="number" id="width" name="width" min="0" step="0.01"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                           oninput="calculateAreaFromDimensions()">
+                                </div>
+                            </div>
+                            
+                            <div class="area-display">
+                                <div class="flex justify-between items-center">
+                                    <span>Calculated Area:</span>
+                                    <div>
+                                        <span id="manual-area-value" class="area-value">0</span> m²
+                                        <span class="mx-1">|</span>
+                                        <span id="manual-area-hectares" class="area-hectares">0</span> hectares
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div>
-                        <label for="size_hectares" class="block text-sm font-medium text-gray-700 mb-1">
-                            Land Size (hectares)
-                        </label>
-                        <input type="number" step="0.0001" name="size_hectares" id="size_hectares" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                               required>
-                    </div>
+                    <!-- Hidden inputs to store the values that will be submitted -->
+                    <input type="hidden" id="latitude" name="latitude" value="0">
+                    <input type="hidden" id="longitude" name="longitude" value="0">
+                    <input type="hidden" id="size_hectares" name="size_hectares" value="0">
                     
                     <div>
-                        <label for="decision" class="block text-sm font-medium text-gray-700 mb-1">Decision</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Decision</label>
                         <div class="space-y-2">
                             <div class="flex items-center">
-                                <input type="radio" id="approve" name="decision" value="approve" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300" required>
-                                <label for="approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
+                                <input type="radio" id="approve" name="decision" value="approve" class="h-4 w-4 text-blue-600" checked>
+                                <label for="approve" class="ml-2 text-sm text-gray-700">Approve Application</label>
                             </div>
                             <div class="flex items-center">
-                                <input type="radio" id="reject" name="decision" value="reject" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
-                                <label for="reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
+                                <input type="radio" id="reject" name="decision" value="reject" class="h-4 w-4 text-blue-600">
+                                <label for="reject" class="ml-2 text-sm text-gray-700">Reject Application</label>
                             </div>
                         </div>
                     </div>
                     
                     <div>
                         <label for="review_notes" class="block text-sm font-medium text-gray-700 mb-1">Inspection Notes</label>
-                        <textarea id="review_notes" name="review_notes" rows="3" 
-                                  placeholder="Enter your observations and findings from the field inspection..."
+                        <textarea id="review_notes" name="review_notes" rows="4" 
                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"></textarea>
                     </div>
                 </div>
             </div>
             
-            <div class="flex justify-end pt-4 border-t border-gray-200">
-                <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 mr-2">
+            <div class="flex justify-end pt-4 border-t border-gray-200 space-x-2">
+                <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                     Cancel
                 </button>
-                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Submit Inspection Report
                 </button>
             </div>
         </form>
     `;
+}
+
+// Function to initialize form submission
+function initializeFormSubmit(applicationId) {
+    document.getElementById('inspection-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        submitInspectionForm(event, applicationId);
+    });
+}
+
+// Function to handle method toggle between map and manual input
+function setupMethodToggle() {
+    const mapMethodBtn = document.getElementById('method-map');
+    const manualMethodBtn = document.getElementById('method-manual');
+    const mapMethod = document.getElementById('map-method');
+    const manualMethod = document.getElementById('manual-method');
+    
+    if (!mapMethodBtn || !manualMethodBtn) return;
+    
+    mapMethodBtn.addEventListener('click', function() {
+        mapMethodBtn.classList.add('active');
+        manualMethodBtn.classList.remove('active');
+        mapMethod.classList.remove('hidden');
+        manualMethod.classList.add('hidden');
+        
+        // Refresh map when shown
+        setTimeout(function() {
+            if (map) {
+                map.invalidateSize(true);
+                
+                // Force re-render of tiles
+                map.eachLayer(function(layer) {
+                    if (layer instanceof L.TileLayer) {
+                        layer.redraw();
+                    }
+                });
+            }
+        }, 50);
+    });
+    
+    manualMethodBtn.addEventListener('click', function() {
+        manualMethodBtn.classList.add('active');
+        mapMethodBtn.classList.remove('active');
+        manualMethod.classList.remove('hidden');
+        mapMethod.classList.add('hidden');
+    });
+}
+
+// Prevent excessive map invalidation on window resize
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+        if (map && !document.getElementById('inspection-modal').classList.contains('hidden')) {
+            console.log("Window resized, invalidating map size");
+            map.invalidateSize(true);
+            
+            // Force re-render of tiles
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.TileLayer) {
+                    layer.redraw();
+                }
+            });
+        }
+    }, 250); // Debounce resize events
+});
+
+// Improved handling of modal closing
+function closeInspectionModal() {
+    console.log("Closing inspection modal");
+    document.getElementById('inspection-modal').classList.add('hidden');
+    
+    // More thorough cleanup when the modal is closed
+    if (map) {
+        console.log("Removing map instance");
+        
+        // Remove event listeners
+        map.off();
+        
+        // Remove the map completely
+        map.remove();
+        map = null;
+        
+        // Clean up variables
+        drawnItems = null;
+        currentPolygon = null;
+        drawControl = null;
+    }
 }
 
 // Function to handle the form submission via AJAX
@@ -402,6 +913,10 @@ function submitInspectionForm(event, applicationId) {
     const form = document.getElementById('inspection-form');
     const formData = new FormData(form);
     
+    // Log submission for debugging
+    console.log("Submitting inspection form for application", applicationId);
+    console.log("Form values:", Object.fromEntries(formData));
+    
     // Submit the form via AJAX - REMOVE Content-Type header to let browser set it automatically with boundary
     fetch(`/applications/parcel/${applicationId}/review/`, {
         method: 'POST',
@@ -414,6 +929,7 @@ function submitInspectionForm(event, applicationId) {
         body: formData
     })
     .then(response => {
+        console.log("Server response status:", response.status);
         // Check if response is JSON
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -426,6 +942,7 @@ function submitInspectionForm(event, applicationId) {
         }
     })
     .then(({ status, data }) => {
+        console.log("Processed response:", data);
         if (data.success) {
             // Show success message
             showToast(data.message || 'Inspection submitted successfully', 'success');
@@ -479,6 +996,162 @@ function getCsrfToken() {
     return cookieValue || '';
 }
 
+// Calculate area from polygon
+function updateAreaFromPolygon(layer) {
+    // Calculate area in square meters
+    const areaInSquareMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+    const roundedArea = Math.round(areaInSquareMeters * 100) / 100; // Round to 2 decimal places
+    
+    // Convert to hectares (1 hectare = 10,000 square meters)
+    const areaInHectares = roundedArea / 10000;
+    const roundedHectares = Math.round(areaInHectares * 10000) / 10000; // Round to 4 decimal places
+    
+    // Update the display
+    document.getElementById('area-value').textContent = roundedArea;
+    document.getElementById('area-hectares').textContent = roundedHectares;
+    
+    // Update the hidden field for form submission
+    document.getElementById('size_hectares').value = roundedHectares;
+}
+
+// Calculate area from dimensions for manual entry
+function calculateAreaFromDimensions() {
+    const length = parseFloat(document.getElementById('length').value) || 0;
+    const width = parseFloat(document.getElementById('width').value) || 0;
+    
+    // Calculate area in square meters
+    const areaInSquareMeters = length * width;
+    
+    // Convert to hectares
+    const areaInHectares = areaInSquareMeters / 10000;
+    
+    // Update the display
+    document.getElementById('manual-area-value').textContent = areaInSquareMeters.toFixed(2);
+    document.getElementById('manual-area-hectares').textContent = areaInHectares.toFixed(4);
+    
+    // Update the hidden field for form submission
+    document.getElementById('size_hectares').value = areaInHectares.toFixed(4);
+    
+    // If we have dimensions, use the center of North Kivu for lat/lng
+    // In a real app, you'd want to get more accurate coordinates
+    if (length > 0 && width > 0) {
+        document.getElementById('latitude').value = -1.9441;
+        document.getElementById('longitude').value = 30.0619;
+    }
+}
+
+// Function to view completed inspection
+function viewCompletedInspection(applicationId) {
+    // Show the modal
+    document.getElementById('inspection-modal').classList.remove('hidden');
+    
+    // Set loading state
+    document.getElementById('modal-content').innerHTML = `
+        <div class="flex justify-center">
+            <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    `;
+    
+    // Fetch application details
+    fetch(`/applications/api/completed-inspection/${applicationId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update modal title
+                document.getElementById('modal-title').textContent = `Completed Inspection - ${data.application.application_number}`;
+                
+                // Update modal content with completed inspection details
+                document.getElementById('modal-content').innerHTML = generateCompletedInspectionView(data.application);
+            } else {
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="bg-red-100 p-4 rounded-lg">
+                        <p class="text-red-800">${data.message || 'Error loading completed inspection details'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading completed inspection details:', error);
+            document.getElementById('modal-content').innerHTML = `
+                <div class="bg-red-100 p-4 rounded-lg">
+                    <p class="text-red-800">An error occurred while loading completed inspection details.</p>
+                </div>
+            `;
+        });
+}
+
+// Function to generate completed inspection view HTML
+function generateCompletedInspectionView(application) {
+    return `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Application Details -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Application Type:</span>
+                        <span class="font-medium">${application.application_type_display}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Applicant:</span>
+                        <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Status:</span>
+                        <span class="font-medium ${application.status === 'approved' ? 'text-green-600' : 'text-red-600'}">${application.status_display}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Property Information -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
+                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Address:</span>
+                        <span class="font-medium">${application.property_address}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Property Type:</span>
+                        <span class="font-medium">${application.property_type}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Size:</span>
+                        <span class="font-medium">${application.size_hectares} hectares</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Inspection Details -->
+        <div class="mb-6">
+            <h4 class="text-sm font-medium text-gray-500 mb-3">Inspection Details</h4>
+            <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Coordinates:</span>
+                    <span class="font-medium">Lat: ${application.latitude}, Long: ${application.longitude}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Completed On:</span>
+                    <span class="font-medium">${application.review_date}</span>
+                </div>
+                <div class="mt-2">
+                    <span class="text-gray-500">Inspection Notes:</span>
+                    <p class="mt-1 text-sm">${application.review_notes || 'No notes provided'}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end pt-4 border-t border-gray-200">
+            <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Close
+            </button>
+        </div>
+    `;
+}
 
 // Toast notification function
 function showToast(message, type = 'info') {
@@ -501,11 +1174,14 @@ function showToast(message, type = 'info') {
     
     toast.innerHTML = `
         <div class="flex items-center">
-            <i class="fas fa-${
-                type === 'success' ? 'check-circle' : 
-                type === 'error' ? 'exclamation-circle' : 
-                'info-circle'
-            } mr-2"></i>
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ${type === 'success' 
+                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' 
+                    : type === 'error' 
+                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' 
+                    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                }
+            </svg>
             <span>${message}</span>
         </div>
     `;
@@ -526,133 +1202,8 @@ function showToast(message, type = 'info') {
         }, 300);
     }, 4000);
 }
-    
-    // Function to view completed inspection
-    function viewCompletedInspection(applicationId) {
-        // Show the modal
-        document.getElementById('inspection-modal').classList.remove('hidden');
-        
-        // Set loading state
-        document.getElementById('modal-content').innerHTML = `
-            <div class="flex justify-center">
-                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        `;
-        
-        // Fetch application details
-        fetch(`/applications/api/completed-inspection/${applicationId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update modal title
-                    document.getElementById('modal-title').textContent = `Completed Inspection - ${data.application.application_number}`;
-                    
-                    // Update modal content with completed inspection details
-                    document.getElementById('modal-content').innerHTML = generateCompletedInspectionView(data.application);
-                } else {
-                    document.getElementById('modal-content').innerHTML = `
-                        <div class="bg-red-100 p-4 rounded-lg">
-                            <p class="text-red-800">${data.message || 'Error loading completed inspection details'}</p>
-                        </div>
-                    `;
-                }
-            })
-            .catch(error => {
-                console.error('Error loading completed inspection details:', error);
-                document.getElementById('modal-content').innerHTML = `
-                    <div class="bg-red-100 p-4 rounded-lg">
-                        <p class="text-red-800">An error occurred while loading completed inspection details.</p>
-                    </div>
-                `;
-            });
-    }
-    
-    // Function to generate completed inspection view HTML
-    function generateCompletedInspectionView(application) {
-        return `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- Application Details -->
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 mb-3">Application Details</h4>
-                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Application Type:</span>
-                            <span class="font-medium">${application.application_type_display}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Applicant:</span>
-                            <span class="font-medium">${application.owner_first_name} ${application.owner_last_name}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Status:</span>
-                            <span class="font-medium ${application.status === 'approved' ? 'text-green-600' : 'text-red-600'}">${application.status_display}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Property Information -->
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500 mb-3">Property Information</h4>
-                    <div class="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Address:</span>
-                            <span class="font-medium">${application.property_address}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Property Type:</span>
-                            <span class="font-medium">${application.property_type}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Size:</span>
-                            <span class="font-medium">${application.size_hectares} hectares</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Inspection Details -->
-            <div class="mb-6">
-                <h4 class="text-sm font-medium text-gray-500 mb-3">Inspection Details</h4>
-                <div class="bg-gray-50 p-4 rounded-lg space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Coordinates:</span>
-                        <span class="font-medium">Lat: ${application.latitude}, Long: ${application.longitude}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">Completed On:</span>
-                        <span class="font-medium">${application.review_date}</span>
-                    </div>
-                    <div class="mt-2">
-                        <span class="text-gray-500">Inspection Notes:</span>
-                        <p class="mt-1 text-sm">${application.review_notes || 'No notes provided'}</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex justify-end pt-4 border-t border-gray-200">
-                <button type="button" onclick="closeInspectionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                    Close
-                </button>
-            </div>
-        `;
-    }
-    
-    // Function to close the inspection modal
-    function closeInspectionModal() {
-        document.getElementById('inspection-modal').classList.add('hidden');
-    }
-    
-    // Helper function to get CSRF token
-    
 
-    
-
-    // Debugging helper functions - Add these to your surveyor_inspections.html
-
-// Enable more detailed logging of form submission
+// Debugging helper functions
 function debugFormSubmission(event, applicationId) {
     console.group('Form Submission Debug');
     
@@ -784,10 +1335,5 @@ function addDebugButton(applicationId) {
         }
     }
 }
-
-// To use this debugging feature, modify the openInspectionModal function to add:
-// addDebugButton(data.application.id);
-// right after the line:
-// document.getElementById('modal-content').innerHTML = generateInspectionForm(data.application);
 </script>
 {% endblock %}
