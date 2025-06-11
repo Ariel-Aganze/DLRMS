@@ -1,6 +1,3 @@
-# applications/views.py
-# Make sure these imports are at the top of your applications/views.py file
-
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -339,6 +336,25 @@ class ParcelApplicationListView(LoginRequiredMixin, ListView):
             context['is_landowner'] = True
         
         return context
+    
+
+class EnhancedParcelApplicationDetailView(LoginRequiredMixin, DetailView):
+    """Enhanced view for viewing parcel application details with better UI"""
+    model = ParcelApplication
+    template_name = 'applications/parcel_application_detail_enhanced.html'
+    context_object_name = 'application'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add documents to context
+        context['documents'] = self.object.documents.all()
+        
+        # Add field agents for the dropdown
+        if self.request.user.role in ['registry_officer', 'admin'] and self.object.status == 'submitted':
+            # Get all users with 'surveyor' role
+            context['field_agents'] = User.objects.filter(role='surveyor').order_by('first_name')
+        
+        return context
 
 
 class ParcelTitleDetailView(LoginRequiredMixin, DetailView):
@@ -667,10 +683,6 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
     template_name = 'applications/field_inspection.html'
     context_object_name = 'application'
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        return context
-    
     def post(self, request, *args, **kwargs):
         """Handle POST requests for submitting inspections"""
         application = self.get_object()
@@ -696,17 +708,104 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
             messages.error(request, 'Invalid decision. Must be either "approve" or "reject".')
             return redirect('applications:field_inspection', pk=application.pk)
         
+        # Validate application status to ensure we're not processing it twice
+        if application.status not in ['field_inspection']:
+            messages.error(request, f'This application has already been {application.status}.')
+            return redirect('applications:surveyor_inspections')
+        
         # Update application with inspection data
         application.latitude = latitude
         application.longitude = longitude
         application.size_hectares = size_hectares
-        application.status = decision
+        application.status = decision  # Set status to 'approve' or 'reject'
         application.review_notes = review_notes
         application.review_date = timezone.now()
         application.save()
         
-        # Send notification to applicant (you would implement this)
-        # notify_applicant(application)
+        # If approved, create a parcel and title
+        if decision == 'approve':
+            try:
+                # Create title for the approved application
+                title = ParcelTitle(
+                    owner=application.applicant,
+                    application=application,
+                    title_number=f"TITLE-{application.application_number}",
+                    title_type=application.application_type,
+                    issue_date=timezone.now(),
+                    expiry_date=timezone.now() + timezone.timedelta(days=365*5),  # 5 years validity
+                    is_active=True
+                )
+                title.save()
+                
+                # Check if we need to create a land parcel as well
+                if hasattr(application, 'create_land_parcel'):
+                    # This would be custom logic to create the land parcel
+                    # You may need to adjust this based on your actual models
+                    from land_management.models import LandParcel
+                    
+                    parcel = LandParcel(
+                        parcel_id=f"PCL-{application.application_number}",
+                        title_number=title.title_number,
+                        owner=application.applicant,
+                        location=application.property_address,
+                        district=application.district if hasattr(application, 'district') else "",
+                        sector=application.sector if hasattr(application, 'sector') else "",
+                        cell=application.cell if hasattr(application, 'cell') else "",
+                        village=application.village if hasattr(application, 'village') else "",
+                        size_hectares=size_hectares,
+                        property_type=application.property_type if hasattr(application, 'property_type') else "residential",
+                        status="registered",
+                        latitude=latitude,
+                        longitude=longitude
+                    )
+                    parcel.save()
+                    
+                    # Link the parcel to the application
+                    application.parcel = parcel
+                    application.save()
+                    
+                    # Link the parcel to the title
+                    title.parcel = parcel
+                    title.save()
+                
+                messages.success(
+                    request, 
+                    f'Application {application.application_number} has been approved and title {title.title_number} has been issued.'
+                )
+            except Exception as e:
+                # Log the error for debugging
+                print(f"Error creating title/parcel: {str(e)}")
+                messages.error(
+                    request, 
+                    f'Application approved, but there was an error creating the title: {str(e)}'
+                )
+        else:
+            # Application was rejected
+            messages.success(
+                request, 
+                f'Application {application.application_number} has been rejected.'
+            )
         
-        messages.success(request, f'Application {application.application_number} has been {decision}d successfully.')
+        # Send notification to applicant (you would implement this)
+        try:
+            self.notify_applicant(application)
+        except Exception as e:
+            print(f"Error sending notification: {str(e)}")
+        
         return redirect('applications:surveyor_inspections')
+    
+    def notify_applicant(self, application):
+        """Send notification to the applicant about the inspection result"""
+        # Implementation would depend on your notification system
+        # For example:
+        from notifications.models import Notification
+        
+        status_display = "approved" if application.status == "approve" else "rejected"
+        
+        Notification.objects.create(
+            recipient=application.applicant,
+            title=f"Application {application.application_number} {status_display}",
+            message=f"Your land application has been {status_display} after field inspection.",
+            related_object_id=application.id,
+            related_object_type="application"
+        )

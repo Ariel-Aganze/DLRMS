@@ -1,3 +1,4 @@
+```html
 {% extends 'base.html' %}
 
 {% block title %}Applications Review Dashboard - DLRMS{% endblock %}
@@ -195,7 +196,10 @@
                                                 </div>
                                             </div>
                                             <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">{{ app.application_number }}</div>
+                                                <!-- Changed to clickable link that opens application detail -->
+                                                <a href="{% url 'applications:parcel_application_detail_enhanced' app.id %}" class="text-sm font-medium text-blue-600 hover:text-blue-800">
+                                                    {{ app.application_number }}
+                                                </a>
                                                 <div class="text-sm text-gray-500">{{ app.get_application_type_display }}</div>
                                             </div>
                                         </div>
@@ -250,22 +254,37 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
-                                            <a href="{% url 'applications:parcel_application_detail' app.id %}" 
-                                               class="text-blue-600 hover:text-blue-900 transition-colors">
+                                            <!-- View Details - Always shown -->
+                                            <a href="{% url 'applications:parcel_application_detail_enhanced' app.id %}" 
+                                               class="text-blue-600 hover:text-blue-900 transition-colors"
+                                               title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             
+                                            <!-- Assign Field Agent - Shown for 'submitted' status - VISIBLE TO ADMIN -->
                                             {% if app.status == 'submitted' %}
                                             <button onclick="assignFieldAgent({{ app.id }})" 
-                                                    class="text-green-600 hover:text-green-900 transition-colors">
+                                                    class="text-green-600 hover:text-green-900 transition-colors"
+                                                    title="Assign Field Agent">
                                                 <i class="fas fa-user-plus"></i>
                                             </button>
                                             {% endif %}
                                             
+                                            <!-- Quick Review - Shown for 'field_inspection' status - VISIBLE TO ADMIN -->
                                             {% if app.status == 'field_inspection' %}
                                             <button onclick="quickReviewApp({{ app.id }})" 
-                                                    class="text-purple-600 hover:text-purple-900 transition-colors">
+                                                    class="text-purple-600 hover:text-purple-900 transition-colors"
+                                                    title="Review Application">
                                                 <i class="fas fa-clipboard-check"></i>
+                                            </button>
+                                            {% endif %}
+
+                                            <!-- Quick Reject - For pending/under review apps - VISIBLE TO ADMIN -->
+                                            {% if app.status in 'submitted,under_review' %}
+                                            <button onclick="rejectApplication({{ app.id }})" 
+                                                    class="text-red-600 hover:text-red-900 transition-colors"
+                                                    title="Reject Application">
+                                                <i class="fas fa-times"></i>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -443,57 +462,69 @@
         currentApplicationId = appId;
         document.getElementById('application-id').value = appId;
         document.getElementById('assignAgentModal').classList.remove('hidden');
-    }
 
+    // Check if page is loaded completely to avoid JS errors
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips if needed
+        initializeTooltips();
+    });
+    
+    // Initialize tooltips (can be expanded for better UI experience)
+    function initializeTooltips() {
+        // Custom tooltip implementation could be added here
+        console.log('Tooltips initialized');
+    }
+</script>
+{% endblock %}
     function closeAssignModal() {
         document.getElementById('assignAgentModal').classList.add('hidden');
         document.getElementById('assign-agent-form').reset();
     }
 
     function submitAssignment() {
-    const form = document.getElementById('assign-agent-form');
-    const formData = new FormData(form);
-    
-    // Check if agent is selected
-    if (!formData.get('agent_id')) {
-        showToast('Please select a field agent', 'error');
-        return;
+        const form = document.getElementById('assign-agent-form');
+        const formData = new FormData(form);
+        
+        // Check if agent is selected
+        if (!formData.get('agent_id')) {
+            showToast('Please select a field agent', 'error');
+            return;
+        }
+        
+        // Get the application ID
+        const appId = formData.get('application_id');
+        
+        // Prepare JSON data
+        const jsonData = {
+            agent_id: formData.get('agent_id'),
+            notes: formData.get('notes') || ''
+        };
+        
+        // Submit the form using fetch API
+        fetch(`/applications/parcel/${appId}/assign/`, {
+            method: 'POST',
+            body: JSON.stringify(jsonData),
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Field agent assigned successfully!', 'success');
+                closeAssignModal();
+                // Reload page to show updated status
+                window.location.reload();
+            } else {
+                showToast(data.message || 'Failed to assign field agent', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred while assigning field agent', 'error');
+        });
     }
-    
-    // Get the application ID
-    const appId = formData.get('application_id');
-    
-    // Prepare JSON data
-    const jsonData = {
-        agent_id: formData.get('agent_id'),
-        notes: formData.get('notes') || ''
-    };
-    
-    // Submit the form using fetch API
-    fetch(`/applications/parcel/${appId}/assign/`, {
-        method: 'POST',
-        body: JSON.stringify(jsonData),
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast('Field agent assigned successfully!', 'success');
-            closeAssignModal();
-            // Reload page to show updated status
-            window.location.reload();
-        } else {
-            showToast(data.message || 'Failed to assign field agent', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('An error occurred while assigning field agent', 'error');
-    });
-}
     
     // Quick Review
     function quickReviewApp(appId) {
@@ -576,6 +607,33 @@
             console.error('Error:', error);
             showToast('An error occurred while submitting review', 'error');
         });
+    }
+    
+    // Direct Reject Application
+    function rejectApplication(appId) {
+        if (confirm('Are you sure you want to reject this application?')) {
+            fetch(`/applications/review/api/applications/${appId}/reject/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Application rejected successfully!', 'success');
+                    // Reload page to show updated status
+                    window.location.reload();
+                } else {
+                    showToast(data.message || 'Failed to reject application', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while rejecting application', 'error');
+            });
+        }
     }
     
     // Export Applications
@@ -709,5 +767,5 @@
         }
         return cookieValue;
     }
+}
 </script>
-{% endblock %}

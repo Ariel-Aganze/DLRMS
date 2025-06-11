@@ -49,5 +49,6 @@ urlpatterns = [
 
     path('api/save-polygon/<int:application_id>/', views.save_polygon_data, name='api_save_polygon'),
     path('inspection/<int:pk>/', views.FieldInspectionView.as_view(), name='field_inspection'),
+    path('parcel/<int:pk>/enhanced/', views.EnhancedParcelApplicationDetailView.as_view(), name='parcel_application_detail_enhanced'),
 
 ]
