@@ -1,4 +1,3 @@
-# applications/enhanced_views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.views.generic import ListView, DetailView, FormView, TemplateView
@@ -847,3 +846,118 @@ class ApplicationsReportView(RoleRequiredMixin, LoginRequiredMixin, TemplateView
         agent_performance.sort(key=lambda x: x['completed'], reverse=True)
         
         return agent_performance[:10]  # Top 10
+    
+@login_required
+@require_POST
+def registry_approval(request, application_id):
+    """View for registry officers to make final approval/rejection after inspection"""
+    if request.user.role not in ['registry_officer', 'admin']:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    application = get_object_or_404(ParcelApplication, pk=application_id)
+    
+    # Check if application is in the correct state
+    if application.status != 'inspection_completed':
+        return JsonResponse({
+            'success': False,
+            'message': 'This application is not ready for final approval.'
+        }, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        decision = data.get('decision')
+        additional_notes = data.get('notes', '')
+        
+        if decision not in ['approve', 'reject']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid decision. Must be either "approve" or "reject".'
+            }, status=400)
+        
+        with transaction.atomic():
+            # Update application status
+            application.status = decision  # 'approve' or 'reject'
+            
+            # Add additional notes from registry officer
+            registry_notes = f"Registry Decision ({timezone.now().strftime('%Y-%m-%d')}): {additional_notes}"
+            if application.review_notes:
+                application.review_notes += f"\n\n{registry_notes}"
+            else:
+                application.review_notes = registry_notes
+            
+            # If approved, create land parcel and title
+            if decision == 'approve':
+                # Generate a unique parcel ID first
+                parcel_id = f"PCL-{application.application_number}"
+                
+                # Create land parcel
+                parcel = LandParcel.objects.create(
+                    parcel_id=parcel_id,  # Add this line - this is the missing field
+                    owner=application.applicant,
+                    location=application.property_address,
+                    property_type=application.property_type,
+                    district='North Kivu',  # Default values
+                    sector='Default Sector',
+                    cell='Default Cell',
+                    village='Default Village',
+                    size_hectares=application.size_hectares,
+                    latitude=application.latitude,
+                    longitude=application.longitude,
+                    status='registered',
+                    registration_date=timezone.now(),
+                    registered_by=request.user
+                )
+                
+                # Link parcel to application
+                application.parcel = parcel
+                application.save()  # Save immediately after setting parcel
+                
+                # Determine title type and expiry
+                title_type = application.application_type
+                expiry_date = None
+                if title_type == 'property_contract':
+                    expiry_date = timezone.now().date() + timedelta(days=3 * 365)
+                
+                # Generate title number
+                title_number = f"TITLE-{application.application_number}"
+                
+                # Create title
+                title = ParcelTitle.objects.create(
+                    title_number=title_number,  # Add this line - title needs a number
+                    parcel=parcel,
+                    owner=application.applicant,
+                    title_type=title_type,
+                    expiry_date=expiry_date,
+                    is_active=True
+                )
+                
+                # Update parcel with active title info
+                parcel.active_title_type = title_type
+                parcel.active_title_expiry = expiry_date
+                parcel.title_number = title.title_number  # Update title reference in parcel
+                parcel.save()
+                
+                message = f'Application approved and {title.get_title_type_display()} issued successfully.'
+            else:
+                message = 'Application rejected successfully.'
+                # For rejection, we already saved the status above
+                application.save()
+            
+            # Notify the applicant (implement based on your notification system)
+            # send_notification(application.applicant, message)
+            
+            return JsonResponse({
+                'success': True,
+                'message': message
+            })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error processing approval: {str(e)}'
+        }, status=500)

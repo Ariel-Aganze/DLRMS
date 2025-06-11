@@ -51,4 +51,25 @@ urlpatterns = [
     path('inspection/<int:pk>/', views.FieldInspectionView.as_view(), name='field_inspection'),
     path('parcel/<int:pk>/enhanced/', views.EnhancedParcelApplicationDetailView.as_view(), name='parcel_application_detail_enhanced'),
 
+    # applications/urls.py
+
+# Add this to the review dashboard URLs section
+path('review/', include([
+    path('dashboard/', 
+         reviewviews.ApplicationsReviewDashboardView.as_view(), 
+         name='review_dashboard'),
+    path('api/applications/', 
+         reviewviews.applications_api_list, 
+         name='api_applications_list'),
+    path('api/applications/<int:application_id>/quick-review/', 
+         reviewviews.quick_application_review, 
+         name='api_quick_review'),
+    path('api/applications/<int:application_id>/registry-approval/', 
+         reviewviews.registry_approval, 
+         name='api_registry_approval'),  # New endpoint
+    path('api/applications/export/', 
+         reviewviews.export_applications, 
+         name='api_export_applications'),
+])),
+
 ]

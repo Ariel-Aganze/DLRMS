@@ -169,31 +169,30 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
 
 
 
+
 class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
-    """View for field agents to review and approve/reject applications"""
-
+    """View for field agents to submit inspection reports"""
     allowed_roles = ['surveyor', 'admin']
-
+    
     def get(self, request, *args, **kwargs):
         # If GET request is made directly, redirect to surveyor inspections
         return redirect('applications:surveyor_inspections')
-
+    
     def post(self, request, *args, **kwargs):
         """Handle POST requests from the inspection form"""
         application = get_object_or_404(ParcelApplication, pk=self.kwargs['pk'])
-
+        
         # Only the assigned field agent can review
         if application.field_agent != self.request.user and not self.request.user.is_superuser:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
-                    'message': 'You are not authorized to review this application.'
+                    'message': 'You are not authorized to submit this inspection report.'
                 }, status=403)
-            messages.error(request, 'You are not authorized to review this application.')
+            messages.error(request, 'You are not authorized to submit this inspection report.')
             return redirect('applications:surveyor_inspections')
-
+        
         # Extract form data
-        decision = request.POST.get('decision')
         review_notes = request.POST.get('review_notes')
         try:
             latitude = float(request.POST.get('latitude'))
@@ -207,71 +206,22 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
                 }, status=400)
             messages.error(request, 'Invalid coordinates or land size values.')
             return redirect('applications:surveyor_inspections')
-
-        if decision not in ['approve', 'reject']:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Invalid decision. Must be either "approve" or "reject".'
-                }, status=400)
-            messages.error(request, 'Invalid decision. Must be either "approve" or "reject".')
-            return redirect('applications:surveyor_inspections')
-
+        
         try:
             with transaction.atomic():
-                # Update application status
-                application.status = 'approved' if decision == 'approve' else 'rejected'
+                # Update application status to inspection_completed
+                application.status = 'inspection_completed'
                 application.review_notes = review_notes
                 application.review_date = timezone.now()
                 application.reviewed_by = self.request.user
+                
+                # Store coordinates and size in the application for later use
+                application.latitude = latitude
+                application.longitude = longitude
+                application.size_hectares = size_hectares
                 application.save()
-
-                # If approved, create land parcel and title
-                if decision == 'approve':
-                    parcel = LandParcel.objects.create(
-                        owner=application.applicant,
-                        location=application.property_address,
-                        property_type=application.property_type,
-                        district='North Kivu',  # Default values
-                        sector='Default Sector',
-                        cell='Default Cell',
-                        village='Default Village',
-                        size_hectares=size_hectares,
-                        latitude=latitude,
-                        longitude=longitude,
-                        status='registered',
-                        registration_date=timezone.now(),
-                        registered_by=self.request.user
-                    )
-
-                    # Link parcel to application
-                    application.parcel = parcel
-                    application.save()
-
-                    # Determine title type and expiry
-                    title_type = application.application_type
-                    expiry_date = None
-                    if title_type == 'property_contract':
-                        expiry_date = timezone.now().date() + timedelta(days=3 * 365)
-
-                    # Create title
-                    title = ParcelTitle.objects.create(
-                        parcel=parcel,
-                        owner=application.applicant,
-                        title_type=title_type,
-                        expiry_date=expiry_date,
-                        is_active=True
-                    )
-
-                    # Update parcel with active title info
-                    parcel.active_title_type = title_type
-                    parcel.active_title_expiry = expiry_date
-                    parcel.save()
-
-                    message = f'Application approved and {title.get_title_type_display()} issued successfully.'
-                else:
-                    message = 'Application rejected successfully.'
-
+                
+                message = 'Inspection report submitted successfully. Waiting for registry officer approval.'
                 messages.success(request, message)
 
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -287,10 +237,10 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
-                    'message': f'Error processing inspection: {str(e)}'
+                    'message': f'Error submitting inspection report: {str(e)}'
                 }, status=500)
 
-            messages.error(request, f'Error processing inspection: {str(e)}')
+            messages.error(request, f'Error submitting inspection report: {str(e)}')
             return redirect('applications:surveyor_inspections')
 
 
@@ -545,26 +495,10 @@ def get_completed_inspection_details(request, application_id):
                 'message': 'This application was not inspected by you.'
             }, status=403)
         
-        # Get the latitude, longitude, and size from either the parcel or directly from the inspection notes
-        # This is the key fix - handling cases where the parcel might not exist
-        latitude = None
-        longitude = None
-        size_hectares = None
-        
-        # If a parcel was created during approval
-        if hasattr(application, 'parcel') and application.parcel:
-            latitude = application.parcel.latitude
-            longitude = application.parcel.longitude
-            size_hectares = application.parcel.size_hectares
-        else:
-            # Try to extract coordinates from review notes or use defaults
-            # This is a fallback when the parcel wasn't created or linked properly
-            latitude = 0
-            longitude = 0
-            size_hectares = 0
-            
-            # You could implement more sophisticated parsing of the review_notes
-            # to extract coordinates if they were saved there
+        # Get the latitude, longitude, and size from the application
+        latitude = application.latitude
+        longitude = application.longitude
+        size_hectares = application.size_hectares
         
         # Return application data for the modal
         return JsonResponse({
@@ -720,15 +654,42 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
         application.status = decision  # Set status to 'approve' or 'reject'
         application.review_notes = review_notes
         application.review_date = timezone.now()
+        application.reviewed_by = self.request.user
         application.save()
         
         # If approved, create a parcel and title
         if decision == 'approve':
             try:
-                # Create title for the approved application
+                # Always create the land parcel first
+                from land_management.models import LandParcel
+                
+                # Create LandParcel first
+                parcel = LandParcel(
+                    parcel_id=f"PCL-{application.application_number}",
+                    owner=application.applicant,
+                    location=application.property_address,
+                    district=getattr(application, 'district', "North Kivu"),  # Default value if not present
+                    sector=getattr(application, 'sector', "Default Sector"),
+                    cell=getattr(application, 'cell', "Default Cell"),
+                    village=getattr(application, 'village', "Default Village"),
+                    size_hectares=size_hectares,
+                    property_type=application.property_type,
+                    status="registered",
+                    latitude=latitude,
+                    longitude=longitude,
+                    registration_date=timezone.now(),
+                    registered_by=self.request.user
+                )
+                parcel.save()
+                
+                # Link the parcel to the application
+                application.parcel = parcel
+                application.save()
+                
+                # Now create the title and link it to the parcel
                 title = ParcelTitle(
                     owner=application.applicant,
-                    application=application,
+                    parcel=parcel,  # Link to the parcel we just created
                     title_number=f"TITLE-{application.application_number}",
                     title_type=application.application_type,
                     issue_date=timezone.now(),
@@ -737,36 +698,11 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
                 )
                 title.save()
                 
-                # Check if we need to create a land parcel as well
-                if hasattr(application, 'create_land_parcel'):
-                    # This would be custom logic to create the land parcel
-                    # You may need to adjust this based on your actual models
-                    from land_management.models import LandParcel
-                    
-                    parcel = LandParcel(
-                        parcel_id=f"PCL-{application.application_number}",
-                        title_number=title.title_number,
-                        owner=application.applicant,
-                        location=application.property_address,
-                        district=application.district if hasattr(application, 'district') else "",
-                        sector=application.sector if hasattr(application, 'sector') else "",
-                        cell=application.cell if hasattr(application, 'cell') else "",
-                        village=application.village if hasattr(application, 'village') else "",
-                        size_hectares=size_hectares,
-                        property_type=application.property_type if hasattr(application, 'property_type') else "residential",
-                        status="registered",
-                        latitude=latitude,
-                        longitude=longitude
-                    )
-                    parcel.save()
-                    
-                    # Link the parcel to the application
-                    application.parcel = parcel
-                    application.save()
-                    
-                    # Link the parcel to the title
-                    title.parcel = parcel
-                    title.save()
+                # Set active title on parcel if needed
+                parcel.active_title_type = application.application_type
+                if application.application_type == 'property_contract':
+                    parcel.active_title_expiry = title.expiry_date
+                parcel.save()
                 
                 messages.success(
                     request, 

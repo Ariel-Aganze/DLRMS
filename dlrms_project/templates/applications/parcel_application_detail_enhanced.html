@@ -3,6 +3,11 @@
 
 {% block title %}Application Details - {{ application.application_number }} - DLRMS{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50">
     <div class="layout-container flex h-full grow flex-col">
@@ -424,6 +429,55 @@
                     </div>
                 </div>
 
+                <!-- Registry Approval Panel (only shown for inspection_completed status) -->
+                {% if application.status == 'inspection_completed' and user.role in 'registry_officer,admin' %}
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+                        <h3 class="text-lg font-medium text-blue-900">Registry Officer Approval</h3>
+                        <p class="text-sm text-blue-700 mt-1">Field inspection has been completed. Please review and make a final decision.</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">Field Agent Report</h4>
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <p class="text-gray-700 whitespace-pre-line">{{ application.review_notes }}</p>
+                                <div class="mt-2 text-sm text-gray-500">
+                                    Reported on {{ application.review_date|date:"M d, Y" }} by {{ application.reviewed_by.get_full_name }}
+                                </div>
+                            </div>
+                        </div>
+
+        <div class="mt-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Make Decision</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Decision</label>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="radio" id="registry-approve" name="registry-decision" value="approve" class="h-4 w-4 text-blue-600">
+                            <label for="registry-approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" id="registry-reject" name="registry-decision" value="reject" class="h-4 w-4 text-red-600">
+                            <label for="registry-reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="registry-notes" class="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+                    <textarea id="registry-notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button id="submit-registry-decision" onclick="submitRegistryDecision({{ application.id }})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Submit Decision
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
                 <!-- Action Buttons -->
                 <div class="mt-6 flex justify-end space-x-3">
                     <button onclick="closeQuickReview()" 
@@ -444,6 +498,112 @@
 <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
 <script>
+
+    // Initialize map when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize map if the container exists
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+        initializeMap();
+    }
+});
+
+// Initialize the map with the parcel location
+function initializeMap() {
+    // Get coordinates from data attributes or from hidden inputs
+    const latitude = {{ application.latitude|default:0 }};
+    const longitude = {{ application.longitude|default:0 }};
+    
+    if (latitude === 0 && longitude === 0) {
+        document.getElementById('map-container').innerHTML = '<div class="h-full flex items-center justify-center bg-gray-100"><p class="text-gray-500">No location data available</p></div>';
+        return;
+    }
+    
+    // Create the map
+    const map = L.map('map-container').setView([latitude, longitude], 15);
+    
+    // Add the OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    // Add a marker for the parcel
+    const marker = L.marker([latitude, longitude]).addTo(map);
+    marker.bindPopup("Parcel Location").openPopup();
+    
+    // If size_hectares is available, try to draw an approximate circle
+    const size_hectares = {{ application.size_hectares|default:0 }};
+    if (size_hectares > 0) {
+        // Convert hectares to square meters
+        const areaSqM = size_hectares * 10000;
+        // Calculate radius in meters (assuming circular area)
+        const radiusM = Math.sqrt(areaSqM / Math.PI);
+        // Draw the circle
+        const circle = L.circle([latitude, longitude], {
+            radius: radiusM,
+            color: 'blue',
+            fillColor: '#3388ff',
+            fillOpacity: 0.2
+        }).addTo(map);
+    }
+}
+
+// Submit registry decision
+function submitRegistryDecision(applicationId) {
+    // Get form values
+    const decision = document.querySelector('input[name="registry-decision"]:checked')?.value;
+    const notes = document.getElementById('registry-notes').value;
+    
+    if (!decision) {
+        showToast('Please select a decision', 'error');
+        return;
+    }
+    
+    // Disable button and show loading state
+    const button = document.getElementById('submit-registry-decision');
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg> Processing...`;
+    
+    // Send request to the server
+    fetch(`/applications/review/api/applications/${applicationId}/registry-approval/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            decision: decision,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Reload page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showToast(data.message || 'An error occurred', 'error');
+            // Reset button
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('An error occurred while processing your request', 'error');
+        // Reset button
+        button.disabled = false;
+        button.textContent = originalText;
+    });
+}
+
     // Field Agent Assignment
     function assignFieldAgent(appId) {
         document.getElementById('application-id').value = appId;

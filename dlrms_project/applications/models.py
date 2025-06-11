@@ -65,6 +65,7 @@ class ParcelApplication(models.Model):
         ('submitted', 'Submitted'),
         ('under_review', 'Under Review'),
         ('field_inspection', 'Field Inspection'),
+        ('inspection_completed', 'Inspection Completed'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
     ]
@@ -165,6 +166,7 @@ class ParcelTitle(models.Model):
     title_number = models.CharField(max_length=50, unique=True, blank=True)
     parcel = models.ForeignKey('land_management.LandParcel', on_delete=models.CASCADE, related_name='titles')
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='parcel_titles')
+    application = models.ForeignKey(ParcelApplication, on_delete=models.CASCADE, related_name='titles', null=True, blank=True)  # Add this line
     title_type = models.CharField(max_length=30, choices=TITLE_TYPE_CHOICES)
     issue_date = models.DateField(auto_now_add=True)
     expiry_date = models.DateField(null=True, blank=True)  # Null for Parcel Certificate (lifetime validity)
