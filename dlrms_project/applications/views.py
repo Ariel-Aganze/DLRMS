@@ -627,7 +627,6 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
             return redirect('applications:surveyor_inspections')
         
         # Extract form data
-        decision = request.POST.get('decision')
         review_notes = request.POST.get('review_notes')
         
         try:
@@ -638,110 +637,44 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
             messages.error(request, 'Invalid coordinates or land size values.')
             return redirect('applications:field_inspection', pk=application.pk)
         
-        if decision not in ['approve', 'reject']:
-            messages.error(request, 'Invalid decision. Must be either "approve" or "reject".')
-            return redirect('applications:field_inspection', pk=application.pk)
-        
         # Validate application status to ensure we're not processing it twice
         if application.status not in ['field_inspection']:
-            messages.error(request, f'This application has already been {application.status}.')
+            messages.error(request, f'This application has already been processed.')
             return redirect('applications:surveyor_inspections')
         
         # Update application with inspection data
         application.latitude = latitude
         application.longitude = longitude
         application.size_hectares = size_hectares
-        application.status = decision  # Set status to 'approve' or 'reject'
+        application.status = 'inspection_completed'  # Change status to inspection_completed
         application.review_notes = review_notes
         application.review_date = timezone.now()
         application.reviewed_by = self.request.user
         application.save()
-        
-        # If approved, create a parcel and title
-        if decision == 'approve':
-            try:
-                # Always create the land parcel first
-                from land_management.models import LandParcel
-                
-                # Create LandParcel first
-                parcel = LandParcel(
-                    parcel_id=f"PCL-{application.application_number}",
-                    owner=application.applicant,
-                    location=application.property_address,
-                    district=getattr(application, 'district', "North Kivu"),  # Default value if not present
-                    sector=getattr(application, 'sector', "Default Sector"),
-                    cell=getattr(application, 'cell', "Default Cell"),
-                    village=getattr(application, 'village', "Default Village"),
-                    size_hectares=size_hectares,
-                    property_type=application.property_type,
-                    status="registered",
-                    latitude=latitude,
-                    longitude=longitude,
-                    registration_date=timezone.now(),
-                    registered_by=self.request.user
-                )
-                parcel.save()
-                
-                # Link the parcel to the application
-                application.parcel = parcel
-                application.save()
-                
-                # Now create the title and link it to the parcel
-                title = ParcelTitle(
-                    owner=application.applicant,
-                    parcel=parcel,  # Link to the parcel we just created
-                    title_number=f"TITLE-{application.application_number}",
-                    title_type=application.application_type,
-                    issue_date=timezone.now(),
-                    expiry_date=timezone.now() + timezone.timedelta(days=365*5),  # 5 years validity
-                    is_active=True
-                )
-                title.save()
-                
-                # Set active title on parcel if needed
-                parcel.active_title_type = application.application_type
-                if application.application_type == 'property_contract':
-                    parcel.active_title_expiry = title.expiry_date
-                parcel.save()
-                
-                messages.success(
-                    request, 
-                    f'Application {application.application_number} has been approved and title {title.title_number} has been issued.'
-                )
-            except Exception as e:
-                # Log the error for debugging
-                print(f"Error creating title/parcel: {str(e)}")
-                messages.error(
-                    request, 
-                    f'Application approved, but there was an error creating the title: {str(e)}'
-                )
-        else:
-            # Application was rejected
-            messages.success(
-                request, 
-                f'Application {application.application_number} has been rejected.'
-            )
         
         # Send notification to applicant (you would implement this)
         try:
             self.notify_applicant(application)
         except Exception as e:
             print(f"Error sending notification: {str(e)}")
+            
+        messages.success(
+            request, 
+            f'Inspection report for application {application.application_number} has been submitted successfully. Awaiting registry officer approval.'
+        )
         
         return redirect('applications:surveyor_inspections')
     
     def notify_applicant(self, application):
-        """Send notification to the applicant about the inspection result"""
+        """Send notification to the applicant about the inspection submission"""
         # Implementation would depend on your notification system
         # For example:
         from notifications.models import Notification
         
-        status_display = "approved" if application.status == "approve" else "rejected"
-        
         Notification.objects.create(
             recipient=application.applicant,
-            title=f"Application {application.application_number} {status_display}",
-            message=f"Your land application has been {status_display} after field inspection.",
+            title=f"Field inspection completed for application {application.application_number}",
+            message=f"Field inspection for your land application has been completed. Awaiting registry officer review.",
             related_object_id=application.id,
             related_object_type="application"
         )

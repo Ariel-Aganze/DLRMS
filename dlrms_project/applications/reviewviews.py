@@ -890,67 +890,75 @@ def registry_approval(request, application_id):
                 # Generate a unique parcel ID first
                 parcel_id = f"PCL-{application.application_number}"
                 
-                # Create land parcel
-                parcel = LandParcel.objects.create(
-                    parcel_id=parcel_id,  # Add this line - this is the missing field
-                    owner=application.applicant,
-                    location=application.property_address,
-                    property_type=application.property_type,
-                    district='North Kivu',  # Default values
-                    sector='Default Sector',
-                    cell='Default Cell',
-                    village='Default Village',
-                    size_hectares=application.size_hectares,
-                    latitude=application.latitude,
-                    longitude=application.longitude,
-                    status='registered',
-                    registration_date=timezone.now(),
-                    registered_by=request.user
-                )
-                
-                # Link parcel to application
-                application.parcel = parcel
-                application.save()  # Save immediately after setting parcel
-                
-                # Determine title type and expiry
-                title_type = application.application_type
-                expiry_date = None
-                if title_type == 'property_contract':
-                    expiry_date = timezone.now().date() + timedelta(days=3 * 365)
-                
-                # Generate title number
-                title_number = f"TITLE-{application.application_number}"
-                
-                # Create title
-                title = ParcelTitle.objects.create(
-                    title_number=title_number,  # Add this line - title needs a number
-                    parcel=parcel,
-                    owner=application.applicant,
-                    title_type=title_type,
-                    expiry_date=expiry_date,
-                    is_active=True
-                )
-                
-                # Update parcel with active title info
-                parcel.active_title_type = title_type
-                parcel.active_title_expiry = expiry_date
-                parcel.title_number = title.title_number  # Update title reference in parcel
-                parcel.save()
-                
-                message = f'Application approved and {title.get_title_type_display()} issued successfully.'
+                try:
+                    # Create land parcel - Make sure to access attributes carefully
+                    parcel = LandParcel(
+                        parcel_id=parcel_id,
+                        owner=application.applicant,
+                        location=application.property_address,
+                        property_type=application.property_type,
+                        district='North Kivu',  # Default values
+                        sector='Default Sector',
+                        cell='Default Cell',
+                        village='Default Village',
+                        size_hectares=float(getattr(application, 'size_hectares', 0)),  # Safely get attribute with default
+                        latitude=float(getattr(application, 'latitude', 0)),  # Safely get attribute with default
+                        longitude=float(getattr(application, 'longitude', 0)),  # Safely get attribute with default
+                        status='registered'
+                    )
+                    parcel.save()
+                    
+                    # Link parcel to application
+                    application.parcel = parcel
+                    application.save()  # Save immediately after setting parcel
+                    
+                    # Determine title type and expiry
+                    title_type = application.application_type
+                    expiry_date = None
+                    if title_type == 'property_contract':
+                        expiry_date = timezone.now().date() + timezone.timedelta(days=365*5)  # 5 years
+                    
+                    # Create title
+                    title = ParcelTitle(
+                        title_number=f"TITLE-{application.application_number}",
+                        parcel=parcel,  # This must be set for the foreign key relationship
+                        owner=application.applicant,
+                        application=application,  # Link to the application
+                        title_type=title_type,
+                        issue_date=timezone.now().date(),
+                        expiry_date=expiry_date,
+                        is_active=True
+                    )
+                    title.save()
+                    
+                    # Set active title on parcel
+                    parcel.active_title_type = title_type
+                    if expiry_date:
+                        parcel.active_title_expiry = expiry_date
+                    parcel.save()
+                    
+                    # Include title number in the response
+                    return JsonResponse({
+                        'success': True,
+                        'message': f'Application approved successfully. Title {title.title_number} has been issued.',
+                        'title_number': title.title_number
+                    })
+                except Exception as e:
+                    # Log the specific error that occurred during parcel creation
+                    print(f"Error creating parcel/title: {str(e)}")
+                    # Include the error message in the response
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'Error processing application: {str(e)}'
+                    }, status=500)
             else:
-                message = 'Application rejected successfully.'
-                # For rejection, we already saved the status above
+                # Application was rejected
                 application.save()
-            
-            # Notify the applicant (implement based on your notification system)
-            # send_notification(application.applicant, message)
-            
-            return JsonResponse({
-                'success': True,
-                'message': message
-            })
-    
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Application rejected successfully.'
+                })
+                
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False,
@@ -959,5 +967,5 @@ def registry_approval(request, application_id):
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'message': f'Error processing approval: {str(e)}'
+            'message': f'Error processing application: {str(e)}'
         }, status=500)
