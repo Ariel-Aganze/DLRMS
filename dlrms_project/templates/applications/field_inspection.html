@@ -358,28 +358,76 @@
         }
         
         // Listen for the created event
-        map.on(L.Draw.Event.CREATED, function(event) {
-            const layer = event.layer;
-            
-            // Remove existing polygon if any
-            if (currentPolygon) {
-                drawnItems.removeLayer(currentPolygon);
-            }
-            
-            // Save reference to current polygon
-            currentPolygon = layer;
-            
-            // Add the layer to the feature group
-            drawnItems.addLayer(layer);
-            
-            // Calculate and display area
-            updateAreaFromPolygon(layer);
-            
-            // Get center coordinates
-            const center = layer.getBounds().getCenter();
-            document.getElementById('latitude').value = center.lat.toFixed(7);
-            document.getElementById('longitude').value = center.lng.toFixed(7);
-        });
+        map.on(L.Draw.Event.CREATED, function (e) {
+    console.log("Polygon created");
+    if (currentPolygon) {
+        drawnItems.removeLayer(currentPolygon);
+    }
+    
+    const layer = e.layer;
+    currentPolygon = layer;
+    drawnItems.addLayer(layer);
+    
+    // Calculate area
+    updateAreaFromPolygon(layer);
+    
+    // Get the center of the polygon for lat/long
+    const center = layer.getBounds().getCenter();
+    document.getElementById('latitude').value = center.lat;
+    document.getElementById('longitude').value = center.lng;
+    
+    // Save polygon data to server
+    const applicationId = document.getElementById('application-id').value;
+    console.log("Application ID for polygon save:", applicationId);
+    
+    const polygonLatLngs = layer.getLatLngs()[0];
+    console.log("Polygon coordinates:", polygonLatLngs);
+    
+    const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+    const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
+    const areaHectares = areaSqM / 10000; // 1 hectare = 10,000 square meters
+    
+    console.log("Area calculations:", areaSqM, "m²,", areaHectares, "hectares");
+    
+    const polygonData = {
+        polygon: polygonCoords,
+        center_lat: center.lat,
+        center_lng: center.lng,
+        area_sqm: areaSqM,
+        area_hectares: areaHectares
+    };
+    
+    console.log("Sending polygon data:", polygonData);
+    console.log("CSRF Token:", getCsrfToken());
+    
+    // Save the polygon data to the server
+    fetch(`/applications/api/save-polygon/${applicationId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(polygonData)
+    })
+    .then(response => {
+        console.log("Response status:", response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log("Response data:", data);
+        if (data.success) {
+            console.log('Polygon data saved successfully');
+            showNotification('Boundary data saved successfully', 'success');
+        } else {
+            console.error('Error saving polygon data:', data.message);
+            showNotification('Error saving boundary data: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving polygon data:', error);
+        showNotification('Error saving boundary data', 'error');
+    });
+});
         
         // Listen for the edited event
         map.on(L.Draw.Event.EDITED, function(event) {

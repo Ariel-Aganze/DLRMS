@@ -544,23 +544,75 @@ function initializeInspectionMap() {
         
         // Handle polygon creation
         map.on(L.Draw.Event.CREATED, function (e) {
-            console.log("Polygon created");
-            if (currentPolygon) {
-                drawnItems.removeLayer(currentPolygon);
-            }
-            
-            const layer = e.layer;
-            currentPolygon = layer;
-            drawnItems.addLayer(layer);
-            
-            // Calculate area
-            updateAreaFromPolygon(layer);
-            
-            // Get the center of the polygon for lat/long
-            const center = layer.getBounds().getCenter();
-            document.getElementById('latitude').value = center.lat;
-            document.getElementById('longitude').value = center.lng;
-        });
+    console.log("Polygon created");
+    if (currentPolygon) {
+        drawnItems.removeLayer(currentPolygon);
+    }
+    
+    const layer = e.layer;
+    currentPolygon = layer;
+    drawnItems.addLayer(layer);
+    
+    // Calculate area
+    updateAreaFromPolygon(layer);
+    
+    // Get the center of the polygon for lat/long
+    const center = layer.getBounds().getCenter();
+    document.getElementById('latitude').value = center.lat;
+    document.getElementById('longitude').value = center.lng;
+    
+    // Save polygon data to server
+    const applicationId = document.getElementById('application-id').value;
+    console.log("Application ID for polygon save:", applicationId);
+    
+    const polygonLatLngs = layer.getLatLngs()[0];
+    console.log("Polygon coordinates:", polygonLatLngs);
+    
+    const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+    const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
+    const areaHectares = areaSqM / 10000; // 1 hectare = 10,000 square meters
+    
+    console.log("Area calculations:", areaSqM, "m²,", areaHectares, "hectares");
+    
+    const polygonData = {
+        polygon: polygonCoords,
+        center_lat: center.lat,
+        center_lng: center.lng,
+        area_sqm: areaSqM,
+        area_hectares: areaHectares
+    };
+    
+    console.log("Sending polygon data:", polygonData);
+    console.log("CSRF Token:", getCsrfToken());
+    
+    // Save the polygon data to the server
+    fetch(`/applications/api/save-polygon/${applicationId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(polygonData)
+    })
+    .then(response => {
+        console.log("Response status:", response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log("Response data:", data);
+        if (data.success) {
+            console.log('Polygon data saved successfully');
+            showNotification('Boundary data saved successfully', 'success');
+        } else {
+            console.error('Error saving polygon data:', data.message);
+            showNotification('Error saving boundary data: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving polygon data:', error);
+        showNotification('Error saving boundary data', 'error');
+    });
+});
         
         // Handle polygon editing
         map.on(L.Draw.Event.EDITED, function (e) {
@@ -880,93 +932,173 @@ function closeInspectionModal() {
     }
 }
 
-// Function to handle the form submission via AJAX
-// Function to handle the form submission via AJAX
-function submitInspectionForm(event, applicationId) {
-    event.preventDefault();
+// Function to submit the inspection form with polygon data
+function submitInspectionForm(applicationId) {
+    console.log("Submitting inspection form for application:", applicationId);
     
-    // Show loading state
-    const submitButton = event.target.querySelector('button[type="submit"]');
-    const originalButtonText = submitButton.innerHTML;
-    submitButton.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Processing...
-    `;
-    submitButton.disabled = true;
+    // Get all form data
+    const formData = new FormData(document.getElementById('inspection-form'));
+    const notes = document.getElementById('inspection-notes').value;
+    const recommendation = document.querySelector('input[name="recommendation"]:checked')?.value || '';
+    const latitude = document.getElementById('latitude').value;
+    const longitude = document.getElementById('longitude').value;
+    const sizeHectares = document.getElementById('size_hectares').value || document.getElementById('area-hectares').textContent;
     
-    // Get form data
-    const form = document.getElementById('inspection-form');
-    const formData = new FormData(form);
+    // Get the measurement method
+    const measureMethod = document.getElementById('method-map').classList.contains('active') ? 'map' : 'manual';
     
-    // Log submission for debugging
-    console.log("Submitting inspection form for application", applicationId);
-    console.log("Form values:", Object.fromEntries(formData));
-    
-    // Check if required fields are filled
-    if (parseFloat(formData.get('size_hectares')) <= 0) {
-        showToast('Please draw or enter parcel boundaries to calculate area', 'error');
-        submitButton.innerHTML = originalButtonText;
-        submitButton.disabled = false;
+    // Validate the form data
+    if (!recommendation) {
+        showNotification('Please select a recommendation (Approve or Reject)', 'error');
         return;
     }
     
-    // Submit the form via AJAX
-    fetch(`/applications/parcel/${applicationId}/review/`, {
+    if (!notes) {
+        showNotification('Please provide inspection notes', 'error');
+        return;
+    }
+    
+    if (measureMethod === 'map' && !currentPolygon) {
+        showNotification('Please draw the property boundary on the map', 'error');
+        return;
+    }
+    
+    if (measureMethod === 'manual') {
+        const length = document.getElementById('length').value;
+        const width = document.getElementById('width').value;
+        if (!length || !width) {
+            showNotification('Please enter both length and width measurements', 'error');
+            return;
+        }
+    }
+    
+    // Disable the submit button to prevent multiple submissions
+    const submitBtn = document.getElementById('submit-inspection');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+    
+    // Prepare the data to send to the server
+    const inspectionData = {
+        application_id: applicationId,
+        notes: notes,
+        recommendation: recommendation,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        size_hectares: parseFloat(sizeHectares),
+    };
+    
+    // If using map method, save the polygon data first
+    if (measureMethod === 'map' && currentPolygon) {
+        // Get the polygon coordinates
+        const polygonLatLngs = currentPolygon.getLatLngs()[0];
+        
+        // Calculate the center of the polygon
+        const bounds = currentPolygon.getBounds();
+        const center = bounds.getCenter();
+        
+        // Calculate the area
+        const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
+        const areaHectares = areaSqM / 10000;
+        
+        // Prepare polygon data to save
+        const polygonData = {
+            polygon: polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]),
+            center_lat: center.lat,
+            center_lng: center.lng,
+            area_sqm: areaSqM,
+            area_hectares: areaHectares
+        };
+        
+        // Save the polygon data first
+        fetch(`/applications/api/save-polygon/${applicationId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(polygonData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Now submit the inspection form
+                submitInspectionDataToServer(applicationId, inspectionData, submitBtn);
+            } else {
+                // Show error message
+                showNotification('Error saving boundary data: ' + data.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Submit Inspection';
+            }
+        })
+        .catch(error => {
+            console.error('Error saving polygon data:', error);
+            showNotification('Error saving boundary data. Please try again.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Inspection';
+        });
+    } else {
+        // If using manual method, just submit the inspection data
+        submitInspectionDataToServer(applicationId, inspectionData, submitBtn);
+    }
+}
+
+// Function to submit inspection data to the server
+function submitInspectionDataToServer(applicationId, inspectionData, submitBtn) {
+    fetch('/applications/api/submit-inspection/', {
         method: 'POST',
         headers: {
-            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken()
-            // Important: Do NOT set Content-Type header when using FormData
-            // The browser will set it automatically with the correct boundary
         },
-        body: formData
+        body: JSON.stringify(inspectionData)
     })
-    .then(response => {
-        console.log("Server response status:", response.status);
-        // Check if response is JSON
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            return response.json().then(data => ({ status: response.status, data }));
-        } else {
-            return response.text().then(text => ({ 
-                status: response.status, 
-                data: { success: response.ok, message: text } 
-            }));
-        }
-    })
-    .then(({ status, data }) => {
-        console.log("Processed response:", data);
+    .then(response => response.json())
+    .then(data => {
         if (data.success) {
             // Show success message
-            showToast(data.message || 'Inspection report submitted successfully', 'success');
+            showNotification('Inspection submitted successfully!', 'success');
             
-            // Close the modal
-            closeInspectionModal();
-            
-            // Reload the page after a short delay
+            // Close the modal and refresh the page after a short delay
             setTimeout(() => {
-                window.location.reload();
+                closeInspectionModal();
+                location.reload();
             }, 1500);
         } else {
             // Show error message
-            showToast(data.message || `Error (${status}): An error occurred`, 'error');
-            
-            // Reset button
-            submitButton.innerHTML = originalButtonText;
-            submitButton.disabled = false;
+            showNotification('Error submitting inspection: ' + data.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Inspection';
         }
     })
     .catch(error => {
-        console.error('Error submitting form:', error);
-        showToast('An error occurred while submitting the form', 'error');
-        
-        // Reset button
-        submitButton.innerHTML = originalButtonText;
-        submitButton.disabled = false;
+        console.error('Error submitting inspection:', error);
+        showNotification('Error submitting inspection. Please try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Inspection';
     });
+}
+
+// Function to calculate area from polygon
+function updateAreaFromPolygon(layer) {
+    try {
+        // Get polygon coordinates
+        const latlngs = layer.getLatLngs()[0];
+        
+        // Calculate area using improved method
+        const areaSqM = L.GeometryUtil.geodesicArea(latlngs);
+        const areaHectares = areaSqM / 10000; // 1 hectare = 10,000 square meters
+        
+        // Update area display
+        document.getElementById('area-value').textContent = Math.round(areaSqM).toLocaleString();
+        document.getElementById('area-hectares').textContent = areaHectares.toFixed(4);
+        
+        // Update hidden input for form submission
+        document.getElementById('size_hectares').value = areaHectares.toFixed(4);
+        
+        console.log("Area updated:", areaSqM, "m²,", areaHectares, "hectares");
+    } catch (error) {
+        console.error("Error calculating area:", error);
+    }
 }
 
 // Helper function to get CSRF token

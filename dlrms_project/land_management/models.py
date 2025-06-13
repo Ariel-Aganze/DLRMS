@@ -152,3 +152,24 @@ class OwnershipTransfer(models.Model):
         verbose_name = "Ownership Transfer"
         verbose_name_plural = "Ownership Transfers"
         ordering = ['-initiated_at']
+
+
+class ParcelBoundary(models.Model):
+    """Model for storing polygon boundary data for land parcels"""
+    application = models.OneToOneField('applications.ParcelApplication', on_delete=models.CASCADE, related_name='boundary')
+    polygon_geojson = models.TextField(help_text="GeoJSON representation of the polygon boundary")
+    center_lat = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
+    center_lng = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
+    area_sqm = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, help_text="Area in square meters")
+    area_hectares = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True, help_text="Area in hectares")
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, related_name='created_boundaries')
+    updated_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='updated_boundaries')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Boundary for Application {self.application.application_number}"
+    
+    class Meta:
+        verbose_name = "Parcel Boundary"
+        verbose_name_plural = "Parcel Boundaries"

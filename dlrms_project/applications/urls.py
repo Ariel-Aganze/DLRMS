@@ -30,6 +30,16 @@ urlpatterns = [
     # API Endpoints for inspection modal
     path('api/inspection/<int:application_id>/', views.get_inspection_details, name='api_inspection_details'),
     path('api/completed-inspection/<int:application_id>/', views.get_completed_inspection_details, name='api_completed_inspection_details'),
+    
+    # Polygon API endpoints (removed duplicates)
+    path('api/save-polygon/<int:application_id>/', views.save_polygon_data, name='api_save_polygon'),
+    path('api/get-polygon/<int:application_id>/', views.get_polygon_data, name='api_get_polygon'),
+    
+    # Field inspection view
+    path('inspection/<int:pk>/', views.FieldInspectionView.as_view(), name='field_inspection'),
+    
+    # Enhanced parcel application detail view
+    path('parcel/<int:pk>/enhanced/', views.EnhancedParcelApplicationDetailView.as_view(), name='parcel_application_detail_enhanced'),
 
     # Review Dashboard URLs
     path('review/', include([
@@ -42,34 +52,11 @@ urlpatterns = [
         path('api/applications/<int:application_id>/quick-review/', 
              reviewviews.quick_application_review, 
              name='api_quick_review'),
+        path('api/applications/<int:application_id>/registry-approval/', 
+             reviewviews.registry_approval, 
+             name='api_registry_approval'),
         path('api/applications/export/', 
              reviewviews.export_applications, 
              name='api_export_applications'),
     ])),
-
-    path('api/save-polygon/<int:application_id>/', views.save_polygon_data, name='api_save_polygon'),
-    path('inspection/<int:pk>/', views.FieldInspectionView.as_view(), name='field_inspection'),
-    path('parcel/<int:pk>/enhanced/', views.EnhancedParcelApplicationDetailView.as_view(), name='parcel_application_detail_enhanced'),
-
-    # applications/urls.py
-
-# Add this to the review dashboard URLs section
-path('review/', include([
-    path('dashboard/', 
-         reviewviews.ApplicationsReviewDashboardView.as_view(), 
-         name='review_dashboard'),
-    path('api/applications/', 
-         reviewviews.applications_api_list, 
-         name='api_applications_list'),
-    path('api/applications/<int:application_id>/quick-review/', 
-         reviewviews.quick_application_review, 
-         name='api_quick_review'),
-    path('api/applications/<int:application_id>/registry-approval/', 
-         reviewviews.registry_approval, 
-         name='api_registry_approval'),  # New endpoint
-    path('api/applications/export/', 
-         reviewviews.export_applications, 
-         name='api_export_applications'),
-])),
-
 ]

@@ -304,6 +304,19 @@ class EnhancedParcelApplicationDetailView(LoginRequiredMixin, DetailView):
             # Get all users with 'surveyor' role
             context['field_agents'] = User.objects.filter(role='surveyor').order_by('first_name')
         
+        # Try to get boundary data if available
+        try:
+            from land_management.models import ParcelBoundary
+            
+            try:
+                boundary = ParcelBoundary.objects.get(application=self.object)
+                context['boundary'] = boundary
+                context['has_polygon'] = True
+            except ParcelBoundary.DoesNotExist:
+                context['has_polygon'] = False
+        except ImportError:
+            context['has_polygon'] = False
+        
         return context
 
 
@@ -529,86 +542,6 @@ def get_completed_inspection_details(request, application_id):
     
 
 
-@login_required
-@csrf_exempt  # Only use this if you're handling CSRF in JavaScript
-def save_polygon_data(request, application_id):
-    """API endpoint to save polygon boundary data for a parcel"""
-    if request.user.role not in ['surveyor', 'admin']:
-        return JsonResponse({
-            'success': False,
-            'message': 'You do not have permission to perform this action.'
-        }, status=403)
-    
-    if request.method != 'POST':
-        return JsonResponse({
-            'success': False,
-            'message': 'Only POST requests are supported.'
-        }, status=405)
-    
-    try:
-        # Get the application
-        application = get_object_or_404(ParcelApplication, pk=application_id)
-        
-        # Check if this application is assigned to the current surveyor
-        if application.field_agent != request.user and request.user.role != 'admin':
-            return JsonResponse({
-                'success': False,
-                'message': 'You are not authorized to modify this application.'
-            }, status=403)
-        
-        # Parse JSON data from request
-        data = json.loads(request.body)
-        polygon_data = data.get('polygon', [])
-        center_lat = data.get('center_lat')
-        center_lng = data.get('center_lng')
-        area_sqm = data.get('area_sqm')
-        area_hectares = data.get('area_hectares')
-        
-        # Create or update GIS data model if you have one
-        # This is optional - only needed if you want to store the actual polygon
-        """
-        from your_gis_app.models import ParcelBoundary
-        
-        boundary, created = ParcelBoundary.objects.get_or_create(
-            application=application,
-            defaults={
-                'polygon_geojson': json.dumps(polygon_data),
-                'center_lat': center_lat,
-                'center_lng': center_lng,
-                'area_sqm': area_sqm,
-                'area_hectares': area_hectares,
-                'created_by': request.user
-            }
-        )
-        
-        if not created:
-            boundary.polygon_geojson = json.dumps(polygon_data)
-            boundary.center_lat = center_lat
-            boundary.center_lng = center_lng
-            boundary.area_sqm = area_sqm
-            boundary.area_hectares = area_hectares
-            boundary.updated_by = request.user
-            boundary.updated_at = timezone.now()
-            boundary.save()
-        """
-        
-        # Update the application with the center coordinates and area
-        application.latitude = center_lat
-        application.longitude = center_lng
-        application.size_hectares = area_hectares
-        application.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Boundary data saved successfully.'
-        })
-    
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Error saving boundary data: {str(e)}'
-        }, status=500)
-
 
 class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
     """View for field agents to perform inspections on a separate page"""
@@ -671,10 +604,185 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
         # For example:
         from notifications.models import Notification
         
-        Notification.objects.create(
-            recipient=application.applicant,
-            title=f"Field inspection completed for application {application.application_number}",
-            message=f"Field inspection for your land application has been completed. Awaiting registry officer review.",
-            related_object_id=application.id,
-            related_object_type="application"
+        try:
+        # Modified to match your Notification model's actual fields
+            Notification.objects.create(
+                recipient=application.applicant,
+                title=f"Field inspection completed for application {application.application_number}",
+                message=f"Field inspection for your land application has been completed. Awaiting registry officer review."
+            # Removed the problematic fields: related_object_id and related_object_type
+            )
+        except Exception as e:
+            print(f"Error creating notification: {str(e)}")
+        # Continue with the process even if notification fails
+
+@login_required
+def get_polygon_data(request, application_id):
+    """API endpoint to retrieve polygon boundary data for a parcel"""
+    print(f"get_polygon_data called for application {application_id}")
+    print(f"User: {request.user.username}, Role: {getattr(request.user, 'role', 'unknown')}")
+    
+    if request.method != 'GET':
+        print(f"Method not allowed: {request.method}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Only GET requests are supported.'
+        }, status=405)
+    
+    try:
+        # Get the application
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        print(f"Found application: {application}")
+        
+        # Check if the user has permission to view this application
+        if (request.user.role not in ['registry_officer', 'admin', 'surveyor'] and 
+            application.applicant != request.user):
+            print(f"Permission denied: User role is {request.user.role}")
+            return JsonResponse({
+                'success': False,
+                'message': 'You do not have permission to view this application.'
+            }, status=403)
+        
+        # Import the ParcelBoundary model
+        from land_management.models import ParcelBoundary
+        
+        try:
+            # Try to get the boundary data
+            boundary = ParcelBoundary.objects.get(application=application)
+            print(f"Found boundary: {boundary.id}")
+            print(f"Polygon data: {boundary.polygon_geojson[:100]}...")  # Print first 100 chars
+            
+            return JsonResponse({
+                'success': True,
+                'polygon': boundary.polygon_geojson,
+                'center_lat': float(boundary.center_lat) if boundary.center_lat else float(application.latitude),
+                'center_lng': float(boundary.center_lng) if boundary.center_lng else float(application.longitude),
+                'area_sqm': float(boundary.area_sqm) if boundary.area_sqm else None,
+                'area_hectares': float(boundary.area_hectares) if boundary.area_hectares else float(application.size_hectares)
+            })
+        except ParcelBoundary.DoesNotExist:
+            print(f"No boundary found for application {application_id}")
+            
+            # If no boundary data exists, return the application's basic location info
+            return JsonResponse({
+                'success': False,
+                'message': 'No boundary data available for this application.',
+                'center_lat': float(application.latitude),
+                'center_lng': float(application.longitude),
+                'area_hectares': float(application.size_hectares)
+            })
+            
+    except Exception as e:
+        print(f"Error in get_polygon_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'Error retrieving boundary data: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+def save_polygon_data(request, application_id):
+    """API endpoint to save polygon boundary data for a parcel"""
+    print(f"save_polygon_data called for application {application_id}")
+    print(f"Request method: {request.method}")
+    print(f"User: {request.user.username}, Role: {getattr(request.user, 'role', 'unknown')}")
+    
+    if request.user.role not in ['surveyor', 'admin']:
+        print(f"Permission denied: User role is {request.user.role}")
+        return JsonResponse({
+            'success': False,
+            'message': 'You do not have permission to perform this action.'
+        }, status=403)
+    
+    if request.method != 'POST':
+        print(f"Method not allowed: {request.method}")
+        return JsonResponse({
+            'success': False,
+            'message': 'Only POST requests are supported.'
+        }, status=405)
+    
+    try:
+        # Get the application
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        print(f"Found application: {application}")
+        
+        # Check if this application is assigned to the current surveyor
+        if application.field_agent != request.user and request.user.role != 'admin':
+            print(f"Unauthorized: Application field agent is {application.field_agent}, user is {request.user}")
+            return JsonResponse({
+                'success': False,
+                'message': 'You are not authorized to modify this application.'
+            }, status=403)
+        
+        # Parse JSON data from request
+        body = request.body.decode('utf-8')
+        print(f"Request body: {body[:200]}...")  # Print first 200 chars to avoid flooding logs
+        data = json.loads(body)
+        print(f"Parsed data keys: {data.keys()}")
+        polygon_data = data.get('polygon', [])
+        center_lat = data.get('center_lat')
+        center_lng = data.get('center_lng')
+        area_sqm = data.get('area_sqm')
+        area_hectares = data.get('area_hectares')
+        
+        print(f"Polygon data length: {len(polygon_data)}")
+        print(f"Center: {center_lat}, {center_lng}")
+        print(f"Area: {area_sqm} sqm, {area_hectares} hectares")
+        
+        # Import the ParcelBoundary model
+        from land_management.models import ParcelBoundary
+        
+        # Create or update ParcelBoundary
+        boundary, created = ParcelBoundary.objects.get_or_create(
+            application=application,
+            defaults={
+                'polygon_geojson': json.dumps(polygon_data),
+                'center_lat': center_lat,
+                'center_lng': center_lng,
+                'area_sqm': area_sqm,
+                'area_hectares': area_hectares,
+                'created_by': request.user
+            }
         )
+        
+        if not created:
+            print(f"Updating existing boundary: {boundary.id}")
+            boundary.polygon_geojson = json.dumps(polygon_data)
+            boundary.center_lat = center_lat
+            boundary.center_lng = center_lng
+            boundary.area_sqm = area_sqm
+            boundary.area_hectares = area_hectares
+            boundary.updated_by = request.user
+            boundary.updated_at = timezone.now()
+            boundary.save()
+        else:
+            print(f"Created new boundary: {boundary.id}")
+        
+        # Update the application with the center coordinates and area
+        application.latitude = center_lat
+        application.longitude = center_lng
+        application.size_hectares = area_hectares
+        
+        # Update application status to inspection_completed if it's in field_inspection status
+        if application.status == 'field_inspection':
+            print(f"Updating application status from {application.status} to inspection_completed")
+            application.status = 'inspection_completed'
+        
+        application.save()
+        print(f"Application updated successfully")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Boundary data saved successfully.'
+        })
+    except Exception as e:
+        print(f"Error in save_polygon_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'Error saving boundary data: {str(e)}'
+        }, status=500)
