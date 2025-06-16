@@ -159,12 +159,20 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
                     'success': False,
                     'message': 'Invalid JSON data'
                 }, status=400)
-            except Exception as e:
+            except User.DoesNotExist:
                 return JsonResponse({
                     'success': False,
-                    'message': str(e)
+                    'message': 'Selected field agent not found or not a surveyor'
+                }, status=404)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error assigning field agent: {str(e)}'
                 }, status=500)
         
+        # Proceed with normal form processing
         return super().post(request, *args, **kwargs)
 
 
@@ -550,71 +558,104 @@ class FieldInspectionView(RoleRequiredMixin, LoginRequiredMixin, DetailView):
     template_name = 'applications/field_inspection.html'
     context_object_name = 'application'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add application_id as a hidden field
+        context['application_id'] = self.object.id
+        return context
+    
     def post(self, request, *args, **kwargs):
         """Handle POST requests for submitting inspections"""
         application = self.get_object()
+        print(f"Processing field inspection submission for application {application.id}")
         
         # Only the assigned field agent can review
         if application.field_agent != self.request.user and not self.request.user.is_superuser:
             messages.error(request, 'You are not authorized to review this application.')
             return redirect('applications:surveyor_inspections')
         
-        # Extract form data
-        review_notes = request.POST.get('review_notes')
-        
         try:
-            latitude = float(request.POST.get('latitude'))
-            longitude = float(request.POST.get('longitude'))
-            size_hectares = float(request.POST.get('size_hectares'))
-        except (ValueError, TypeError):
-            messages.error(request, 'Invalid coordinates or land size values.')
-            return redirect('applications:field_inspection', pk=application.pk)
-        
-        # Validate application status to ensure we're not processing it twice
-        if application.status not in ['field_inspection']:
-            messages.error(request, f'This application has already been processed.')
-            return redirect('applications:surveyor_inspections')
-        
-        # Update application with inspection data
-        application.latitude = latitude
-        application.longitude = longitude
-        application.size_hectares = size_hectares
-        application.status = 'inspection_completed'  # Change status to inspection_completed
-        application.review_notes = review_notes
-        application.review_date = timezone.now()
-        application.reviewed_by = self.request.user
-        application.save()
-        
-        # Send notification to applicant (you would implement this)
-        try:
-            self.notify_applicant(application)
-        except Exception as e:
-            print(f"Error sending notification: {str(e)}")
+            # Extract form data
+            review_notes = request.POST.get('review_notes', '')
             
-        messages.success(
-            request, 
-            f'Inspection report for application {application.application_number} has been submitted successfully. Awaiting registry officer approval.'
-        )
-        
-        return redirect('applications:surveyor_inspections')
-    
-    def notify_applicant(self, application):
-        """Send notification to the applicant about the inspection submission"""
-        # Implementation would depend on your notification system
-        # For example:
-        from notifications.models import Notification
-        
-        try:
-        # Modified to match your Notification model's actual fields
-            Notification.objects.create(
-                recipient=application.applicant,
-                title=f"Field inspection completed for application {application.application_number}",
-                message=f"Field inspection for your land application has been completed. Awaiting registry officer review."
-            # Removed the problematic fields: related_object_id and related_object_type
-            )
+            # Get coordinates and size from form
+            try:
+                latitude = float(request.POST.get('latitude', 0))
+                longitude = float(request.POST.get('longitude', 0))
+                size_hectares = float(request.POST.get('size_hectares', 0))
+                print(f"Form data - lat: {latitude}, lng: {longitude}, size: {size_hectares}")
+            except (ValueError, TypeError) as e:
+                print(f"Error parsing form data: {str(e)}")
+                messages.error(request, 'Invalid coordinates or land size values. Please check your measurements.')
+                return self.render_to_response(self.get_context_data())
+            
+            # Save boundary data if not already saved via API
+            from land_management.models import ParcelBoundary
+            try:
+                # Check if a boundary already exists
+                boundary = ParcelBoundary.objects.get(application=application)
+                print(f"Found existing boundary: {boundary.id}")
+                
+                # Update with form data if needed
+                if not boundary.center_lat or not boundary.center_lng or not boundary.area_hectares:
+                    boundary.center_lat = latitude
+                    boundary.center_lng = longitude
+                    boundary.area_hectares = size_hectares
+                    boundary.updated_by = request.user
+                    boundary.save()
+                    print(f"Updated existing boundary with form data")
+            except ParcelBoundary.DoesNotExist:
+                # Create a new boundary if one doesn't exist
+                print(f"No boundary found, creating one from form data")
+                
+                # Create a simple square boundary if no polygon was drawn
+                # This is a fallback for when the polygon wasn't saved via API
+                lat_offset = 0.001  # Roughly 100m
+                lng_offset = 0.001
+                
+                polygon_data = [
+                    [latitude - lat_offset, longitude - lng_offset],
+                    [latitude - lat_offset, longitude + lng_offset],
+                    [latitude + lat_offset, longitude + lng_offset],
+                    [latitude + lat_offset, longitude - lng_offset]
+                ]
+                
+                # Calculate approximate area
+                area_sqm = 111319.9 * 111319.9 * lat_offset * 2 * lng_offset * 2
+                
+                # Create the boundary
+                boundary = ParcelBoundary.objects.create(
+                    application=application,
+                    polygon_geojson=json.dumps(polygon_data),
+                    center_lat=latitude,
+                    center_lng=longitude,
+                    area_sqm=area_sqm,
+                    area_hectares=size_hectares,
+                    created_by=request.user
+                )
+                print(f"Created new boundary {boundary.id} from form data")
+            
+            # Update application
+            application.review_notes = review_notes
+            application.latitude = latitude
+            application.longitude = longitude
+            application.size_hectares = size_hectares
+            application.review_date = timezone.now()
+            application.status = 'inspection_completed'
+            application.save()
+            
+            print(f"Updated application status to 'inspection_completed'")
+            
+            # Add success message and redirect
+            messages.success(request, 'Inspection report submitted successfully.')
+            return redirect('applications:surveyor_inspections')
+            
         except Exception as e:
-            print(f"Error creating notification: {str(e)}")
-        # Continue with the process even if notification fails
+            print(f"Error in field inspection submission: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f'An error occurred: {str(e)}')
+            return self.render_to_response(self.get_context_data())
 
 @login_required
 def get_polygon_data(request, application_id):
@@ -652,6 +693,7 @@ def get_polygon_data(request, application_id):
             print(f"Found boundary: {boundary.id}")
             print(f"Polygon data: {boundary.polygon_geojson[:100]}...")  # Print first 100 chars
             
+            # Return the polygon data - don't try to parse it, just send as is
             return JsonResponse({
                 'success': True,
                 'polygon': boundary.polygon_geojson,
@@ -680,7 +722,6 @@ def get_polygon_data(request, application_id):
             'success': False,
             'message': f'Error retrieving boundary data: {str(e)}'
         }, status=500)
-
 
 @login_required
 @csrf_exempt
@@ -786,3 +827,33 @@ def save_polygon_data(request, application_id):
             'success': False,
             'message': f'Error saving boundary data: {str(e)}'
         }, status=500)
+
+
+class PropertyBoundaryMapView(LoginRequiredMixin, DetailView):
+    """View for displaying the property boundary map in a full page"""
+    model = ParcelApplication
+    template_name = 'applications/property_boundary_map.html'
+    context_object_name = 'application'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Try to get boundary data if available
+        try:
+            from land_management.models import ParcelBoundary
+            
+            try:
+                boundary = ParcelBoundary.objects.get(application=self.object)
+                context['boundary'] = boundary
+                context['has_polygon'] = True
+                # This is useful for debugging
+                context['polygon_data'] = boundary.polygon_geojson
+            except ParcelBoundary.DoesNotExist:
+                context['has_polygon'] = False
+        except ImportError:
+            context['has_polygon'] = False
+        
+        # Add a back URL for the return link
+        context['back_url'] = self.request.GET.get('back_url', reverse('applications:parcel_application_detail_enhanced', kwargs={'pk': self.object.pk}))
+        
+        return context

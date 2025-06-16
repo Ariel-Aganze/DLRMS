@@ -118,6 +118,7 @@
                     
                     <form id="inspection-form" method="POST" action="{% url 'applications:field_inspection' application.pk %}">
                         {% csrf_token %}
+                        <input type="hidden" id="application-id" name="application_id" value="{{ application.id }}">
                         <input type="hidden" name="latitude" id="latitude">
                         <input type="hidden" name="longitude" id="longitude">
                         <input type="hidden" name="size_hectares" id="size_hectares">
@@ -191,6 +192,23 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("Document loaded, initializing field inspection components...");
+        
+        // Check for application ID
+        const applicationId = "{{ application.id }}";
+        console.log("Application ID:", applicationId);
+        
+        // Create hidden application ID field if it doesn't exist
+        if (!document.getElementById('application-id')) {
+            const appIdInput = document.createElement('input');
+            appIdInput.type = 'hidden';
+            appIdInput.id = 'application-id';
+            appIdInput.name = 'application_id';
+            appIdInput.value = applicationId;
+            document.getElementById('inspection-form').appendChild(appIdInput);
+            console.log("Created hidden application-id field with value:", applicationId);
+        }
+        
         // Initialize the map - USING THE EXACT SAME APPROACH AS YOUR WORKING MAP
         var map = L.map('map').setView([-1.9441, 30.0619], 12); // Default to North Kivu region
         
@@ -231,6 +249,7 @@
         
         // Add the draw control to the map
         map.addControl(drawControl);
+        console.log("Map and draw controls initialized");
         
         // Elements
         const currentLatInput = document.getElementById('current-latitude');
@@ -243,22 +262,45 @@
         
         // Show notification toast
         function showNotification(message, isSuccess = true) {
-            notificationMessage.textContent = message;
-            notificationToast.classList.remove('translate-y-24', 'opacity-0');
-            notificationToast.classList.add('translate-y-0', 'opacity-100');
-            
-            if (isSuccess) {
-                notificationToast.classList.remove('bg-red-600');
-                notificationToast.classList.add('bg-gray-800');
+            if (notificationToast && notificationMessage) {
+                notificationMessage.textContent = message;
+                notificationToast.classList.remove('translate-y-24', 'opacity-0');
+                notificationToast.classList.add('translate-y-0', 'opacity-100');
+                
+                if (isSuccess) {
+                    notificationToast.classList.remove('bg-red-600');
+                    notificationToast.classList.add('bg-gray-800');
+                } else {
+                    notificationToast.classList.remove('bg-gray-800');
+                    notificationToast.classList.add('bg-red-600');
+                }
+                
+                setTimeout(() => {
+                    notificationToast.classList.remove('translate-y-0', 'opacity-100');
+                    notificationToast.classList.add('translate-y-24', 'opacity-0');
+                }, 3000);
             } else {
-                notificationToast.classList.remove('bg-gray-800');
-                notificationToast.classList.add('bg-red-600');
+                // Fallback if toast elements don't exist
+                console.log("Notification:", message, isSuccess ? "(success)" : "(error)");
+                
+                // Create a simple notification if the toast elements don't exist
+                const notification = document.createElement('div');
+                notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white shadow-lg transform transition-opacity duration-300 z-50 ${
+                    isSuccess ? 'bg-gray-800' : 'bg-red-600'
+                }`;
+                notification.style.opacity = '1';
+                notification.textContent = message;
+                
+                document.body.appendChild(notification);
+                
+                // Fade out and remove after 3 seconds
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                }, 3000);
             }
-            
-            setTimeout(() => {
-                notificationToast.classList.remove('translate-y-0', 'opacity-100');
-                notificationToast.classList.add('translate-y-24', 'opacity-0');
-            }, 3000);
         }
         
         // Function to get current location
@@ -268,17 +310,20 @@
                 return;
             }
             
-            getLocationBtn.disabled = true;
-            getLocationBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Getting location...';
+            if (getLocationBtn) {
+                getLocationBtn.disabled = true;
+                getLocationBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Getting location...';
+            }
             
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
+                    console.log("Got user location:", lat, lng);
                     
                     // Update input fields
-                    currentLatInput.value = lat.toFixed(7);
-                    currentLngInput.value = lng.toFixed(7);
+                    if (currentLatInput) currentLatInput.value = lat.toFixed(7);
+                    if (currentLngInput) currentLngInput.value = lng.toFixed(7);
                     
                     // Update hidden fields for form submission
                     document.getElementById('latitude').value = lat.toFixed(7);
@@ -307,8 +352,10 @@
                     showNotification('Current location detected');
                     
                     // Re-enable button
-                    getLocationBtn.disabled = false;
-                    getLocationBtn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Get My Location';
+                    if (getLocationBtn) {
+                        getLocationBtn.disabled = false;
+                        getLocationBtn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Get My Location';
+                    }
                 },
                 function(error) {
                     let errorMsg = 'Unable to retrieve your location';
@@ -325,11 +372,14 @@
                             break;
                     }
                     
+                    console.error("Geolocation error:", errorMsg);
                     showNotification(errorMsg, false);
                     
                     // Re-enable button
-                    getLocationBtn.disabled = false;
-                    getLocationBtn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Get My Location';
+                    if (getLocationBtn) {
+                        getLocationBtn.disabled = false;
+                        getLocationBtn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>Get My Location';
+                    }
                 },
                 { enableHighAccuracy: true }
             );
@@ -342,92 +392,109 @@
                 currentPolygon = null;
                 
                 // Reset area values
-                areaHectaresSpan.textContent = '0';
+                if (areaHectaresSpan) areaHectaresSpan.textContent = '0';
                 document.getElementById('size_hectares').value = '0';
                 
                 // Clear current position marker if it exists
                 if (currentPositionMarker) {
                     map.removeLayer(currentPositionMarker);
                     currentPositionMarker = null;
-                    currentLatInput.value = '';
-                    currentLngInput.value = '';
+                    if (currentLatInput) currentLatInput.value = '';
+                    if (currentLngInput) currentLngInput.value = '';
                 }
                 
                 showNotification('Map cleared');
             }
         }
         
+        // Get CSRF token from cookies - CRITICAL for AJAX requests
+        function getCsrfToken() {
+            const name = 'csrftoken';
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
         // Listen for the created event
         map.on(L.Draw.Event.CREATED, function (e) {
-    console.log("Polygon created");
-    if (currentPolygon) {
-        drawnItems.removeLayer(currentPolygon);
-    }
-    
-    const layer = e.layer;
-    currentPolygon = layer;
-    drawnItems.addLayer(layer);
-    
-    // Calculate area
-    updateAreaFromPolygon(layer);
-    
-    // Get the center of the polygon for lat/long
-    const center = layer.getBounds().getCenter();
-    document.getElementById('latitude').value = center.lat;
-    document.getElementById('longitude').value = center.lng;
-    
-    // Save polygon data to server
-    const applicationId = document.getElementById('application-id').value;
-    console.log("Application ID for polygon save:", applicationId);
-    
-    const polygonLatLngs = layer.getLatLngs()[0];
-    console.log("Polygon coordinates:", polygonLatLngs);
-    
-    const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
-    const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
-    const areaHectares = areaSqM / 10000; // 1 hectare = 10,000 square meters
-    
-    console.log("Area calculations:", areaSqM, "m²,", areaHectares, "hectares");
-    
-    const polygonData = {
-        polygon: polygonCoords,
-        center_lat: center.lat,
-        center_lng: center.lng,
-        area_sqm: areaSqM,
-        area_hectares: areaHectares
-    };
-    
-    console.log("Sending polygon data:", polygonData);
-    console.log("CSRF Token:", getCsrfToken());
-    
-    // Save the polygon data to the server
-    fetch(`/applications/api/save-polygon/${applicationId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify(polygonData)
-    })
-    .then(response => {
-        console.log("Response status:", response.status);
-        return response.json();
-    })
-    .then(data => {
-        console.log("Response data:", data);
-        if (data.success) {
-            console.log('Polygon data saved successfully');
-            showNotification('Boundary data saved successfully', 'success');
-        } else {
-            console.error('Error saving polygon data:', data.message);
-            showNotification('Error saving boundary data: ' + data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error saving polygon data:', error);
-        showNotification('Error saving boundary data', 'error');
-    });
-});
+            console.log("Polygon created");
+            if (currentPolygon) {
+                drawnItems.removeLayer(currentPolygon);
+            }
+            
+            const layer = e.layer;
+            currentPolygon = layer;
+            drawnItems.addLayer(layer);
+            
+            // Calculate area
+            updateAreaFromPolygon(layer);
+            
+            // Get the center of the polygon for lat/long
+            const center = layer.getBounds().getCenter();
+            document.getElementById('latitude').value = center.lat;
+            document.getElementById('longitude').value = center.lng;
+            
+            // Save polygon data to server
+            const applicationId = document.getElementById('application-id').value;
+            console.log("Application ID for polygon save:", applicationId);
+            
+            const polygonLatLngs = layer.getLatLngs()[0];
+            console.log("Polygon coordinates:", polygonLatLngs);
+            
+            const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+            const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
+            const areaHectares = areaSqM / 10000; // 1 hectare = 10,000 square meters
+            
+            console.log("Area calculations:", areaSqM, "m²,", areaHectares, "hectares");
+            
+            const polygonData = {
+                polygon: polygonCoords,
+                center_lat: center.lat,
+                center_lng: center.lng,
+                area_sqm: areaSqM,
+                area_hectares: areaHectares
+            };
+            
+            console.log("Sending polygon data:", polygonData);
+            console.log("CSRF Token:", getCsrfToken());
+            
+            // Save the polygon data to the server
+            fetch(`/applications/api/save-polygon/${applicationId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(polygonData)
+            })
+            .then(response => {
+                console.log("Response status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("Response data:", data);
+                if (data.success) {
+                    console.log('Polygon data saved successfully');
+                    showNotification('Boundary data saved successfully', true);
+                } else {
+                    console.error('Error saving polygon data:', data.message);
+                    showNotification('Error saving boundary data: ' + data.message, false);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving polygon data:', error);
+                showNotification('Error saving boundary data. Will try to save when submitting form.', false);
+            });
+        });
         
         // Listen for the edited event
         map.on(L.Draw.Event.EDITED, function(event) {
@@ -439,6 +506,44 @@
                 const center = layer.getBounds().getCenter();
                 document.getElementById('latitude').value = center.lat.toFixed(7);
                 document.getElementById('longitude').value = center.lng.toFixed(7);
+                
+                // If there's an applicationId, also update the polygon data on the server
+                const applicationId = document.getElementById('application-id').value;
+                if (applicationId) {
+                    const polygonLatLngs = layer.getLatLngs()[0];
+                    const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+                    const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
+                    const areaHectares = areaSqM / 10000;
+                    
+                    const polygonData = {
+                        polygon: polygonCoords,
+                        center_lat: center.lat,
+                        center_lng: center.lng,
+                        area_sqm: areaSqM,
+                        area_hectares: areaHectares
+                    };
+                    
+                    fetch(`/applications/api/save-polygon/${applicationId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCsrfToken()
+                        },
+                        body: JSON.stringify(polygonData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('Boundary data updated successfully', true);
+                        } else {
+                            showNotification('Error updating boundary: ' + data.message, false);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error updating boundary data:', error);
+                        showNotification('Error updating boundary data', false);
+                    });
+                }
             });
         });
         
@@ -470,68 +575,123 @@
                 const roundedHectares = Math.round(areaInHectares * 10000) / 10000; // Round to 4 decimal places
                 
                 // Update the display
-                areaHectaresSpan.textContent = roundedHectares;
+                if (areaHectaresSpan) {
+                    areaHectaresSpan.textContent = roundedHectares;
+                }
                 
                 // Update the hidden field for form submission
                 document.getElementById('size_hectares').value = roundedHectares;
                 
             } catch (error) {
                 console.error("Error calculating area:", error);
-                areaHectaresSpan.textContent = "Error";
+                if (areaHectaresSpan) {
+                    areaHectaresSpan.textContent = "Error";
+                }
             }
         }
         
         // Form validation
-        document.getElementById('inspection-form').addEventListener('submit', function(event) {
-            // Get form values
-            const latitude = parseFloat(document.getElementById('latitude').value);
-            const longitude = parseFloat(document.getElementById('longitude').value);
-            const sizeHectares = parseFloat(document.getElementById('size_hectares').value);
-            const reviewNotes = document.getElementById('review_notes').value.trim();
-            
-            // Validate coordinates and size
-            if (isNaN(latitude) || isNaN(longitude) || latitude === 0 || longitude === 0) {
-                event.preventDefault();
-                showNotification('Please set property coordinates using the map or location button', false);
-                return;
-            }
-            
-            if (isNaN(sizeHectares) || sizeHectares <= 0) {
-                event.preventDefault();
-                showNotification('Please define the property area by drawing on the map', false);
-                return;
-            }
-            
-            if (!reviewNotes) {
-                event.preventDefault();
-                showNotification('Please provide inspection notes', false);
-                return;
-            }
-            
-            // If validation passes, form will submit normally
-            // Show loading state
-            const submitButton = event.target.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Submitting...
-            `;
-        });
+        const form = document.getElementById('inspection-form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                // Get form values
+                const latitude = parseFloat(document.getElementById('latitude').value);
+                const longitude = parseFloat(document.getElementById('longitude').value);
+                const sizeHectares = parseFloat(document.getElementById('size_hectares').value);
+                const reviewNotes = document.getElementById('review_notes').value.trim();
+                const applicationId = document.getElementById('application-id').value;
+                
+                console.log("Form submission - values:", {
+                    applicationId: applicationId,
+                    latitude: latitude,
+                    longitude: longitude,
+                    sizeHectares: sizeHectares,
+                    reviewNotes: reviewNotes ? "provided" : "missing"
+                });
+                
+                // Validate coordinates and size
+                if (isNaN(latitude) || isNaN(longitude) || latitude === 0 || longitude === 0) {
+                    event.preventDefault();
+                    showNotification('Please set property coordinates using the map or location button', false);
+                    return;
+                }
+                
+                if (isNaN(sizeHectares) || sizeHectares <= 0) {
+                    event.preventDefault();
+                    showNotification('Please define the property area by drawing on the map', false);
+                    return;
+                }
+                
+                if (!reviewNotes) {
+                    event.preventDefault();
+                    showNotification('Please provide inspection notes', false);
+                    return;
+                }
+                
+                // If we have a polygon but it wasn't saved via API, try one more time
+                if (currentPolygon && applicationId) {
+                    console.log("Ensuring polygon data is saved before form submission");
+                    
+                    const polygonLatLngs = currentPolygon.getLatLngs()[0];
+                    const center = currentPolygon.getBounds().getCenter();
+                    const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
+                    const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
+                    const areaHectares = areaSqM / 10000;
+                    
+                    const polygonData = {
+                        polygon: polygonCoords,
+                        center_lat: center.lat,
+                        center_lng: center.lng,
+                        area_sqm: areaSqM,
+                        area_hectares: areaHectares
+                    };
+                    
+                    // We'll make a sync request to ensure it completes before form submission
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", `/applications/api/save-polygon/${applicationId}/`, false); // false makes it synchronous
+                    xhr.setRequestHeader("Content-Type", "application/json");
+                    xhr.setRequestHeader("X-CSRFToken", getCsrfToken());
+                    xhr.send(JSON.stringify(polygonData));
+                    
+                    if (xhr.status === 200) {
+                        console.log("Polygon data saved successfully before form submission");
+                    } else {
+                        console.warn("Could not save polygon data before form submission, but continuing anyway");
+                    }
+                }
+                
+                // If validation passes, form will submit normally
+                // Show loading state
+                const submitButton = event.target.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = `
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Submitting...
+                    `;
+                }
+            });
+        }
         
         // Add event listeners
-        getLocationBtn.addEventListener('click', getCurrentLocation);
-        clearMarkersBtn.addEventListener('click', clearDrawing);
+        if (getLocationBtn) {
+            getLocationBtn.addEventListener('click', getCurrentLocation);
+        }
+        
+        if (clearMarkersBtn) {
+            clearMarkersBtn.addEventListener('click', clearDrawing);
+        }
         
         // Start periodic location updates
         let locationUpdateInterval = setInterval(() => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        currentLatInput.value = position.coords.latitude.toFixed(7);
-                        currentLngInput.value = position.coords.longitude.toFixed(7);
+                        if (currentLatInput) currentLatInput.value = position.coords.latitude.toFixed(7);
+                        if (currentLngInput) currentLngInput.value = position.coords.longitude.toFixed(7);
                     },
                     (error) => {
                         console.error("Error updating location:", error);
@@ -543,6 +703,11 @@
         
         // Try to get location on load
         getCurrentLocation();
+        
+        // Clean up interval on page unload
+        window.addEventListener('beforeunload', () => {
+            clearInterval(locationUpdateInterval);
+        });
     });
 </script>
 {% endblock %}

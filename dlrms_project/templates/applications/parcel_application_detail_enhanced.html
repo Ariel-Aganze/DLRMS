@@ -257,6 +257,17 @@
                             </div>
                         </div>
                         {% endif %}
+
+                        {% if application.status in 'inspection_completed,approved,rejected' %}
+                        <div class="mt-4">
+                            <a href="{% url 'applications:property_boundary_map' application.pk %}" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <i class="fas fa-map-marked-alt mr-2"></i>
+                                View Property Boundary Map
+                            </a>
+                        </div>
+                        {% endif %}
+
                         
                         <!-- Registry Approval Panel (only shown for inspection_completed status) -->
                         {% if application.status == 'inspection_completed' and user.role in 'registry_officer,admin' %}
@@ -586,11 +597,16 @@
 
 {% block extra_js %}
 <script>
-    // Initialize map when DOM is loaded
+    // Main initialization when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize map if the container exists
-        const mapContainer = document.getElementById('map-container');
-        if (mapContainer) {
+        console.log("Document loaded, initializing components...");
+        
+        // Initialize map modal functionality
+        initMapModalHandlers();
+        
+        // Initialize main map if the container exists
+        if (document.getElementById('map-container')) {
+            console.log("Map container found, initializing map...");
             initializeMap();
         }
         
@@ -661,82 +677,242 @@
         }
     });
 
-    // Initialize the map with the parcel location and polygon boundaries
-    // Initialize the map with the parcel location and polygon boundaries
-function initializeMap() {
-    // Get coordinates from data attributes or from hidden inputs
-    const latitude = {{ application.latitude|default:0 }};
-    const longitude = {{ application.longitude|default:0 }};
-    
-    if (latitude === 0 && longitude === 0) {
-        document.getElementById('map-container').innerHTML = '<div class="h-full flex items-center justify-center bg-gray-100"><p class="text-gray-500">No location data available</p></div>';
-        return;
+    // Initialize map modal event handlers
+    function initMapModalHandlers() {
+        const viewBoundaryBtn = document.getElementById('view-boundary-btn');
+        const mapModal = document.getElementById('map-modal');
+        const closeMapModalBtn = document.getElementById('close-map-modal');
+        
+        console.log("Setting up map modal handlers");
+        console.log("View boundary button exists:", !!viewBoundaryBtn);
+        console.log("Map modal exists:", !!mapModal);
+        console.log("Close modal button exists:", !!closeMapModalBtn);
+        
+        if (viewBoundaryBtn) {
+            viewBoundaryBtn.addEventListener('click', function(e) {
+                console.log("View boundary button clicked");
+                e.preventDefault();
+                
+                // Show the modal using direct style manipulation
+                if (mapModal) {
+                    // Use style.display instead of classList for more reliable control
+                    mapModal.style.display = 'block';
+                    console.log("Map modal display set to block");
+                    
+                    // Initialize the map with a delay to ensure the container is visible
+                    setTimeout(initializeModalMap, 100);
+                } else {
+                    console.error("Map modal not found in DOM");
+                }
+            });
+        }
+        
+        if (closeMapModalBtn) {
+            closeMapModalBtn.addEventListener('click', function() {
+                console.log("Close map modal button clicked");
+                if (mapModal) {
+                    mapModal.style.display = 'none';
+                    console.log("Map modal hidden via close button");
+                }
+            });
+        }
+        
+        // Close modal when clicking outside the content
+        if (mapModal) {
+            mapModal.addEventListener('click', function(e) {
+                if (e.target === mapModal) {
+                    mapModal.style.display = 'none';
+                    console.log("Map modal hidden (clicked outside)");
+                }
+            });
+        }
+        
+        // Also close on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && mapModal && mapModal.style.display !== 'none') {
+                mapModal.style.display = 'none';
+                console.log("Map modal hidden (escape key)");
+            }
+        });
+    }
+
+    // Initialize the map in the modal
+    function initializeModalMap() {
+        console.log("Initializing modal map");
+        const modalMapContainer = document.getElementById('modal-map-container');
+        
+        if (!modalMapContainer) {
+            console.error("Modal map container not found");
+            return;
+        }
+        
+        // Get coordinates from the application
+        const latitude = {{ application.latitude|default:0 }};
+        const longitude = {{ application.longitude|default:0 }};
+        
+        console.log("Initializing modal map with coordinates:", latitude, longitude);
+        
+        if (latitude === 0 && longitude === 0) {
+            modalMapContainer.innerHTML = 
+                '<div class="h-full flex items-center justify-center bg-gray-100"><p class="text-gray-500">No location data available</p></div>';
+            return;
+        }
+        
+        // Create the map
+        const map = L.map(modalMapContainer).setView([latitude, longitude], 15);
+        
+        // Add the OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add a marker for the parcel center
+        const marker = L.marker([latitude, longitude]).addTo(map);
+        marker.bindPopup("Parcel Center").openPopup();
+        
+        // Try to fetch and display the polygon boundary if available
+        console.log("Fetching polygon data for application {{ application.id }}");
+        
+        fetch(`/applications/api/get-polygon/{{ application.id }}/`)
+            .then(response => {
+                console.log("Polygon API response status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("Polygon data response:", data);
+                if (data.success && data.polygon) {
+                    try {
+                        // Parse the polygon data
+                        const polygonData = JSON.parse(data.polygon);
+                        console.log("Parsed polygon data:", polygonData);
+                        
+                        // Create and add the polygon to the map
+                        const polygon = L.polygon(polygonData, {
+                            color: 'red',
+                            fillColor: '#f03',
+                            fillOpacity: 0.2,
+                            weight: 3
+                        }).addTo(map);
+                        
+                        // Fit the map bounds to the polygon
+                        map.fitBounds(polygon.getBounds());
+                        
+                        // Add area information to the polygon popup
+                        polygon.bindPopup(`
+                            <div class="text-center">
+                                <h4 class="font-bold">Property Boundary</h4>
+                                <p>Area: ${data.area_hectares} hectares</p>
+                            </div>
+                        `);
+                        
+                    } catch (e) {
+                        console.error("Error parsing polygon data:", e, data.polygon);
+                        showFallbackCircle(map, latitude, longitude);
+                    }
+                } else {
+                    // If no polygon data, show fallback circle
+                    console.log("No polygon data available, showing fallback circle");
+                    showFallbackCircle(map, latitude, longitude);
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching polygon data:", error);
+                showFallbackCircle(map, latitude, longitude);
+            });
+        
+        // Force map to recalculate its size as modal may affect layout
+        setTimeout(() => {
+            map.invalidateSize();
+            console.log("Map size invalidated");
+        }, 300);
+    }
+
+    // Initialize the main map with the parcel location and polygon boundaries
+    function initializeMap() {
+        // Get coordinates from data attributes or from hidden inputs
+        const latitude = {{ application.latitude|default:0 }};
+        const longitude = {{ application.longitude|default:0 }};
+        
+        console.log("Map coordinates:", latitude, longitude);
+        
+        if (latitude === 0 && longitude === 0) {
+            document.getElementById('map-container').innerHTML = '<div class="h-full flex items-center justify-center bg-gray-100"><p class="text-gray-500">No location data available</p></div>';
+            return;
+        }
+        
+        // Create the map
+        const map = L.map('map-container').setView([latitude, longitude], 15);
+        
+        // Add the OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add a marker for the parcel center
+        const marker = L.marker([latitude, longitude]).addTo(map);
+        marker.bindPopup("Parcel Center").openPopup();
+        
+        // Try to fetch and display the polygon boundary if available
+        console.log("Fetching polygon data for application ID: {{ application.id }}");
+        fetch(`/applications/api/get-polygon/{{ application.id }}/`)
+            .then(response => {
+                console.log("Polygon API response status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("Polygon data response:", data);
+                if (data.success && data.polygon) {
+                    try {
+                        // Parse the polygon data
+                        const polygonData = JSON.parse(data.polygon);
+                        console.log("Parsed polygon data:", polygonData);
+                        
+                        // Create and add the polygon to the map
+                        const polygon = L.polygon(polygonData, {
+                            color: 'red',
+                            fillColor: '#f03',
+                            fillOpacity: 0.2,
+                            weight: 3
+                        }).addTo(map);
+                        
+                        // Fit the map bounds to the polygon
+                        map.fitBounds(polygon.getBounds());
+                        
+                        // Add area information to the polygon popup
+                        polygon.bindPopup(`
+                            <div class="text-center">
+                                <h4 class="font-bold">Property Boundary</h4>
+                                <p>Area: ${data.area_hectares} hectares</p>
+                            </div>
+                        `);
+                        
+                        // Update the map information text to include polygon
+                        const mapInfoDiv = document.getElementById('map-info');
+                        if (mapInfoDiv) {
+                            mapInfoDiv.innerHTML = `
+                                <span><i class="fas fa-map-marker-alt text-red-500 mr-1"></i> Marker shows center coordinates</span>
+                                <span><i class="fas fa-draw-polygon text-red-500 opacity-70 mr-1"></i> Polygon shows exact boundaries</span>
+                            `;
+                        }
+                    } catch (e) {
+                        console.error("Error parsing polygon data:", e);
+                        console.error("Raw polygon data:", data.polygon);
+                        showFallbackCircle(map, latitude, longitude);
+                    }
+                } else {
+                    // If no polygon data, show fallback circle
+                    console.log("No polygon data available, showing fallback circle");
+                    showFallbackCircle(map, latitude, longitude);
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching polygon data:", error);
+                showFallbackCircle(map, latitude, longitude);
+            });
     }
     
-    // Create the map
-    const map = L.map('map-container').setView([latitude, longitude], 15);
-    
-    // Add the OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-    
-    // Add a marker for the parcel center
-    const marker = L.marker([latitude, longitude]).addTo(map);
-    marker.bindPopup("Parcel Center").openPopup();
-    
-    // Try to fetch and display the polygon boundary if available
-    fetch(`/applications/api/get-polygon/{{ application.id }}/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.polygon) {
-                try {
-                    // Parse the polygon data
-                    const polygonData = JSON.parse(data.polygon);
-                    
-                    // Create and add the polygon to the map
-                    const polygon = L.polygon(polygonData, {
-                        color: 'red',
-                        fillColor: '#f03',
-                        fillOpacity: 0.2,
-                        weight: 3
-                    }).addTo(map);
-                    
-                    // Fit the map bounds to the polygon
-                    map.fitBounds(polygon.getBounds());
-                    
-                    // Add area information to the polygon popup
-                    polygon.bindPopup(`
-                        <div class="text-center">
-                            <h4 class="font-bold">Property Boundary</h4>
-                            <p>Area: ${data.area_hectares} hectares</p>
-                        </div>
-                    `);
-                    
-                    // Update the map information text to include polygon
-                    const mapInfoDiv = document.getElementById('map-info');
-                    if (mapInfoDiv) {
-                        mapInfoDiv.innerHTML = `
-                            <span><i class="fas fa-map-marker-alt text-red-500 mr-1"></i> Marker shows center coordinates</span>
-                            <span><i class="fas fa-draw-polygon text-red-500 opacity-70 mr-1"></i> Polygon shows exact boundaries</span>
-                        `;
-                    }
-                } catch (e) {
-                    console.error("Error parsing polygon data:", e);
-                    showFallbackCircle();
-                }
-            } else {
-                // If no polygon data, show fallback circle
-                showFallbackCircle();
-            }
-        })
-        .catch(error => {
-            console.error("Error fetching polygon data:", error);
-            showFallbackCircle();
-        });
-        
     // Fallback to circle if polygon is not available
-    function showFallbackCircle() {
+    function showFallbackCircle(map, latitude, longitude) {
         // If size_hectares is available, draw an approximate circle
         const size_hectares = {{ application.size_hectares|default:0 }};
         if (size_hectares > 0) {
@@ -744,6 +920,7 @@ function initializeMap() {
             const areaSqM = size_hectares * 10000;
             // Calculate radius in meters (assuming circular area)
             const radiusM = Math.sqrt(areaSqM / Math.PI);
+            console.log("Drawing fallback circle with radius:", radiusM, "meters");
             // Draw the circle
             const circle = L.circle([latitude, longitude], {
                 radius: radiusM,
@@ -761,15 +938,16 @@ function initializeMap() {
             `);
         }
     }
-}
 
     // Field Agent Assignment
     function assignFieldAgent(appId) {
+        console.log("Opening assign field agent modal for application ID:", appId);
         document.getElementById('application-id').value = appId;
         document.getElementById('assignAgentModal').classList.remove('hidden');
     }
 
     function closeAssignModal() {
+        console.log("Closing assign field agent modal");
         document.getElementById('assignAgentModal').classList.add('hidden');
         document.getElementById('assign-agent-form').reset();
     }
@@ -786,12 +964,16 @@ function initializeMap() {
         
         // Get the application ID
         const appId = formData.get('application_id');
+        console.log("Submitting assignment for application ID:", appId);
         
         // Prepare JSON data
         const jsonData = {
             agent_id: formData.get('agent_id'),
             notes: formData.get('notes') || ''
         };
+        
+        console.log("Assignment data:", jsonData);
+        console.log("CSRF Token:", getCsrfToken());
         
         // Submit the form using fetch API
         fetch(`/applications/parcel/${appId}/assign/`, {
@@ -802,13 +984,19 @@ function initializeMap() {
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log("Assignment response status:", response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log("Assignment response data:", data);
             if (data.success) {
                 showToast('Field agent assigned successfully!', 'success');
                 closeAssignModal();
                 // Reload page to show updated status
-                window.location.reload();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             } else {
                 showToast(data.message || 'Failed to assign field agent', 'error');
             }
@@ -945,7 +1133,16 @@ function initializeMap() {
             </div>
         `;
         
-        document.getElementById('toastContainer').appendChild(toast);
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
+            document.body.appendChild(toastContainer);
+        }
+        
+        toastContainer.appendChild(toast);
         
         // Animate in
         setTimeout(() => {

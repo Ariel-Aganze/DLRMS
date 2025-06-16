@@ -40,6 +40,8 @@ urlpatterns = [
     
     # Enhanced parcel application detail view
     path('parcel/<int:pk>/enhanced/', views.EnhancedParcelApplicationDetailView.as_view(), name='parcel_application_detail_enhanced'),
+    # Proprerty boundary view
+    path('parcel/<int:pk>/boundary-map/', views.PropertyBoundaryMapView.as_view(), name='property_boundary_map'),
 
     # Review Dashboard URLs
     path('review/', include([

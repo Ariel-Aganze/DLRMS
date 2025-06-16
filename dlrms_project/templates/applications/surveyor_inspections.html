@@ -564,16 +564,16 @@ function initializeInspectionMap() {
     // Save polygon data to server
     const applicationId = document.getElementById('application-id').value;
     console.log("Application ID for polygon save:", applicationId);
-    
+
     const polygonLatLngs = layer.getLatLngs()[0];
     console.log("Polygon coordinates:", polygonLatLngs);
-    
+
     const polygonCoords = polygonLatLngs.map(latlng => [latlng.lat, latlng.lng]);
     const areaSqM = L.GeometryUtil.geodesicArea(polygonLatLngs);
     const areaHectares = areaSqM / 10000; // 1 hectare = 10,000 square meters
-    
+
     console.log("Area calculations:", areaSqM, "m²,", areaHectares, "hectares");
-    
+
     const polygonData = {
         polygon: polygonCoords,
         center_lat: center.lat,
@@ -581,10 +581,10 @@ function initializeInspectionMap() {
         area_sqm: areaSqM,
         area_hectares: areaHectares
     };
-    
+
     console.log("Sending polygon data:", polygonData);
     console.log("CSRF Token:", getCsrfToken());
-    
+
     // Save the polygon data to the server
     fetch(`/applications/api/save-polygon/${applicationId}/`, {
         method: 'POST',
@@ -612,7 +612,6 @@ function initializeInspectionMap() {
         console.error('Error saving polygon data:', error);
         showNotification('Error saving boundary data', 'error');
     });
-});
         
         // Handle polygon editing
         map.on(L.Draw.Event.EDITED, function (e) {
