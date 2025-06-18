@@ -691,12 +691,40 @@ def get_polygon_data(request, application_id):
             # Try to get the boundary data
             boundary = ParcelBoundary.objects.get(application=application)
             print(f"Found boundary: {boundary.id}")
-            print(f"Polygon data: {boundary.polygon_geojson[:100]}...")  # Print first 100 chars
             
-            # Return the polygon data - don't try to parse it, just send as is
+            # Debugging the polygon data
+            try:
+                polygon_data = boundary.polygon_geojson
+                print(f"Polygon data type: {type(polygon_data)}")
+                print(f"Polygon data preview: {polygon_data[:100]}...")  # Print first 100 chars
+                
+                # Try to parse it to ensure it's valid JSON
+                if isinstance(polygon_data, str):
+                    import json
+                    try:
+                        parsed = json.loads(polygon_data)
+                        print(f"Successfully parsed polygon data. Format: {type(parsed)}")
+                        print(f"First coordinate: {parsed[0] if isinstance(parsed, list) and len(parsed) > 0 else 'N/A'}")
+                        
+                        # Keep the data as it is (don't re-encode if it was already valid)
+                        polygon_data = boundary.polygon_geojson
+                    except json.JSONDecodeError:
+                        print(f"Invalid JSON in polygon_geojson: {polygon_data[:100]}...")
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Invalid boundary data format.',
+                            'center_lat': float(application.latitude),
+                            'center_lng': float(application.longitude),
+                            'area_hectares': float(application.size_hectares)
+                        })
+            except Exception as parse_error:
+                print(f"Error processing polygon data: {str(parse_error)}")
+                # Continue anyway, we'll let the client handle it
+            
+            # Return the polygon data
             return JsonResponse({
                 'success': True,
-                'polygon': boundary.polygon_geojson,
+                'polygon': polygon_data,
                 'center_lat': float(boundary.center_lat) if boundary.center_lat else float(application.latitude),
                 'center_lng': float(boundary.center_lng) if boundary.center_lng else float(application.longitude),
                 'area_sqm': float(boundary.area_sqm) if boundary.area_sqm else None,
@@ -846,14 +874,104 @@ class PropertyBoundaryMapView(LoginRequiredMixin, DetailView):
                 boundary = ParcelBoundary.objects.get(application=self.object)
                 context['boundary'] = boundary
                 context['has_polygon'] = True
-                # This is useful for debugging
-                context['polygon_data'] = boundary.polygon_geojson
+                
+                # For debugging purposes - print info to the console
+                print(f"Found boundary for application {self.object.id}")
+                print(f"Polygon data preview: {boundary.polygon_geojson[:100] if boundary.polygon_geojson else 'None'}")
+                print(f"Center: {boundary.center_lat}, {boundary.center_lng}")
+                print(f"Area: {boundary.area_sqm} sqm, {boundary.area_hectares} hectares")
+                
+                # Also add this data directly to the context for template access
+                context['polygon_data_preview'] = boundary.polygon_geojson[:100] if boundary.polygon_geojson else 'None'
             except ParcelBoundary.DoesNotExist:
+                print(f"No boundary found for application {self.object.id}")
                 context['has_polygon'] = False
         except ImportError:
+            print("ImportError: Could not import ParcelBoundary model")
             context['has_polygon'] = False
         
         # Add a back URL for the return link
         context['back_url'] = self.request.GET.get('back_url', reverse('applications:parcel_application_detail_enhanced', kwargs={'pk': self.object.pk}))
         
         return context
+    
+@login_required
+def test_polygon_data(request, application_id):
+    """Test endpoint to directly output polygon data for debugging"""
+    try:
+        # Get the application
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        
+        # Import the ParcelBoundary model
+        from land_management.models import ParcelBoundary
+        
+        try:
+            # Try to get the boundary data
+            boundary = ParcelBoundary.objects.get(application=application)
+            
+            # Return raw data
+            return JsonResponse({
+                'success': True,
+                'polygon': boundary.polygon_geojson,
+                'polygon_type': type(boundary.polygon_geojson).__name__,
+                'center_lat': boundary.center_lat,
+                'center_lng': boundary.center_lng,
+                'area_sqm': boundary.area_sqm,
+                'area_hectares': boundary.area_hectares,
+                'application_latitude': application.latitude,
+                'application_longitude': application.longitude,
+                'application_size': application.size_hectares
+            })
+        except ParcelBoundary.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'No boundary found',
+                'application_latitude': application.latitude,
+                'application_longitude': application.longitude,
+                'application_size': application.size_hectares
+            })
+    except Exception as e:
+        import traceback
+        traceback_str = traceback.format_exc()
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+            'traceback': traceback_str
+        }, status=500)
+    
+def direct_polygon_test(request, application_id):
+    """Direct test endpoint for polygon data"""
+    from land_management.models import ParcelBoundary
+    from django.http import HttpResponse
+    
+    try:
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        
+        try:
+            boundary = ParcelBoundary.objects.get(application=application)
+            # Return a simple HTML page with the polygon data
+            html = f"""
+            <html>
+            <head>
+                <title>Polygon Data Test</title>
+                <style>
+                    body {{ font-family: monospace; padding: 20px; }}
+                    pre {{ background: #f5f5f5; padding: 15px; overflow: auto; }}
+                </style>
+            </head>
+            <body>
+                <h1>Polygon Data for Application {application_id}</h1>
+                <p><strong>Application:</strong> {application}</p>
+                <p><strong>Boundary ID:</strong> {boundary.id}</p>
+                <p><strong>Center:</strong> {boundary.center_lat}, {boundary.center_lng}</p>
+                <p><strong>Area:</strong> {boundary.area_sqm} sqm, {boundary.area_hectares} hectares</p>
+                <h2>Polygon Data:</h2>
+                <pre>{boundary.polygon_geojson}</pre>
+            </body>
+            </html>
+            """
+            return HttpResponse(html)
+        except ParcelBoundary.DoesNotExist:
+            return HttpResponse(f"No boundary found for application {application_id}")
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}")

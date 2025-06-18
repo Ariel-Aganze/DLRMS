@@ -43,6 +43,11 @@ urlpatterns = [
     # Proprerty boundary view
     path('parcel/<int:pk>/boundary-map/', views.PropertyBoundaryMapView.as_view(), name='property_boundary_map'),
 
+    # Add this to your urls.py for debugging
+    path('api/test-polygon/<int:application_id>/', views.test_polygon_data, name='test_polygon_data'),
+
+    path('api/direct-test/<int:application_id>/', views.direct_polygon_test, name='direct_polygon_test'),
+
     # Review Dashboard URLs
     path('review/', include([
         path('dashboard/', 

@@ -1,228 +1,308 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Property Boundary Map - {{ application.application_number }} - DLRMS{% endblock %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<style>
-    /* Full page map styling */
-    .full-page-map-container {
-        height: calc(100vh - 150px);
-        width: 100%;
-        border-radius: 0.5rem;
-        border: 1px solid #e5e7eb;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .property-details {
-        background-color: #f9fafb;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .property-details .value {
-        font-weight: 600;
-        color: #3b82f6;
-    }
-    
-    .map-legend {
-        background-color: rgba(255, 255, 255, 0.9);
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        z-index: 1000;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
-    <div class="layout-container flex h-full grow flex-col">
-        <!-- Include sidebar navigation -->
-        {% include 'includes/sidebar.html' with active_page='applications_review' %}
-
-        <!-- Main Content -->
-        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
-            <div class="p-6">
-                <!-- Back button and title -->
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center">
-                        <a href="{{ back_url }}" class="flex items-center text-blue-600 hover:text-blue-800 mr-4">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Application Details
-                        </a>
+<div class="flex">
+    
+    <div class="flex-1 p-6">
+        <div class="mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <a href="{{ back_url }}" class="flex items-center text-blue-600 hover:text-blue-800 mr-4 transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Application
+                    </a>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Property Boundary Map</h1>
+                        <p class="text-gray-600">Application {{ application.application_number }}</p>
+                    </div>
+                </div>
+                
+                <button onclick="window.print()" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Print Map
+                </button>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Map Container -->
+            <div class="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden">
+                <div id="map" style="height: 600px;"></div>
+            </div>
+            
+            <!-- Property Details Panel -->
+            <div class="bg-white rounded-lg shadow-sm p-6 space-y-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Property Details</h2>
+                    
+                    <div class="space-y-4">
                         <div>
-                            <h1 class="text-2xl font-bold text-gray-900">Property Boundary Map</h1>
-                            <p class="text-sm text-gray-600 mt-1">Application {{ application.application_number }}</p>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Property Address</label>
+                            <p class="text-sm text-gray-900">{{ application.property_address }}</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Coordinates</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-gray-500">Latitude</label>
+                                    <p class="text-sm text-gray-900" id="latitude-display">
+                                        {% if boundary.center_lat %}
+                                            {{ boundary.center_lat }}
+                                        {% else %}
+                                            {{ application.latitude }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500">Longitude</label>
+                                    <p class="text-sm text-gray-900" id="longitude-display">
+                                        {% if boundary.center_lng %}
+                                            {{ boundary.center_lng }}
+                                        {% else %}
+                                            {{ application.longitude }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Property Size</label>
+                            <p class="text-sm text-gray-900" id="area-display">
+                                {% if boundary.area_hectares %}
+                                    {{ boundary.area_hectares }} hectares
+                                {% else %}
+                                    {{ application.size_hectares }} hectares
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Application Type</label>
+                            <p class="text-sm text-gray-900">{{ application.get_application_type_display }}</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if application.status == 'approved' %}bg-green-100 text-green-800
+                                {% elif application.status == 'rejected' %}bg-red-100 text-red-800
+                                {% elif application.status == 'field_inspection' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ application.get_status_display }}
+                            </span>
                         </div>
                     </div>
+                </div>
+                
+                <div class="border-t border-gray-200 pt-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Map Legend</h2>
                     
-                    <!-- Print button -->
-                    <button onclick="window.print()" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fas fa-print mr-2"></i>
-                        Print Map
-                    </button>
-                </div>
-
-                <!-- Property Details -->
-                <div class="property-details grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500">Property Address</h4>
-                        <p class="value">{{ application.property_address }}</p>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500">Latitude</h4>
-                        <p class="value">{{ application.latitude }}</p>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500">Longitude</h4>
-                        <p class="value">{{ application.longitude }}</p>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-medium text-gray-500">Property Size</h4>
-                        <p class="value">{{ application.size_hectares }} hectares</p>
-                    </div>
-                </div>
-                
-                <!-- Full Page Map Container -->
-                <div class="full-page-map-container" id="map-container">
-                    <!-- Map will be initialized here -->
-                </div>
-                
-                <!-- Map Legend (will overlay on map) -->
-                <div class="map-legend text-sm text-gray-600">
-                    <div class="flex flex-col gap-2">
-                        <span><i class="fas fa-map-marker-alt text-red-500 mr-1"></i> Marker shows center point</span>
-                        <span><i class="fas fa-draw-polygon text-red-500 opacity-70 mr-1"></i> Polygon shows exact boundaries</span>
-                        <span><i class="fas fa-circle text-blue-500 opacity-50 mr-1"></i> Circle shows approximation if no boundary available</span>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center">
+                            <div class="w-6 h-6 bg-red-500 rounded-full mr-2"></div>
+                            <span>Property center point</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-6 h-6 border-2 border-red-500 bg-red-100 mr-2"></div>
+                            <span>Property boundaries</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-6 h-6 border-2 border-blue-500 bg-blue-100 rounded-full mr-2"></div>
+                            <span>Approximate area (if no boundary)</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Loading and Error Messages -->
+<div id="loading-message" class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
+    <div class="text-center">
+        <svg class="animate-spin h-10 w-10 mx-auto mb-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-gray-600">Loading map data...</p>
+    </div>
+</div>
+
+<div id="error-message" class="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50 hidden">
+    <div class="text-center">
+        <svg class="w-12 h-12 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="text-gray-600">Unable to load map data</p>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("Initializing property boundary map...");
-        initializePropertyMap();
-    });
-    
-    function initializePropertyMap() {
-        const mapContainer = document.getElementById('map-container');
+        // Hide loading message when page is ready
+        const loadingMessage = document.getElementById('loading-message');
+        const errorMessage = document.getElementById('error-message');
         
-        if (!mapContainer) {
-            console.error("Map container not found");
+        // Map data
+        var boundaryLat = {{ boundary.center_lat|default:"null" }};
+        var boundaryLng = {{ boundary.center_lng|default:"null" }};
+        var boundaryAreaHectares = {{ boundary.area_hectares|default:"null" }};
+        
+        var appLat = {{ application.latitude|default:"null" }};
+        var appLng = {{ application.longitude|default:"null" }};
+        var appAreaHectares = {{ application.size_hectares|default:"null" }};
+        
+        var latitude = boundaryLat || appLat;
+        var longitude = boundaryLng || appLng;
+        var areaHectares = boundaryAreaHectares || appAreaHectares;
+        
+        {% if has_polygon and boundary.polygon_geojson %}
+        var polygonDataJson = '{{ boundary.polygon_geojson|escapejs }}';
+        var hasPolygon = true;
+        {% else %}
+        var polygonDataJson = null;
+        var hasPolygon = false;
+        {% endif %}
+        
+        // Check if we have valid coordinates
+        if (!latitude || !longitude || latitude === 0 || longitude === 0) {
+            loadingMessage.classList.add('hidden');
+            errorMessage.classList.remove('hidden');
             return;
         }
         
-        // Get coordinates from the application
-        const latitude = {{ application.latitude|default:0 }};
-        const longitude = {{ application.longitude|default:0 }};
-        
-        console.log("Map coordinates:", latitude, longitude);
-        
-        if (latitude === 0 && longitude === 0) {
-            mapContainer.innerHTML = '<div class="h-full flex items-center justify-center bg-gray-100"><p class="text-gray-500">No location data available</p></div>';
-            return;
-        }
-        
-        // Create the map
-        const map = L.map('map-container').setView([latitude, longitude], 15);
-        
-        // Add the OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        
-        // Add a marker for the parcel center
-        const marker = L.marker([latitude, longitude]).addTo(map);
-        marker.bindPopup("Parcel Center").openPopup();
-        
-        // Try to fetch and display the polygon boundary if available
-        console.log("Fetching polygon data for application {{ application.id }}");
-        
-        fetch(`/applications/api/get-polygon/{{ application.id }}/`)
-            .then(response => {
-                console.log("Polygon API response status:", response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log("Polygon data response:", data);
-                if (data.success && data.polygon) {
-                    try {
-                        // Parse the polygon data
-                        const polygonData = JSON.parse(data.polygon);
-                        console.log("Parsed polygon data:", polygonData);
-                        
-                        // Create and add the polygon to the map
-                        const polygon = L.polygon(polygonData, {
-                            color: 'red',
-                            fillColor: '#f03',
-                            fillOpacity: 0.2,
-                            weight: 3
-                        }).addTo(map);
-                        
-                        // Fit the map bounds to the polygon
-                        map.fitBounds(polygon.getBounds());
-                        
-                        // Add area information to the polygon popup
-                        polygon.bindPopup(`
-                            <div class="text-center">
-                                <h4 class="font-bold">Property Boundary</h4>
-                                <p>Area: ${data.area_hectares} hectares</p>
-                            </div>
-                        `);
-                        
-                    } catch (e) {
-                        console.error("Error parsing polygon data:", e, data.polygon);
-                        showFallbackCircle(map, latitude, longitude);
-                    }
-                } else {
-                    // If no polygon data, show fallback circle
-                    console.log("No polygon data available, showing fallback circle");
-                    showFallbackCircle(map, latitude, longitude);
-                }
-            })
-            .catch(error => {
-                console.error("Error fetching polygon data:", error);
-                showFallbackCircle(map, latitude, longitude);
-            });
-    }
-    
-    function showFallbackCircle(map, latitude, longitude) {
-        // If size_hectares is available, draw an approximate circle
-        const size_hectares = {{ application.size_hectares|default:0 }};
-        if (size_hectares > 0) {
-            // Convert hectares to square meters
-            const areaSqM = size_hectares * 10000;
-            // Calculate radius in meters (assuming circular area)
-            const radiusM = Math.sqrt(areaSqM / Math.PI);
-            console.log("Drawing fallback circle with radius:", radiusM, "meters");
-            // Draw the circle
-            const circle = L.circle([latitude, longitude], {
-                radius: radiusM,
-                color: 'blue',
-                fillColor: '#3388ff',
-                fillOpacity: 0.2
+        try {
+            // Initialize the map
+            var map = L.map('map').setView([latitude, longitude], 16);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
             
-            circle.bindPopup(`
-                <div class="text-center">
-                    <h4 class="font-bold">Approximate Property Area</h4>
-                    <p>Area: ${size_hectares} hectares</p>
-                    <p class="text-xs text-gray-500">(Shown as a circle with equivalent area)</p>
-                </div>
-            `);
+            // Add center marker
+            var centerMarker = L.marker([latitude, longitude], {
+                icon: L.divIcon({
+                    className: 'property-center-marker',
+                    html: '<div class="w-6 h-6 bg-red-500 rounded-full border-2 border-white flex items-center justify-center"><div class="w-2 h-2 bg-white rounded-full"></div></div>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                })
+            }).addTo(map);
+            
+            centerMarker.bindPopup('<strong>Property Center</strong><br>Lat: ' + latitude.toFixed(6) + '<br>Lng: ' + longitude.toFixed(6));
+            
+            // Add polygon if available
+            if (hasPolygon && polygonDataJson) {
+                try {
+                    var polygonData = JSON.parse(polygonDataJson);
+                    console.log("Adding polygon to map", polygonData);
+                    
+                    var polygon = L.polygon(polygonData, {
+                        color: '#ef4444',
+                        fillColor: '#ef4444',
+                        fillOpacity: 0.2,
+                        weight: 3
+                    }).addTo(map);
+                    
+                    // Fit map to polygon bounds
+                    map.fitBounds(polygon.getBounds(), { padding: [50, 50] });
+                    
+                    // Add popup to polygon
+                    polygon.bindPopup(
+                        '<div class="text-center">' +
+                        '<strong>Property Boundary</strong><br>' +
+                        'Area: ' + areaHectares + ' hectares' +
+                        '</div>'
+                    );
+                    
+                } catch (e) {
+                    console.error("Error parsing polygon data:", e);
+                    showFallbackCircle();
+                }
+            } else {
+                console.log("No polygon data, showing fallback circle");
+                showFallbackCircle();
+            }
+            
+            // Function to show fallback circle
+            function showFallbackCircle() {
+                if (areaHectares && areaHectares > 0) {
+                    var areaSqM = areaHectares * 10000;
+                    var radiusM = Math.sqrt(areaSqM / Math.PI);
+                    
+                    var circle = L.circle([latitude, longitude], {
+                        radius: radiusM,
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.2,
+                        weight: 2
+                    }).addTo(map);
+                    
+                    circle.bindPopup(
+                        '<div class="text-center">' +
+                        '<strong>Approximate Property Area</strong><br>' +
+                        'Area: ' + areaHectares + ' hectares<br>' +
+                        '<small class="text-gray-500">(Shown as circle with equivalent area)</small>' +
+                        '</div>'
+                    );
+                    
+                    // Fit map to circle bounds
+                    map.fitBounds(circle.getBounds(), { padding: [50, 50] });
+                }
+            }
+            
+            // Hide loading message once map is loaded
+            map.whenReady(function() {
+                loadingMessage.classList.add('hidden');
+            });
+            
+            // Ensure map renders properly after a short delay
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 100);
+            
+        } catch (error) {
+            console.error("Error initializing map:", error);
+            loadingMessage.classList.add('hidden');
+            errorMessage.classList.remove('hidden');
         }
-    }
+        
+        // Add CSS for markers
+        const style = document.createElement('style');
+        style.textContent = `
+            .property-center-marker {
+                display: block;
+                border: none;
+                background: transparent;
+            }
+            
+            /* Ensure Leaflet tiles display properly */
+            .leaflet-container {
+                font-family: inherit;
+            }
+            
+            .leaflet-tile-pane {
+                opacity: 1 !important;
+            }
+        `;
+        document.head.append(style);
+    });
 </script>
 {% endblock %}
