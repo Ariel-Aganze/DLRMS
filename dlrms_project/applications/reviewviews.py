@@ -279,33 +279,50 @@ def quick_application_review(request, application_id):
         
         with transaction.atomic():
             if action == 'approve':
-                # Quick approve (simplified version)
-                application.status = 'approved'
+                # Quick approve - ensure we use 'approved' not 'approve'
+                application.status = 'approved'  # CORRECT
                 application.review_notes = notes
                 application.review_date = timezone.now()
                 application.reviewed_by = request.user
                 application.save()
+                
+                # Get values with proper None handling
+                size_hectares = application.size_hectares if application.size_hectares is not None else 1.0
+                latitude = application.latitude if application.latitude is not None else -1.9441
+                longitude = application.longitude if application.longitude is not None else 30.0619
                 
                 # Create basic land parcel
                 parcel = LandParcel.objects.create(
                     owner=application.applicant,
                     location=application.property_address,
                     property_type=application.property_type,
-                    district='North Kivu',  # Default value
+                    district='North Kivu',
                     sector='Default Sector',
                     cell='Default Cell',
                     village='Default Village',
-                    size_hectares=1.0,  # Default size
+                    size_hectares=float(size_hectares),
+                    latitude=float(latitude),
+                    longitude=float(longitude),
                     status='registered',
                     registration_date=timezone.now(),
                     registered_by=request.user
                 )
                 
+                # Link parcel to application
+                application.parcel = parcel
+                application.save()
+                
                 # Create title
+                expiry_date = None
+                if application.application_type == 'property_contract':
+                    expiry_date = timezone.now().date() + timezone.timedelta(days=3*365)
+                
                 title = ParcelTitle.objects.create(
                     parcel=parcel,
                     owner=application.applicant,
+                    application=application,
                     title_type=application.application_type,
+                    expiry_date=expiry_date,
                     is_active=True
                 )
                 
@@ -318,27 +335,32 @@ def quick_application_review(request, application_id):
                 message = 'Application approved and title issued'
                 
             elif action == 'reject':
-                application.status = 'rejected'
+                application.status = 'rejected'  # CORRECT
                 application.review_notes = notes
                 application.review_date = timezone.now()
                 application.reviewed_by = request.user
                 application.save()
-                
                 message = 'Application rejected'
                 
             else:
-                return JsonResponse({'success': False, 'message': 'Invalid action'}, status=400)
-        
-        return JsonResponse({
-            'success': True,
-            'message': message,
-            'new_status': application.status
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid action'
+                }, status=400)
+                
+            return JsonResponse({
+                'success': True,
+                'message': message
+            })
+            
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        print(f"Error in quick review: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'Error processing review: {str(e)}'
+        }, status=500)
 
 
 @login_required
@@ -847,6 +869,7 @@ class ApplicationsReportView(RoleRequiredMixin, LoginRequiredMixin, TemplateView
         
         return agent_performance[:10]  # Top 10
     
+
 @login_required
 @require_POST
 def registry_approval(request, application_id):
@@ -857,10 +880,11 @@ def registry_approval(request, application_id):
     application = get_object_or_404(ParcelApplication, pk=application_id)
     
     # Check if application is in the correct state
+    # FIXED: The status should be 'inspection_completed' not 'inspections_completed'
     if application.status != 'inspection_completed':
         return JsonResponse({
             'success': False,
-            'message': 'This application is not ready for final approval.'
+            'message': f'This application is not ready for final approval. Current status: {application.status}'
         }, status=400)
     
     try:
@@ -876,7 +900,10 @@ def registry_approval(request, application_id):
         
         with transaction.atomic():
             # Update application status
-            application.status = decision  # 'approve' or 'reject'
+            if decision == 'approve':
+                application.status = 'approved'
+            elif decision == 'reject':
+                application.status = 'rejected'
             
             # Add additional notes from registry officer
             registry_notes = f"Registry Decision ({timezone.now().strftime('%Y-%m-%d')}): {additional_notes}"
@@ -885,13 +912,23 @@ def registry_approval(request, application_id):
             else:
                 application.review_notes = registry_notes
             
+            # Save the application with updated status
+            application.reviewed_by = request.user
+            application.review_date = timezone.now()
+            application.save()
+            
             # If approved, create land parcel and title
             if decision == 'approve':
                 # Generate a unique parcel ID first
                 parcel_id = f"PCL-{application.application_number}"
                 
                 try:
-                    # Create land parcel - Make sure to access attributes carefully
+                    # Get values with proper None handling and defaults
+                    size_hectares = application.size_hectares if application.size_hectares is not None else 1.0
+                    latitude = application.latitude if application.latitude is not None else -1.9441
+                    longitude = application.longitude if application.longitude is not None else 30.0619
+                    
+                    # Create land parcel with safe float conversions
                     parcel = LandParcel(
                         parcel_id=parcel_id,
                         owner=application.applicant,
@@ -901,70 +938,98 @@ def registry_approval(request, application_id):
                         sector='Default Sector',
                         cell='Default Cell',
                         village='Default Village',
-                        size_hectares=float(getattr(application, 'size_hectares', 0)),  # Safely get attribute with default
-                        latitude=float(getattr(application, 'latitude', 0)),  # Safely get attribute with default
-                        longitude=float(getattr(application, 'longitude', 0)),  # Safely get attribute with default
-                        status='registered'
+                        size_hectares=float(size_hectares),
+                        latitude=float(latitude),
+                        longitude=float(longitude),
+                        status='registered',
+                        registration_date=timezone.now(),
+                        registered_by=request.user
                     )
                     parcel.save()
                     
                     # Link parcel to application
                     application.parcel = parcel
-                    application.save()  # Save immediately after setting parcel
+                    application.save()
                     
                     # Determine title type and expiry
                     title_type = application.application_type
                     expiry_date = None
                     if title_type == 'property_contract':
-                        expiry_date = timezone.now().date() + timezone.timedelta(days=365*5)  # 5 years
+                        expiry_date = timezone.now().date() + timezone.timedelta(days=3*365)  # 3 years
                     
-                    # Create title
-                    title = ParcelTitle(
-                        title_number=f"TITLE-{application.application_number}",
-                        parcel=parcel,  # This must be set for the foreign key relationship
+                    # Create parcel title
+                    title = ParcelTitle.objects.create(
+                        parcel=parcel,
                         owner=application.applicant,
-                        application=application,  # Link to the application
+                        application=application,
                         title_type=title_type,
-                        issue_date=timezone.now().date(),
                         expiry_date=expiry_date,
                         is_active=True
                     )
-                    title.save()
                     
-                    # Set active title on parcel
+                    # Update parcel with active title information
                     parcel.active_title_type = title_type
-                    if expiry_date:
+                    if title_type == 'property_contract':
                         parcel.active_title_expiry = expiry_date
                     parcel.save()
                     
-                    # Include title number in the response
+                    # Send notification (if available)
+                    try:
+                        from notifications.models import Notification
+                        Notification.objects.create(
+                            recipient=application.applicant,
+                            title='Application Approved',
+                            message=f'Your {application.get_application_type_display()} application has been approved. Title number: {title.title_number}',
+                            notification_type='application_status',
+                            related_application=application
+                        )
+                    except Exception as e:
+                        print(f"Failed to create notification: {e}")
+                    
                     return JsonResponse({
                         'success': True,
                         'message': f'Application approved successfully. Title {title.title_number} has been issued.',
                         'title_number': title.title_number
                     })
+                
                 except Exception as e:
-                    # Log the specific error that occurred during parcel creation
                     print(f"Error creating parcel/title: {str(e)}")
-                    # Include the error message in the response
+                    import traceback
+                    traceback.print_exc()
                     return JsonResponse({
                         'success': False,
                         'message': f'Error processing application: {str(e)}'
                     }, status=500)
+            
             else:
-                # Application was rejected
-                application.save()
+                # Rejection case
+                # Send notification (if available)
+                try:
+                    from notifications.models import Notification
+                    Notification.objects.create(
+                        recipient=application.applicant,
+                        title='Application Rejected',
+                        message=f'Your {application.get_application_type_display()} application has been rejected. Reason: {additional_notes}',
+                        notification_type='application_status',
+                        related_application=application
+                    )
+                except Exception as e:
+                    print(f"Failed to create notification: {e}")
+                
                 return JsonResponse({
                     'success': True,
                     'message': 'Application rejected successfully.'
                 })
-                
+    
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False,
-            'message': 'Invalid JSON data'
+            'message': 'Invalid request data.'
         }, status=400)
     except Exception as e:
+        print(f"Error in registry approval: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'message': f'Error processing application: {str(e)}'

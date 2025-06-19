@@ -614,67 +614,88 @@
         const registrySubmitBtn = document.getElementById('registry-submit-btn');
         
         if (registrySubmitBtn) {
-            registrySubmitBtn.addEventListener('click', function() {
-                // Validate input
-                let decision = '';
-                const registryApproveBtn = document.getElementById('registry-approve');
-                const registryRejectBtn = document.getElementById('registry-reject');
-                
-                if (registryApproveBtn && registryApproveBtn.checked) {
-                    decision = 'approve';
-                } else if (registryRejectBtn && registryRejectBtn.checked) {
-                    decision = 'reject';
-                }
-                
-                if (!decision) {
-                    showToast('Please select a decision (approve or reject).', 'error');
-                    return;
-                }
-                
-                // Get application ID from the button data attribute
-                const appId = registrySubmitBtn.getAttribute('data-app-id');
-                
-                // Prepare data
-                const data = {
-                    decision: decision,
-                    notes: document.getElementById('registry-notes') ? document.getElementById('registry-notes').value : ''
-                };
-                
-                // Show loading state
-                registrySubmitBtn.disabled = true;
-                registrySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-                
-                // Send request to server
-                fetch(`/applications/review/api/applications/${appId}/registry-approval/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message, 'success');
-                        // Refresh page after short delay to show updated status
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        showToast(data.message || 'An error occurred during processing.', 'error');
-                        registrySubmitBtn.disabled = false;
-                        registrySubmitBtn.innerHTML = 'Submit Decision';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('An error occurred. Please try again.', 'error');
-                    registrySubmitBtn.disabled = false;
-                    registrySubmitBtn.innerHTML = 'Submit Decision';
-                });
-            });
+    console.log("Registry submit button found, adding event listener");
+    
+    registrySubmitBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // Prevent any default action
+        console.log("Registry submit button clicked");
+        
+        // Validate input
+        let decision = '';
+        const registryApproveBtn = document.getElementById('registry-approve');
+        const registryRejectBtn = document.getElementById('registry-reject');
+        
+        if (registryApproveBtn && registryApproveBtn.checked) {
+            decision = 'approve';
+        } else if (registryRejectBtn && registryRejectBtn.checked) {
+            decision = 'reject';
         }
+        
+        console.log("Selected decision:", decision);
+        
+        if (!decision) {
+            showToast('Please select a decision (approve or reject).', 'error');
+            return;
+        }
+        
+        // Get application ID from the button data attribute
+        const appId = registrySubmitBtn.getAttribute('data-app-id');
+        console.log("Application ID:", appId);
+        
+        // Prepare data
+        const data = {
+            decision: decision,
+            notes: document.getElementById('registry-notes') ? document.getElementById('registry-notes').value : ''
+        };
+        
+        console.log("Data to send:", data);
+        
+        // Show loading state
+        registrySubmitBtn.disabled = true;
+        registrySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+        
+        // Construct the URL
+        const url = `/applications/review/api/applications/${appId}/registry-approval/`;
+        console.log("API URL:", url);
+        
+        // Send request to server
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            console.log("Response status:", response.status);
+            console.log("Response headers:", response.headers);
+            return response.json();
+        })
+        .then(data => {
+            console.log("Response data:", data);
+            if (data.success) {
+                showToast(data.message, 'success');
+                // Refresh page after short delay to show updated status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast(data.message || 'An error occurred during processing.', 'error');
+                registrySubmitBtn.disabled = false;
+                registrySubmitBtn.innerHTML = 'Submit Decision';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred. Please check the console for details.', 'error');
+            registrySubmitBtn.disabled = false;
+            registrySubmitBtn.innerHTML = 'Submit Decision';
+        });
+    });
+} else {
+    console.log("Registry submit button not found");
+}
     });
 
     // Initialize map modal event handlers

@@ -1,25 +1,18 @@
 {% extends 'base.html' %}
 
 {% block title %}DLRMS - Digital Land Registration Management System{% endblock %}
+{% load static %}
 
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50" style='font-family: "Public Sans", "Noto Sans", sans-serif;'>
     <div class="layout-container flex h-full grow flex-col">
         <!-- Header -->
         <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-10 py-3">
-            <div class="flex items-center gap-4 text-[#0e141b]">
-                <div class="size-4">
-                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g clip-path="url(#clip0_6_319)">
-                            <path d="M8.57829 8.57829C5.52816 11.6284 3.451 15.5145 2.60947 19.7452C1.76794 23.9758 2.19984 28.361 3.85056 32.3462C5.50128 36.3314 8.29667 39.7376 11.8832 42.134C15.4698 44.5305 19.6865 45.8096 24 45.8096C28.3135 45.8096 32.5302 44.5305 36.1168 42.134C39.7033 39.7375 42.4987 36.3314 44.1494 32.3462C45.8002 28.361 46.2321 23.9758 45.3905 19.7452C44.549 15.5145 42.4718 11.6284 39.4217 8.57829L24 24L8.57829 8.57829Z" fill="currentColor"></path>
-                        </g>
-                        <defs>
-                            <clipPath id="clip0_6_319"><rect width="48" height="48" fill="white"></rect></clipPath>
-                        </defs>
-                    </svg>
+                <div class="flex items-center gap-4 text-[#0e141b]">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-12 w-12 object-contain" />
+                    <h2 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em]">DLRMS</h2>
                 </div>
-                <h2 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em]">DLRMS</h2>
-            </div>
+
             <div class="flex flex-1 justify-end gap-8">
                 <div class="flex items-center gap-9">
                     <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:about' %}">About</a>
@@ -63,38 +56,40 @@
 
                 <!-- Hero Section -->
                 <div class="@container">
-                    <div class="@[480px]:p-4">
-                        <div class="flex min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-lg items-center justify-center p-4"
-                             style='background-image: linear-gradient(rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%), url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1932&q=80");'>
-                            <div class="flex flex-col gap-2 text-center">
-                                <h1 class="text-white text-4xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]">
-                                    Digital Land Registration and Management System
-                                </h1>
-                                <h2 class="text-white text-sm font-normal leading-normal @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal">
-                                    Secure and efficient land management for North Kivu, DRC. Register your land, manage your property, and access land information with ease.
-                                </h2>
-                            </div>
-                            <div class="flex-wrap gap-3 flex justify-center">
-                                {% if user.is_authenticated %}
-                                    <a href="{% url 'core:dashboard' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 @[480px]:h-12 @[480px]:px-5 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] @[480px]:text-base @[480px]:font-bold @[480px]:leading-normal @[480px]:tracking-[0.015em]">
-                                        <span class="truncate">Go to Dashboard</span>
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'accounts:register' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 @[480px]:h-12 @[480px]:px-5 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] @[480px]:text-base @[480px]:font-bold @[480px]:leading-normal @[480px]:tracking-[0.015em]">
-                                        <span class="truncate">Get Started</span>
-                                    </a>
-                                    <a href="{% url 'accounts:login' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 @[480px]:h-12 @[480px]:px-5 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em] @[480px]:text-base @[480px]:font-bold @[480px]:leading-normal @[480px]:tracking-[0.015em]">
-                                        <span class="truncate">Login</span>
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <div class="@[480px]:p-4">
+        <div class="flex min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-lg items-center justify-center p-4"
+             style='background-image: linear-gradient(rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%), url("{% static 'img/hero-bg.jpg' %}");'>
+            
+            <div class="flex flex-col gap-2 text-center">
+                <h1 class="text-white text-4xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]">
+                    Digital Land Registration and Management System
+                </h1>
+                <h2 class="text-white text-sm font-normal leading-normal @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal">
+                    Secure and efficient land management for North Kivu, DRC. Register your land, manage your property, and access land information with ease.
+                </h2>
+            </div>
+
+            <div class="flex-wrap gap-3 flex justify-center">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'core:dashboard' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 @[480px]:h-12 @[480px]:px-5 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] @[480px]:text-base @[480px]:font-bold @[480px]:leading-normal @[480px]:tracking-[0.015em]">
+                        <span class="truncate">Go to Dashboard</span>
+                    </a>
+                {% else %}
+                    <a href="{% url 'accounts:register' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 @[480px]:h-12 @[480px]:px-5 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em] @[480px]:text-base @[480px]:font-bold @[480px]:leading-normal @[480px]:tracking-[0.015em]">
+                        <span class="truncate">Get Started</span>
+                    </a>
+                    <a href="{% url 'accounts:login' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 @[480px]:h-12 @[480px]:px-5 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em] @[480px]:text-base @[480px]:font-bold @[480px]:leading-normal @[480px]:tracking-[0.015em]">
+                        <span class="truncate">Login</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 
                 <!-- Features Section -->
                 <div class="flex flex-col gap-10 px-4 py-10">
-                    <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-4 items-center text-center">
                         <h1 class="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight">
                             Key Features
                         </h1>
@@ -181,13 +176,43 @@
                                 <p class="text-[#4e7397] text-sm font-normal leading-normal">Structured dispute management and resolution workflows.</p>
                             </div>
                         </div>
+
+                        <!-- Application Status Notifications -->
+<div class="flex flex-1 gap-3 rounded-lg border border-[#d0dbe7] bg-slate-50 p-4 flex-col">
+    <div class="text-[#0e141b]">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+            <path d="M128 24a104 104 0 1 0 104 104A104.12 104.12 0 0 0 128 24Zm8 160a8 8 0 0 1-16 0V136a8 8 0 0 1 16 0Zm0-72a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Z"/>
+        </svg>
+    </div>
+    <div class="flex flex-col gap-1">
+        <h2 class="text-[#0e141b] text-base font-bold leading-tight">Status Notifications</h2>
+        <p class="text-[#4e7397] text-sm font-normal leading-normal">Get real-time updates on your application progress via dashboard alerts or email.</p>
+    </div>
+</div>
+
+<!-- Document Uploads -->
+<div class="flex flex-1 gap-3 rounded-lg border border-[#d0dbe7] bg-slate-50 p-4 flex-col">
+    <div class="text-[#0e141b]">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+            <path d="M200 32H56A16 16 0 0 0 40 48v160a16 16 0 0 0 16 16h96a8 8 0 0 0 5.66-2.34l56-56A8 8 0 0 0 216 160V48a16 16 0 0 0-16-16Zm-40 163.31V168a8 8 0 0 1 8-8h27.31ZM200 152h-36a24 24 0 0 0-24 24v36H56V48h144Z"/>
+        </svg>
+    </div>
+    <div class="flex flex-col gap-1">
+        <h2 class="text-[#0e141b] text-base font-bold leading-tight">Document Upload</h2>
+        <p class="text-[#4e7397] text-sm font-normal leading-normal">Upload scanned titles, IDs, and supporting documents directly within your application.</p>
+    </div>
+</div>
+
+
                     </div>
                 </div>
+
+                
 
                 <!-- Call to Action -->
                 <div class="@container">
                     <div class="flex flex-col justify-end gap-6 px-4 py-10 @[480px]:gap-8 @[480px]:px-10 @[480px]:py-20">
-                        <div class="flex flex-col gap-2 text-center">
+                        <div class="flex flex-col gap-2 items-center text-center">
                             <h1 class="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight @[480px]:text-4xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em] max-w-[720px]">
                                 Ready to Get Started?
                             </h1>
