@@ -166,7 +166,6 @@ class CertificateGenerator:
         canvas.setFont("Helvetica-Bold", 20)
         title = "PROPERTY CONTRACT CERTIFICATE" if certificate.certificate_type == 'property_contract' else "PARCEL CERTIFICATE OF OWNERSHIP"
         canvas.drawCentredString(self.page_width/2, self.page_height - 3.7*inch, title)
-
     
     def _generate_qr_code(self, certificate):
         """Generate QR code for certificate verification"""
@@ -230,7 +229,9 @@ class CertificateGenerator:
         y_position -= 0.4*inch
         self._add_field(canvas, "Owner Name:", certificate.owner.get_full_name(), 
                        1*inch, y_position)
-        self._add_field(canvas, "National ID:", app.applicant.username, 
+        # Get national ID from the owner's User model
+        national_id = certificate.owner.national_id if certificate.owner.national_id else "Not provided"
+        self._add_field(canvas, "National ID:", national_id, 
                        1*inch, y_position - 0.3*inch)
         if hasattr(app, 'submitted_at'):
             self._add_field(canvas, "Registration Date:", 
@@ -289,7 +290,9 @@ class CertificateGenerator:
         y_position -= 0.4*inch
         self._add_field(canvas, "Owner Name:", certificate.owner.get_full_name(), 
                        1*inch, y_position)
-        self._add_field(canvas, "National ID:", app.applicant.username, 
+        # Get national ID from the owner's User model
+        national_id = certificate.owner.national_id if certificate.owner.national_id else "Not provided"
+        self._add_field(canvas, "National ID:", national_id, 
                        1*inch, y_position - 0.3*inch)
         
         # Legal statement for parcel certificate
@@ -344,19 +347,13 @@ Issued in accordance with the Land Law of the Democratic Republic of the Congo."
         y_position = 3*inch
         
         canvas.setFont("Helvetica-Bold", 10)
-        canvas.drawString(1*inch, y_position, "AUTHORIZED SIGNATURES")
+        canvas.drawString(1*inch, y_position, "AUTHORIZED SIGNATURE")
         
-        # Signature boxes
+        # Signature box - Only Registry Officer
         y_position -= 0.5*inch
         
-        # Registry Officer
-        self._draw_signature_box(canvas, "Land Registry Officer", 1*inch, y_position)
-        
-        # Property Owner
-        self._draw_signature_box(canvas, "Property Owner", 3*inch, y_position)
-        
-        # Witness
-        self._draw_signature_box(canvas, "Witness", 5*inch, y_position)
+        # Registry Officer signature box (centered)
+        self._draw_signature_box(canvas, "Land Registry Officer", 3*inch, y_position)
     
     def _draw_signature_box(self, canvas, title, x, y):
         """Draw a signature box"""
