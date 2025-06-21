@@ -211,4 +211,4 @@ CSRF_TRUSTED_ORIGINS = [
     # Add other trusted origins if needed
 ]
 
-CERTIFICATE_VERIFICATION_BASE_URL = 'http://192.168.1.68:8000/certificates'
+CERTIFICATE_VERIFICATION_BASE_URL = 'http://192.168.1.81:8000/certificates'

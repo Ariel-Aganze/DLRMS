@@ -126,22 +126,19 @@ def sign_document_ajax(request):
             document_type='application_approval' if doc_type == 'certificate' else 'legal_document',
             document_title=document_title,
             document_hash=document_hash,
-            signature_hash=signature_data,
+            signature_hash=hashlib.sha256(signature_data.encode()).hexdigest(),  # Store hash
+            signature_image=signature_data,  # Store actual signature image
             status='signed',
             is_verified=True,
             verification_method='Browser-based signing',
-            verification_timestamp=timezone.now()
-        )
-        
-        # Add metadata
-        if hasattr(signature, 'metadata'):
-            signature.metadata = {
+            verification_timestamp=timezone.now(),
+            signature_metadata={
                 'position': signature_position,
                 'signature_type': signature_type,
                 'ip_address': request.META.get('REMOTE_ADDR'),
                 'user_agent': request.META.get('HTTP_USER_AGENT', '')
             }
-            signature.save()
+        )
         
         # Link signature to document if possible
         if hasattr(document, 'signatures'):

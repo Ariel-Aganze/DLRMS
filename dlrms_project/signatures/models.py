@@ -27,7 +27,7 @@ class DigitalSignature(models.Model):
     signature_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     signer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='digital_signatures')
     document_hash = models.CharField(max_length=256, help_text="SHA-256 hash of the document")
-    signature_hash = models.CharField(max_length=512, help_text="Digital signature hash")
+    signature_hash = models.TextField(help_text="Digital signature data")  # Changed to TextField
     
     # Document Information
     document_type = models.CharField(max_length=30, choices=DOCUMENT_TYPE_CHOICES)
@@ -50,6 +50,10 @@ class DigitalSignature(models.Model):
     is_verified = models.BooleanField(default=False)
     verification_method = models.CharField(max_length=100, blank=True, null=True)
     verification_timestamp = models.DateTimeField(blank=True, null=True)
+    
+    # Additional metadata for signature
+    signature_image = models.TextField(blank=True, null=True, help_text="Base64 encoded signature image")
+    signature_metadata = models.JSONField(default=dict, blank=True, help_text="Additional signature metadata")
     
     # Timestamps
     signed_at = models.DateTimeField(auto_now_add=True)

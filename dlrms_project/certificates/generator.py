@@ -134,29 +134,39 @@ class CertificateGenerator:
     def _add_header(self, canvas, certificate):
         """Add certificate header"""
         # Government emblem placeholder
-        canvas.setFillColor(colors.HexColor('#000080'))
-        canvas.circle(self.page_width/2, self.page_height - 1.5*inch, 0.5*inch, fill=1)
-        
-        # Country name
+        # Government logo
+        logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')  # Update path as needed
+        logo_width = 1.2 * inch
+        logo_height = 1.2 * inch
+        x = (self.page_width - logo_width) / 2
+        y = self.page_height - 1.8 * inch
+
+        if os.path.exists(logo_path):
+            canvas.drawImage(logo_path, x, y, width=logo_width, height=logo_height, preserveAspectRatio=True, mask='auto')  # ✅ Fix black background
+
+    # Set text color to blue for all following text
+        canvas.setFillColor(colors.HexColor('#000080'))  # ✅ Apply blue color before drawing text
+
+    # Country name
         canvas.setFont("Helvetica-Bold", 18)
         canvas.drawCentredString(self.page_width/2, self.page_height - 2.5*inch, 
-                                "DEMOCRATIC REPUBLIC OF THE CONGO")
-        
-        # Ministry
+                            "DEMOCRATIC REPUBLIC OF THE CONGO")
+
+    # Ministry
         canvas.setFont("Helvetica", 14)
         canvas.drawCentredString(self.page_width/2, self.page_height - 2.8*inch, 
-                                "MINISTRY OF LAND AFFAIRS")
-        
-        # System name
+                            "MINISTRY OF LAND AFFAIRS")
+
+    # System name
         canvas.setFont("Helvetica", 12)
         canvas.drawCentredString(self.page_width/2, self.page_height - 3.1*inch, 
-                                "DIGITAL LAND REGISTRY MANAGEMENT SYSTEM")
-        
-        # Certificate title
+                            "DIGITAL LAND REGISTRY MANAGEMENT SYSTEM")
+
+    # Certificate title
         canvas.setFont("Helvetica-Bold", 20)
-        canvas.setFillColor(colors.HexColor('#000080'))
         title = "PROPERTY CONTRACT CERTIFICATE" if certificate.certificate_type == 'property_contract' else "PARCEL CERTIFICATE OF OWNERSHIP"
         canvas.drawCentredString(self.page_width/2, self.page_height - 3.7*inch, title)
+
     
     def _generate_qr_code(self, certificate):
         """Generate QR code for certificate verification"""

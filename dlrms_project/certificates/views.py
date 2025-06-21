@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.urls import reverse
 import json
+import hashlib
 
 from .models import Certificate, CertificateAuditLog
 from .generator import CertificateGenerator
@@ -274,8 +275,9 @@ class SignCertificateView(LoginRequiredMixin, View):
                 document_type='application_approval',
                 document_title=f'Certificate {certificate.certificate_number}',
                 document_hash=certificate.document_hash,
-                signature_hash=signature_data,
-                related_document=None,  # You might want to link to a Document model
+                signature_hash=hashlib.sha256(signature_data.encode()).hexdigest(),  # Store hash of signature
+                signature_image=signature_data,  # Store actual signature image in new field
+                related_document=None,
                 certificate_serial=certificate.certificate_number,
                 certificate_issuer='DRC Land Registry',
                 certificate_valid_from=timezone.now(),
@@ -283,7 +285,12 @@ class SignCertificateView(LoginRequiredMixin, View):
                 is_verified=True,
                 verification_method='PKI',
                 verification_timestamp=timezone.now(),
-                status='signed'
+                status='signed',
+                signature_metadata={
+                    'signature_type': signature_type,
+                    'ip_address': request.META.get('REMOTE_ADDR'),
+                    'user_agent': request.META.get('HTTP_USER_AGENT', '')
+                }
             )
             
             # Add signature to certificate
