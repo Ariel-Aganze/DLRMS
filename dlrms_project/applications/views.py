@@ -369,10 +369,31 @@ class ApplicationCreateView(LoginRequiredMixin, CreateView):
 
 
 class ApplicationDetailView(LoginRequiredMixin, DetailView):
-    """Legacy application detail view"""
+    """Application detail view with full context"""
     model = ParcelApplication
-    template_name = 'applications/application_detail.html'
+    template_name = 'applications/parcel_application_detail_enhanced.html'
     context_object_name = 'application'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Add documents
+        context['documents'] = self.object.documents.all()
+        
+        # Add field agents for assignment modal
+        context['field_agents'] = User.objects.filter(
+            role='surveyor', 
+            is_active=True
+        ).order_by('first_name', 'last_name')
+        
+        # Add user role for permission checks in template
+        context['user'] = self.request.user
+        
+        # Check if there's a certificate
+        if hasattr(self.object, 'certificate'):
+            context['certificate'] = self.object.certificate
+        
+        return context
 
 
 class ApplicationUpdateView(LoginRequiredMixin, UpdateView):

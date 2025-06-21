@@ -18,6 +18,9 @@
                     <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:about' %}">About</a>
                     <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:services' %}">Services</a>
                     <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:contact' %}">Contact</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'certificates:verify_certificate' %}" >
+                Verify Certificate
+            </a>
                 </div>
                 <div class="flex gap-2">
                     {% if user.is_authenticated %}

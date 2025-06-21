@@ -87,6 +87,13 @@
                     <span class="text-sm font-medium">All Applications</span>
                 </a>
 
+                <a href="{% url 'certificates:certificate_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'certificates' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                    <svg class="mr-3 h-5 w-5 {% if active_page == 'certificates' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-sm font-medium">Certificates</span>
+                </a>
+
                 <!-- All Land Parcels (Admin View) -->
                 <a href="{% url 'land_management:parcel_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'all_parcels' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
                     <svg class="mr-3 h-5 w-5 {% if active_page == 'all_parcels' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,6 +173,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                     </svg>
                     <span class="text-sm font-medium">My Land Parcels</span>
+                </a>
+
+                <!-- Certificates -->
+                <a href="{% url 'certificates:certificate_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'certificates' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                    <svg class="mr-3 h-5 w-5 {% if active_page == 'certificates' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-sm font-medium">My Certificates</span>
                 </a>
                 
                 <!-- My Land Titles -->
@@ -257,6 +272,11 @@
                 <span class="text-sm font-medium">Admin Panel</span>
             </a>
             {% endif %}
+
+            <!-- For PUBLIC navigation (in the footer or header) -->
+            <a href="{% url 'certificates:verify_certificate' %}" class="text-gray-600 hover:text-gray-900">
+                Verify Certificate
+            </a>
             
             <!-- Help & Support -->
             <a href="#" class="group flex items-center px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100">

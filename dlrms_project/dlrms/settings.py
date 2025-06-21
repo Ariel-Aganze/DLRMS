@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'notifications',
     'disputes',
     'signatures',
+     'certificates',
 ]
 
 MIDDLEWARE = [
@@ -209,3 +210,5 @@ CSRF_TRUSTED_ORIGINS = [
     'https://76a3-2c0f-eb68-64d-8500-d9cb-9ee3-aa12-f2f1.ngrok-free.app',  # Remove the trailing slash
     # Add other trusted origins if needed
 ]
+
+CERTIFICATE_VERIFICATION_BASE_URL = 'http://192.168.1.68:8000/certificates'

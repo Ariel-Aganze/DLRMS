@@ -15,6 +15,7 @@ urlpatterns = [
     path('notifications/', include('notifications.urls')),
     path('disputes/', include('disputes.urls')),
     path('signatures/', include('signatures.urls')),
+    path('certificates/', include('certificates.urls')),
 ]
 
 # Serve media files during development

@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Verify Certificate - DLRMS{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Certificate Verification</h1>
+        <p class="mt-2 text-gray-600">Verify the authenticity of land ownership certificates</p>
+    </div>
+
+    {% if not certificate_id %}
+    <!-- Verification Form -->
+    <div class="bg-white rounded-lg shadow-sm p-8 max-w-md mx-auto">
+        <form method="post" id="verifyForm">
+            {% csrf_token %}
+            <div class="mb-6">
+                <label for="certificate_number" class="block text-sm font-medium text-gray-700 mb-2">
+                    Certificate Number
+                </label>
+                <input type="text" 
+                       id="certificate_number" 
+                       name="certificate_number" 
+                       placeholder="e.g., PC-2025-000123"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       required>
+                <p class="mt-2 text-sm text-gray-500">Enter the certificate number to verify its authenticity</p>
+            </div>
+            <button type="submit" 
+                    class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                Verify Certificate
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600">
+                You can also scan the QR code on the certificate for instant verification
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Verification Result -->
+    {% if verification_success is not None %}
+    <div class="bg-white rounded-lg shadow-sm p-8 max-w-2xl mx-auto mt-8">
+        {% if verification_success %}
+            <div class="text-center mb-6">
+                <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-check-circle text-3xl text-green-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">Certificate Verified</h2>
+                <p class="mt-2 text-gray-600">This certificate is authentic and valid</p>
+            </div>
+            
+            <div class="border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Certificate Details</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Certificate Number</label>
+                        <p class="mt-1 text-gray-900 font-medium">{{ certificate.certificate_number }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Type</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.get_certificate_type_display }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Owner</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.owner.get_full_name }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Issue Date</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.issue_date|date:"F d, Y" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Status</label>
+                        <p class="mt-1">
+                            {% if certificate.is_valid %}
+                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                    Valid
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800">
+                                    {{ certificate.get_status_display }}
+                                </span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Validity Period</label>
+                        <p class="mt-1 text-gray-900">
+                            {% if certificate.expiry_date %}
+                                Until {{ certificate.expiry_date|date:"F d, Y" }}
+                            {% else %}
+                                Lifetime
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Property Information</h4>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <p class="text-sm text-gray-900">
+                            <span class="font-medium">Location:</span> {{ certificate.parcel.location }}
+                        </p>
+                        <p class="text-sm text-gray-900 mt-1">
+                            <span class="font-medium">Parcel ID:</span> {{ certificate.parcel.parcel_id }}
+                        </p>
+                        <p class="text-sm text-gray-900 mt-1">
+                            <span class="font-medium">Size:</span> {{ certificate.parcel.size_hectares }} hectares
+                        </p>
+                    </div>
+                </div>
+                
+                {% if certificate.signatures.exists %}
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">Digital Signatures</h4>
+                    <div class="space-y-2">
+                        {% for signature in certificate.signatures.all %}
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <p class="text-sm text-gray-900">
+                                <i class="fas fa-signature text-green-500 mr-2"></i>
+                                Signed by {{ signature.signer.get_full_name }} on {{ signature.signed_at|date:"M d, Y" }}
+                            </p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="text-center">
+                <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-times-circle text-3xl text-red-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">Certificate Not Found</h2>
+                <p class="mt-2 text-gray-600">{{ error_message|default:"The certificate number you entered could not be found in our system." }}</p>
+                <a href="{% url 'certificates:verify_certificate' %}" 
+                   class="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Try Another Certificate
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- AJAX Verification Script -->
+<script>
+document.getElementById('verifyForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const certificateNumber = document.getElementById('certificate_number').value;
+    const formData = new FormData();
+    formData.append('certificate_number', certificateNumber);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    // Show loading state
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...';
+    
+    fetch("{% url 'certificates:verify_certificate' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Display verification result
+            displayVerificationResult(true, data.certificate);
+        } else {
+            displayVerificationResult(false, null, data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        displayVerificationResult(false, null, 'An error occurred while verifying the certificate.');
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    });
+});
+
+function displayVerificationResult(success, certificate, errorMessage) {
+    // This would typically update the DOM to show the result
+    // For now, we'll reload the page with the result
+    if (success) {
+        alert('Certificate verified successfully!');
+    } else {
+        alert(errorMessage || 'Certificate not found.');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,335 @@
+<!-- Create this file: dlrms_project/templates/certificates/certificate_detail.html -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Certificate {{ certificate.certificate_number }} - DLRMS{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8 flex justify-between items-start">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Certificate Details</h1>
+            <p class="mt-2 text-gray-600">{{ certificate.get_certificate_type_display }}</p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="{% url 'certificates:download_certificate' certificate.pk %}" 
+               class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-download mr-2"></i>Download PDF
+            </a>
+            {% if can_sign and certificate.status == 'issued' %}
+            <button onclick="showSignatureModal()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-signature mr-2"></i>Add Signature
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Certificate Information -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Basic Information -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Certificate Information</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Certificate Number</label>
+                        <p class="mt-1 text-gray-900 font-semibold">{{ certificate.certificate_number }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Status</label>
+                        <p class="mt-1">
+                            {% if certificate.is_valid %}
+                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                    Valid
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800">
+                                    {{ certificate.get_status_display }}
+                                </span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Issue Date</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.issue_date|date:"F d, Y" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Validity</label>
+                        <p class="mt-1 text-gray-900">
+                            {% if certificate.expiry_date %}
+                                Until {{ certificate.expiry_date|date:"F d, Y" }}
+                            {% else %}
+                                <span class="text-green-600 font-medium">Lifetime</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Property Information -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Property Information</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Application Number</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.application.application_number }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Property Type</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.application.property_type }}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-sm font-medium text-gray-500">Location</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.application.property_address }}</p>
+                    </div>
+                    {% if certificate.application.size_hectares %}
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Land Size</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.application.size_hectares }} hectares</p>
+                    </div>
+                    {% endif %}
+                    {% if certificate.application.latitude and certificate.application.longitude %}
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">GPS Coordinates</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.application.latitude }}, {{ certificate.application.longitude }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Owner Information -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Owner Information</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Owner Name</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.owner.get_full_name }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">National ID</label>
+                        <p class="mt-1 text-gray-900">{{ certificate.owner.username }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Digital Signatures -->
+            {% if signatures %}
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Digital Signatures</h2>
+                <div class="space-y-3">
+                    {% for signature in signatures %}
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium text-gray-900">{{ signature.signer.get_full_name }}</p>
+                                <p class="text-sm text-gray-500">{{ signature.signer.get_role_display }}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                Verified
+                            </span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-600">
+                            <p>Signed on: {{ signature.signed_at|date:"F d, Y g:i A" }}</p>
+                            <p>Signature ID: {{ signature.signature_id }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- QR Code -->
+            <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Verification QR Code</h3>
+                <div class="inline-block p-4 bg-gray-100 rounded-lg">
+                    <div id="qrcode" class="mx-auto"></div>
+                </div>
+                <p class="mt-4 text-sm text-gray-600">Scan to verify certificate authenticity</p>
+            </div>
+
+            <!-- Security Information -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Features</h3>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2"></i>
+                        <span>QR code verification</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2"></i>
+                        <span>Tamper-evident seal</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2"></i>
+                        <span>Blockchain verification (optional)</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Audit Trail -->
+            {% if user.role in 'registry_officer,admin' and audit_logs %}
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                <div class="space-y-2">
+                    {% for log in audit_logs %}
+                    <div class="text-sm">
+                        <p class="text-gray-900">{{ log.get_action_display }}</p>
+                        <p class="text-gray-500">
+                            {% if log.performed_by %}
+                                by {{ log.performed_by.get_full_name }}
+                            {% endif %}
+                            on {{ log.timestamp|date:"M d, Y g:i A" }}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Signature Modal -->
+{% if can_sign %}
+<div id="signatureModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        
+        <div class="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full">
+            <div class="bg-white px-6 py-4">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Add Digital Signature</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Draw your signature</label>
+                    <canvas id="signaturePad" class="border border-gray-300 rounded-lg" width="450" height="200"></canvas>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Signature Type</label>
+                    <select id="signatureType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="approval">Approval Signature</option>
+                        <option value="witness">Witness Signature</option>
+                        <option value="notary">Notary Signature</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button onclick="clearSignature()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Clear
+                    </button>
+                    <button onclick="closeSignatureModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button onclick="submitSignature()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Sign Certificate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Include QR Code Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Include Signature Pad Library -->
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+<script>
+// Generate QR Code
+document.addEventListener('DOMContentLoaded', function() {
+    new QRCode(document.getElementById("qrcode"), {
+        text: "{{ certificate.verification_url }}",
+        width: 128,
+        height: 128
+    });
+});
+
+{% if can_sign %}
+// Signature Pad
+let signaturePad = null;
+
+function initSignaturePad() {
+    const canvas = document.getElementById('signaturePad');
+    signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)'
+    });
+}
+
+function showSignatureModal() {
+    document.getElementById('signatureModal').classList.remove('hidden');
+    if (!signaturePad) {
+        initSignaturePad();
+    }
+}
+
+function closeSignatureModal() {
+    document.getElementById('signatureModal').classList.add('hidden');
+    if (signaturePad) {
+        signaturePad.clear();
+    }
+}
+
+function clearSignature() {
+    if (signaturePad) {
+        signaturePad.clear();
+    }
+}
+
+function submitSignature() {
+    if (!signaturePad || signaturePad.isEmpty()) {
+        alert('Please draw your signature first.');
+        return;
+    }
+    
+    const signatureData = signaturePad.toDataURL();
+    const signatureType = document.getElementById('signatureType').value;
+    
+    // Submit signature
+    fetch("{% url 'certificates:sign_certificate' certificate.pk %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `signature_data=${encodeURIComponent(signatureData)}&signature_type=${signatureType}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Certificate signed successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while signing the certificate.');
+    });
+}
+
+function getCsrfToken() {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+            return value;
+        }
+    }
+    return '';
+}
+{% endif %}
+</script>
+{% endblock %}
+                        <span>Digitally signed and encrypted</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2">

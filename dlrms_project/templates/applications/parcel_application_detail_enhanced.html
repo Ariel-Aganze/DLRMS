@@ -268,6 +268,56 @@
                         </div>
                         {% endif %}
 
+                        <!-- Certificate Section (for approved applications) -->
+{% if application.status == 'approved' %}
+<div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+        <h3 class="text-lg font-medium text-green-900">Land Ownership Certificate</h3>
+        <p class="text-sm text-green-700 mt-1">Digital certificate for this approved application</p>
+    </div>
+    <div class="p-6">
+        {% if application.certificate %}
+            <div class="text-center">
+                <i class="fas fa-certificate text-6xl text-green-500 mb-4"></i>
+                <h4 class="text-lg font-semibold text-gray-900 mb-2">Certificate Issued</h4>
+                <p class="text-gray-600 mb-4">Certificate Number: <span class="font-medium">{{ application.certificate.certificate_number }}</span></p>
+                
+                <div class="flex justify-center space-x-3">
+                    <a href="{% url 'certificates:certificate_detail' application.certificate.pk %}" 
+                       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-eye mr-2"></i>View Certificate
+                    </a>
+                    <a href="{% url 'certificates:download_certificate' application.certificate.pk %}" 
+                       class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        <i class="fas fa-download mr-2"></i>Download PDF
+                    </a>
+                </div>
+            </div>
+        {% else %}
+            {% if user.role in 'registry_officer,admin' %}
+                <div class="text-center">
+                    <i class="fas fa-exclamation-circle text-6xl text-yellow-500 mb-4"></i>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-2">Certificate Not Generated</h4>
+                    <p class="text-gray-600 mb-4">The certificate for this approved application has not been generated yet.</p>
+                    
+                    <form method="post" action="{% url 'certificates:generate_certificate' application.pk %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-file-pdf mr-2"></i>Generate Certificate
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="text-center">
+                    <p class="text-gray-600">Your certificate is being processed. Please check back later.</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
                         
                         <!-- Registry Approval Panel (only shown for inspection_completed status) -->
                         {% if application.status == 'inspection_completed' and user.role in 'registry_officer,admin' %}
