@@ -44,10 +44,12 @@ class CertificateListView(LoginRequiredMixin, ListView):
         return queryset.select_related('owner', 'application')
 
 
+
 class GenerateCertificateView(LoginRequiredMixin, View):
     """Generate certificate for approved application"""
     
-    def post(self, request, application_id):
+    def get(self, request, application_id):
+        """Show signature page before generating certificate"""
         # Check permissions
         if request.user.role not in ['registry_officer', 'admin']:
             messages.error(request, 'You do not have permission to generate certificates.')
@@ -66,6 +68,29 @@ class GenerateCertificateView(LoginRequiredMixin, View):
             messages.info(request, 'Certificate already exists for this application.')
             return redirect('certificates:certificate_detail', pk=application.certificate.pk)
         
+        # Render signature collection page
+        context = {
+            'application': application,
+            'signer': request.user
+        }
+        return render(request, 'certificates/pre_sign_certificate.html', context)
+    
+    def post(self, request, application_id):
+        """Generate certificate with signature"""
+        # Check permissions
+        if request.user.role not in ['registry_officer', 'admin']:
+            messages.error(request, 'You do not have permission to generate certificates.')
+            return redirect('applications:application_detail', pk=application_id)
+        
+        # Get the application
+        application = get_object_or_404(ParcelApplication, pk=application_id)
+        
+        # Get signature data from POST
+        signature_data = request.POST.get('signature_data')
+        if not signature_data:
+            messages.error(request, 'Please provide a signature before generating the certificate.')
+            return redirect('certificates:generate_certificate', application_id=application_id)
+        
         try:
             # Create certificate record
             certificate = Certificate.objects.create(
@@ -79,10 +104,16 @@ class GenerateCertificateView(LoginRequiredMixin, View):
             # Calculate expiry date
             certificate.calculate_expiry_date()
             
-            # Generate PDF
+            # Generate PDF with signature
             generator = CertificateGenerator()
             try:
-                pdf_content, document_hash = generator.generate_certificate(certificate)
+                # Pass signature data to generator
+                pdf_content, document_hash = generator.generate_certificate(
+                    certificate, 
+                    signature_data=signature_data,
+                    signer_name=request.user.get_full_name(),
+                    sign_date=timezone.now()
+                )
             except Exception as pdf_error:
                 # If PDF generation fails, delete the certificate and show error
                 certificate.delete()
@@ -100,6 +131,27 @@ class GenerateCertificateView(LoginRequiredMixin, View):
             certificate.status = 'issued'
             certificate.save()
             
+            # Create digital signature record
+            signature = DigitalSignature.objects.create(
+                signer=request.user,
+                document_type='application_approval',
+                document_title=f'Certificate {certificate.certificate_number}',
+                document_hash=document_hash,
+                signature_hash=hashlib.sha256(signature_data.encode()).hexdigest(),
+                signature_image=signature_data,
+                certificate_serial=certificate.certificate_number,
+                certificate_issuer='DRC Land Registry',
+                certificate_valid_from=timezone.now(),
+                certificate_valid_until=certificate.expiry_date,
+                is_verified=True,
+                verification_method='Pre-signing',
+                verification_timestamp=timezone.now(),
+                status='signed'
+            )
+            
+            # Link signature to certificate
+            certificate.signatures.add(signature)
+            
             # Create audit log
             CertificateAuditLog.objects.create(
                 certificate=certificate,
@@ -107,11 +159,10 @@ class GenerateCertificateView(LoginRequiredMixin, View):
                 performed_by=request.user,
                 ip_address=request.META.get('REMOTE_ADDR'),
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                details={'certificate_number': certificate.certificate_number}
+                details={'certificate_number': certificate.certificate_number, 'pre_signed': True}
             )
             
             messages.success(request, f'Certificate {certificate.certificate_number} has been generated successfully!')
-            # Redirect back to the application detail page
             return redirect('applications:application_detail', pk=application_id)
             
         except Exception as e:

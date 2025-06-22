@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign Certificate - DLRMS{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Sign Certificate Before Generation</h1>
+        <p class="mt-2 text-gray-600">Please provide your signature to generate the certificate</p>
+    </div>
+
+    <!-- Application Info -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Application Details</h2>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="text-sm font-medium text-gray-500">Application Number</label>
+                <p class="mt-1 text-gray-900">{{ application.application_number }}</p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-gray-500">Applicant</label>
+                <p class="mt-1 text-gray-900">{{ application.owner_first_name }} {{ application.owner_last_name }}</p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-gray-500">Property Type</label>
+                <p class="mt-1 text-gray-900">{{ application.property_type }}</p>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-gray-500">Certificate Type</label>
+                <p class="mt-1 text-gray-900">{{ application.get_application_type_display }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signature Form -->
+    <form method="post" id="signatureForm" class="bg-white rounded-lg shadow-sm p-6">
+        {% csrf_token %}
+        
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Registry Officer Signature</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Draw your signature below
+                </label>
+                <canvas id="signaturePad" 
+                        class="border-2 border-gray-300 rounded-lg w-full bg-white" 
+                        width="600" 
+                        height="200">
+                </canvas>
+            </div>
+            
+            <div class="flex space-x-3 mb-4">
+                <button type="button" onclick="clearSignature()" 
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Clear Signature
+                </button>
+            </div>
+            
+            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm text-blue-800">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    By signing this certificate, you confirm that you have reviewed and approved the application.
+                </p>
+            </div>
+            
+            <input type="hidden" id="signature_data" name="signature_data" required>
+        </div>
+        
+        <div class="flex justify-between">
+            <a href="{% url 'applications:application_detail' application.pk %}" 
+               class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Cancel
+            </a>
+            <button type="submit" 
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Sign and Generate Certificate
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Include Signature Pad Library -->
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+<script>
+// Initialize signature pad
+let signaturePad = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('signaturePad');
+    signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)'
+    });
+    
+    // Resize canvas
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+});
+
+function resizeCanvas() {
+    const canvas = document.getElementById('signaturePad');
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext("2d").scale(ratio, ratio);
+    if (signaturePad) {
+        signaturePad.clear();
+    }
+}
+
+function clearSignature() {
+    if (signaturePad) {
+        signaturePad.clear();
+    }
+}
+
+// Form submission
+document.getElementById('signatureForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (signaturePad.isEmpty()) {
+        alert('Please provide your signature before generating the certificate.');
+        return;
+    }
+    
+    // Get signature data
+    const signatureData = signaturePad.toDataURL();
+    document.getElementById('signature_data').value = signatureData;
+    
+    // Submit form
+    this.submit();
+});
+</script>
+{% endblock %}

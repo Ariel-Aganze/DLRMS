@@ -16,6 +16,7 @@ from django.core.files.base import ContentFile
 import os
 from PIL import Image
 import tempfile
+import base64
 
 class CertificateGenerator:
     """Generate PDF certificates for land parcels"""
@@ -58,8 +59,8 @@ class CertificateGenerator:
             leading=14
         ))
     
-    def generate_certificate(self, certificate):
-        """Generate PDF certificate"""
+    def generate_certificate(self, certificate, signature_data=None, signer_name=None, sign_date=None):
+        """Generate PDF certificate with optional embedded signature"""
         buffer = BytesIO()
         
         # Create canvas
@@ -74,10 +75,10 @@ class CertificateGenerator:
         # Add header
         self._add_header(c, certificate)
         
-        # Add QR code
+        # Add QR code (smaller and repositioned)
         qr_image_path = self._generate_qr_code(certificate)
-        c.drawImage(qr_image_path, self.page_width - 2.5*inch, self.page_height - 2.5*inch, 
-                    width=1.5*inch, height=1.5*inch)
+        c.drawImage(qr_image_path, self.page_width - 2*inch, self.page_height - 2*inch, 
+                    width=1*inch, height=1*inch)
         
         # Clean up temporary file
         if os.path.exists(qr_image_path):
@@ -90,7 +91,7 @@ class CertificateGenerator:
             self._add_parcel_certificate_content(c, certificate)
         
         # Add signatures section
-        self._add_signatures_section(c, certificate)
+        self._add_signatures_section(c, certificate, signature_data, signer_name, sign_date)
         
         # Add footer
         self._add_footer(c, certificate)
@@ -135,41 +136,41 @@ class CertificateGenerator:
         """Add certificate header"""
         # Government emblem placeholder
         # Government logo
-        logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')  # Update path as needed
+        logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')
         logo_width = 1.2 * inch
         logo_height = 1.2 * inch
         x = (self.page_width - logo_width) / 2
         y = self.page_height - 1.8 * inch
 
         if os.path.exists(logo_path):
-            canvas.drawImage(logo_path, x, y, width=logo_width, height=logo_height, preserveAspectRatio=True, mask='auto')  # ✅ Fix black background
+            canvas.drawImage(logo_path, x, y, width=logo_width, height=logo_height, preserveAspectRatio=True, mask='auto')
 
-    # Set text color to blue for all following text
-        canvas.setFillColor(colors.HexColor('#000080'))  # ✅ Apply blue color before drawing text
+        # Set text color to blue for all following text
+        canvas.setFillColor(colors.HexColor('#000080'))
 
-    # Country name
+        # Country name
         canvas.setFont("Helvetica-Bold", 18)
         canvas.drawCentredString(self.page_width/2, self.page_height - 2.5*inch, 
                             "DEMOCRATIC REPUBLIC OF THE CONGO")
 
-    # Ministry
+        # Ministry
         canvas.setFont("Helvetica", 14)
         canvas.drawCentredString(self.page_width/2, self.page_height - 2.8*inch, 
                             "MINISTRY OF LAND AFFAIRS")
 
-    # System name
+        # System name
         canvas.setFont("Helvetica", 12)
         canvas.drawCentredString(self.page_width/2, self.page_height - 3.1*inch, 
                             "DIGITAL LAND REGISTRY MANAGEMENT SYSTEM")
 
-    # Certificate title
+        # Certificate title
         canvas.setFont("Helvetica-Bold", 20)
         title = "PROPERTY CONTRACT CERTIFICATE" if certificate.certificate_type == 'property_contract' else "PARCEL CERTIFICATE OF OWNERSHIP"
         canvas.drawCentredString(self.page_width/2, self.page_height - 3.7*inch, title)
     
     def _generate_qr_code(self, certificate):
         """Generate QR code for certificate verification"""
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr = qrcode.QRCode(version=1, box_size=8, border=3)
         qr.add_data(certificate.verification_url)
         qr.make(fit=True)
         
@@ -204,9 +205,8 @@ class CertificateGenerator:
         self._add_field(canvas, "Application Number:", app.application_number, 1*inch, y_position)
         self._add_field(canvas, "Property Address:", app.property_address, 1*inch, y_position - 0.3*inch)
         
-        # Location details (using province/district terminology for DRC)
+        # Location details
         y_position -= 0.8*inch
-        # For DRC context, we might not have all admin divisions, so use what's available
         self._add_field(canvas, "Location:", app.property_address, 1*inch, y_position)
         
         # Property details
@@ -222,8 +222,8 @@ class CertificateGenerator:
                            f"Lat: {app.latitude}, Long: {app.longitude}", 
                            1*inch, y_position - 0.3*inch)
         
-        # Owner information
-        y_position -= 1*inch
+        # Owner information - moved up to create space for signature section
+        y_position -= 0.8*inch  # Reduced space before owner info
         self._add_section_header(canvas, "OWNER INFORMATION", y_position)
         
         y_position -= 0.4*inch
@@ -237,10 +237,6 @@ class CertificateGenerator:
             self._add_field(canvas, "Registration Date:", 
                            app.submitted_at.strftime("%B %d, %Y"), 
                            1*inch, y_position - 0.6*inch)
-        
-        # Legal statement
-        y_position -= 1.2*inch
-        self._add_legal_statement(canvas, certificate, y_position)
     
     def _add_parcel_certificate_content(self, canvas, certificate):
         """Add content specific to parcel certificate"""
@@ -283,8 +279,8 @@ class CertificateGenerator:
                            f"Lat: {app.latitude}, Long: {app.longitude}", 
                            1*inch, y_position - 0.3*inch)
         
-        # Owner information
-        y_position -= 1*inch
+        # Owner information - moved up to create space for signature section
+        y_position -= 0.8*inch  # Reduced space before owner info
         self._add_section_header(canvas, "OWNER INFORMATION", y_position)
         
         y_position -= 0.4*inch
@@ -294,22 +290,6 @@ class CertificateGenerator:
         national_id = certificate.owner.national_id if certificate.owner.national_id else "Not provided"
         self._add_field(canvas, "National ID:", national_id, 
                        1*inch, y_position - 0.3*inch)
-        
-        # Legal statement for parcel certificate
-        y_position -= 1.2*inch
-        canvas.setFont("Helvetica", 10)
-        legal_text = """This Parcel Certificate certifies permanent ownership of the above-described property. 
-This certificate supersedes any previous Property Contracts and remains valid indefinitely 
-unless legally transferred or revoked by competent authority.
-
-The owner has full rights to use, transfer, mortgage, or inherit this property in 
-accordance with the laws of the Democratic Republic of the Congo."""
-        
-        # Draw legal text with word wrap
-        text_lines = legal_text.split('\n')
-        for line in text_lines:
-            canvas.drawString(1*inch, y_position, line)
-            y_position -= 0.2*inch
     
     def _add_field(self, canvas, label, value, x, y):
         """Add a field with label and value"""
@@ -325,50 +305,99 @@ accordance with the laws of the Democratic Republic of the Congo."""
         canvas.drawString(1*inch, y, text)
         canvas.setFillColor(colors.black)
     
-    def _add_legal_statement(self, canvas, certificate, y_position):
-        """Add legal statement"""
-        canvas.setFont("Helvetica", 10)
+    def _add_signatures_section(self, canvas, certificate, signature_data=None, signer_name=None, sign_date=None):
+        """Add signatures section with proper layout"""
+        # Position signature section below owner information with proper spacing
+        y_position = 3.0*inch  # Adjusted to appear below owner info
         
-        if certificate.certificate_type == 'property_contract':
-            legal_text = """This Property Contract certifies that the above-named person has rightful ownership 
-of the described property for a period of three (3) years from the issue date. 
-This contract must be renewed or converted to a Parcel Certificate before expiry.
-
-Issued in accordance with the Land Law of the Democratic Republic of the Congo."""
-        
-        # Draw legal text with word wrap
-        text_lines = legal_text.split('\n')
-        for line in text_lines:
-            canvas.drawString(1*inch, y_position, line)
-            y_position -= 0.2*inch
-    
-    def _add_signatures_section(self, canvas, certificate):
-        """Add signatures section"""
-        y_position = 3*inch
-        
+        # AUTHORIZED SIGNATURE text
         canvas.setFont("Helvetica-Bold", 10)
-        canvas.drawString(1*inch, y_position, "AUTHORIZED SIGNATURE")
+        canvas.drawCentredString(self.page_width/2, y_position, "AUTHORIZED SIGNATURE")
         
-        # Signature box - Only Registry Officer
+        # Signature area
         y_position -= 0.5*inch
         
-        # Registry Officer signature box (centered)
-        self._draw_signature_box(canvas, "Land Registry Officer", 3*inch, y_position)
+        # If we have signature data, embed it
+        if signature_data and signature_data.startswith('data:image'):
+            try:
+                # Extract base64 image data
+                header, data = signature_data.split(',', 1)
+                image_data = base64.b64decode(data)
+                
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                    tmp_file.write(image_data)
+                    tmp_file_path = tmp_file.name
+                
+                # Center the signature
+                sig_x = (self.page_width - 2*inch) / 2
+                
+                # Draw the signature image
+                canvas.drawImage(tmp_file_path, sig_x, y_position - 0.5*inch, 
+                               width=2*inch, height=0.8*inch, preserveAspectRatio=True)
+                
+                # Clean up
+                os.unlink(tmp_file_path)
+                
+                # Add signer details below signature
+                y_position -= 1.0*inch
+                canvas.setFont("Helvetica", 9)
+                canvas.drawCentredString(self.page_width/2, y_position, "Web Master")
+                y_position -= 0.2*inch
+                canvas.drawCentredString(self.page_width/2, y_position, "Land Registry Officer")
+                y_position -= 0.2*inch
+                if sign_date:
+                    canvas.drawCentredString(self.page_width/2, y_position, 
+                                           f"Date: {sign_date.strftime('%B %d, %Y')}")
+            except Exception as e:
+                print(f"Error embedding signature: {e}")
+                # Fall back to empty signature box
+                self._draw_signature_box(canvas, y_position)
+        else:
+            # Draw empty signature box centered
+            self._draw_signature_box(canvas, y_position)
+            
+            # Add signer details below
+            y_position -= 1.0*inch
+            canvas.setFont("Helvetica", 9)
+            canvas.drawCentredString(self.page_width/2, y_position, "Web Master")
+            y_position -= 0.2*inch
+            canvas.drawCentredString(self.page_width/2, y_position, "Land Registry Officer")
+            y_position -= 0.2*inch
+            canvas.drawCentredString(self.page_width/2, y_position, "Date: ___________")
     
-    def _draw_signature_box(self, canvas, title, x, y):
-        """Draw a signature box"""
+    def _draw_signature_box(self, canvas, y_position):
+        """Draw a signature box with label"""
+        # Draw the signature line
         canvas.setLineWidth(0.5)
-        canvas.line(x, y, x + 1.5*inch, y)
-        canvas.setFont("Helvetica", 8)
-        canvas.drawCentredString(x + 0.75*inch, y - 0.2*inch, title)
-        canvas.drawCentredString(x + 0.75*inch, y - 0.35*inch, "Date: ___________")
+        sig_x = (self.page_width - 2*inch) / 2
+        canvas.line(sig_x, y_position, sig_x + 2*inch, y_position)
     
     def _add_footer(self, canvas, certificate):
         """Add footer with verification info"""
-        canvas.setFont("Helvetica", 8)
-        canvas.drawCentredString(self.page_width/2, 1*inch, 
-                                f"Verification URL: {certificate.verification_url}")
-        canvas.drawCentredString(self.page_width/2, 0.8*inch, 
+        # Use smaller font for footer
+        canvas.setFont("Helvetica", 7)
+        
+        # Position footer content carefully
+        y_position = 1.2*inch
+        
+        # Verification URL - break it if too long
+        url = certificate.verification_url
+        if len(url) > 70:
+            canvas.drawCentredString(self.page_width/2, y_position, 
+                                    f" ")
+            canvas.drawCentredString(self.page_width/2, y_position - 0.15*inch, 
+                                    f" ")
+            y_position -= 0.3*inch
+        else:
+            canvas.drawCentredString(self.page_width/2, y_position, 
+                                    f"Verification URL: {url}")
+            y_position -= 0.2*inch
+        
+        # Official document text
+        canvas.drawCentredString(self.page_width/2, y_position, 
                                 "This is an official document of the Government of the Democratic Republic of the Congo")
-        canvas.drawCentredString(self.page_width/2, 0.6*inch, 
+        y_position -= 0.15*inch
+        
+        canvas.drawCentredString(self.page_width/2, y_position, 
                                 "Document officiel du Gouvernement de la République Démocratique du Congo")
