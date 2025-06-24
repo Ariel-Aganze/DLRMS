@@ -1,0 +1,108 @@
+{% extends 'disputes/base_disputes.html' %}
+{% load static %}
+
+{% block title %}File New Dispute - DLRMS{% endblock %}
+
+{% block dispute_content %}
+<!-- Page Header -->
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">File New Dispute</h1>
+    <p class="text-sm text-gray-600 mt-1">
+        Submit a formal dispute regarding your land parcel
+    </p>
+</div>
+
+<!-- Form -->
+<div class="bg-white rounded-lg shadow-sm">
+    <form method="post" class="p-6">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Title -->
+            <div>
+                <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Dispute Title <span class="text-red-500">*</span>
+                </label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.title.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Dispute Type -->
+            <div>
+                <label for="{{ form.dispute_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Type of Dispute <span class="text-red-500">*</span>
+                </label>
+                {{ form.dispute_type }}
+                {% if form.dispute_type.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.dispute_type.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Parcel -->
+            <div>
+                <label for="{{ form.parcel.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Related Parcel <span class="text-red-500">*</span>
+                </label>
+                {{ form.parcel }}
+                {% if form.parcel.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.parcel.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-gray-500">Select the land parcel this dispute is about</p>
+            </div>
+            
+            <!-- Respondent -->
+            <div>
+                <label for="{{ form.respondent.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Dispute Against (Respondent)
+                </label>
+                {{ form.respondent }}
+                {% if form.respondent.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.respondent.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-gray-500">Select the user you are filing this dispute against (optional)</p>
+            </div>
+            
+            <!-- Description -->
+            <div>
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Detailed Description <span class="text-red-500">*</span>
+                </label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-gray-500">Provide a detailed description of the dispute, including all relevant facts and circumstances</p>
+            </div>
+        </div>
+        
+        <!-- Information Box -->
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 class="text-sm font-medium text-blue-900 mb-2">Important Information</h3>
+            <ul class="text-sm text-blue-700 space-y-1">
+                <li>• Ensure all information provided is accurate and truthful</li>
+                <li>• You will be able to upload supporting evidence after filing</li>
+                <li>• False claims may result in legal consequences</li>
+                <li>• A registry officer will review your dispute within 48 hours</li>
+            </ul>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="mt-6 flex items-center justify-between">
+            <a href="{% url 'disputes:dispute_list' %}" class="text-gray-600 hover:text-gray-900">
+                Cancel
+            </a>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Submit Dispute
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

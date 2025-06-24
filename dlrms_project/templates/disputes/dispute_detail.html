@@ -1,0 +1,397 @@
+{% extends 'disputes/base_disputes.html' %}
+{% load static %}
+
+{% block title %}{{ dispute.dispute_number }} - DLRMS{% endblock %}
+
+{% block dispute_content %}
+<!-- Page Header -->
+<div class="mb-6">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ dispute.dispute_number }}</h1>
+            <p class="text-lg text-gray-700 mt-1">{{ dispute.title }}</p>
+            <div class="flex items-center gap-4 mt-2">
+                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    {% if dispute.status == 'submitted' %}bg-gray-100 text-gray-800
+                    {% elif dispute.status == 'under_investigation' %}bg-blue-100 text-blue-800
+                    {% elif dispute.status == 'mediation' %}bg-yellow-100 text-yellow-800
+                    {% elif dispute.status == 'resolved' %}bg-green-100 text-green-800
+                    {% elif dispute.status == 'escalated' %}bg-red-100 text-red-800
+                    {% elif dispute.status == 'closed' %}bg-gray-100 text-gray-800
+                    {% endif %}">
+                    {{ dispute.get_status_display }}
+                </span>
+                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    {% if dispute.priority == 'urgent' %}bg-red-100 text-red-800
+                    {% elif dispute.priority == 'high' %}bg-orange-100 text-orange-800
+                    {% elif dispute.priority == 'medium' %}bg-yellow-100 text-yellow-800
+                    {% else %}bg-green-100 text-green-800{% endif %}">
+                    {{ dispute.get_priority_display }} Priority
+                </span>
+                <span class="text-sm text-gray-500">
+                    Filed on {{ dispute.filed_at|date:"F d, Y" }}
+                </span>
+            </div>
+        </div>
+        {% if user.role in 'registry_officer,admin' and dispute.status not in 'resolved,closed' %}
+            <a href="{% url 'disputes:dispute_resolve' dispute.pk %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Resolve Dispute
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Dispute Details -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Dispute Details</h2>
+            
+            <dl class="grid grid-cols-1 gap-4">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Type</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ dispute.get_dispute_type_display }}</dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Related Parcel</dt>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        {{ dispute.parcel.parcel_id }} - {{ dispute.parcel.location }}
+                        <a href="{% url 'land_management:parcel_detail' dispute.parcel.pk %}" class="text-blue-600 hover:text-blue-800 ml-2">
+                            View Parcel
+                        </a>
+                    </dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Description</dt>
+                    <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ dispute.description }}</dd>
+                </div>
+                
+                {% if dispute.investigation_notes and user.role in 'registry_officer,admin,surveyor' %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Investigation Notes</dt>
+                    <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ dispute.investigation_notes }}</dd>
+                </div>
+                {% endif %}
+                
+                {% if dispute.resolution %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Resolution</dt>
+                    <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{{ dispute.resolution }}</dd>
+                    {% if dispute.resolution_date %}
+                        <p class="text-xs text-gray-500 mt-1">Resolved on {{ dispute.resolution_date|date:"F d, Y" }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+        
+        <!-- Evidence -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-900">Evidence</h2>
+                {% if dispute.status not in 'resolved,closed' %}
+                    <button onclick="showEvidenceForm()" class="text-sm text-blue-600 hover:text-blue-800">
+                        Add Evidence
+                    </button>
+                {% endif %}
+            </div>
+            
+            <!-- Evidence Form (Hidden by default) -->
+            <div id="evidence-form" class="hidden mb-4 p-4 bg-gray-50 rounded-lg">
+                <form id="add-evidence-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="space-y-4">
+                        {{ evidence_form.as_div }}
+                        <div class="flex justify-end gap-2">
+                            <button type="button" onclick="hideEvidenceForm()" class="px-4 py-2 text-gray-600 hover:text-gray-900">
+                                Cancel
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Submit Evidence
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="evidence-list" class="space-y-3">
+                {% for evidence in evidence %}
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-medium text-gray-900">{{ evidence.title }}</h4>
+                            <p class="text-sm text-gray-600 mt-1">{{ evidence.description }}</p>
+                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                <span>{{ evidence.get_evidence_type_display }}</span>
+                                <span>Submitted by {{ evidence.submitted_by.get_full_name }}</span>
+                                <span>{{ evidence.submitted_at|date:"M d, Y g:i A" }}</span>
+                            </div>
+                        </div>
+                        {% if evidence.file %}
+                            <a href="{{ evidence.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                View File
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No evidence submitted yet</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Comments -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Comments & Discussion</h2>
+            
+            {% if dispute.status not in 'resolved,closed' %}
+            <!-- Comment Form -->
+            <form id="comment-form" class="mb-6">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    {{ comment_form.comment }}
+                    {% if user.role in 'registry_officer,admin' %}
+                    <div class="flex items-center">
+                        {{ comment_form.is_internal }}
+                        <label for="{{ comment_form.is_internal.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                            Internal note (only visible to officers)
+                        </label>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Post Comment
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+            
+            <!-- Comments List -->
+            <div id="comments-list" class="space-y-4">
+                {% for comment in comments %}
+                <div class="{% if comment.is_internal %}bg-yellow-50 border-yellow-200{% else %}bg-gray-50{% endif %} rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-gray-900">{{ comment.author.get_full_name }}</p>
+                            <p class="text-sm text-gray-600 mt-1">{{ comment.comment }}</p>
+                        </div>
+                        <span class="text-xs text-gray-500">{{ comment.created_at|date:"M d, Y g:i A" }}</span>
+                    </div>
+                    {% if comment.is_internal %}
+                        <p class="text-xs text-yellow-700 mt-2">Internal Note</p>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No comments yet</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Parties Involved -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Parties Involved</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Complainant</p>
+                    <p class="mt-1 text-sm text-gray-900">{{ dispute.complainant.get_full_name }}</p>
+                    <p class="text-xs text-gray-500">{{ dispute.complainant.email }}</p>
+                </div>
+                
+                {% if dispute.respondent %}
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Respondent</p>
+                    <p class="mt-1 text-sm text-gray-900">{{ dispute.respondent.get_full_name }}</p>
+                    <p class="text-xs text-gray-500">{{ dispute.respondent.email }}</p>
+                </div>
+                {% endif %}
+                
+                {% if dispute.assigned_officer %}
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Assigned Officer</p>
+                    <p class="mt-1 text-sm text-gray-900">{{ dispute.assigned_officer.get_full_name }}</p>
+                    <p class="text-xs text-gray-500">{{ dispute.assigned_officer.get_role_display }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Timeline -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
+            
+            <div class="space-y-4">
+                {% for event in timeline %}
+                <div class="relative">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <div class="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <p class="text-sm font-medium text-gray-900">{{ event.event }}</p>
+                            {% if event.description %}
+                                <p class="text-xs text-gray-600">{{ event.description }}</p>
+                            {% endif %}
+                            <p class="text-xs text-gray-500 mt-1">{{ event.created_at|date:"M d, Y g:i A" }}</p>
+                        </div>
+                    </div>
+                    {% if not forloop.last %}
+                        <div class="absolute left-4 top-8 bottom-0 w-0.5 bg-gray-200"></div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No timeline events</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Mediation Sessions -->
+        {% if mediation_sessions %}
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Mediation Sessions</h3>
+            
+            <div class="space-y-3">
+                {% for session in mediation_sessions %}
+                <div class="border border-gray-200 rounded-lg p-3">
+                    <p class="text-sm font-medium text-gray-900">{{ session.scheduled_date|date:"F d, Y g:i A" }}</p>
+                    <p class="text-xs text-gray-600">{{ session.location }}</p>
+                    {% if session.mediator %}
+                        <p class="text-xs text-gray-500">Mediator: {{ session.mediator.get_full_name }}</p>
+                    {% endif %}
+                    {% if session.outcome %}
+                        <p class="text-xs text-gray-700 mt-1">Outcome: {{ session.outcome }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- JavaScript for AJAX functionality -->
+<script>
+    // Show/Hide Evidence Form
+    function showEvidenceForm() {
+        document.getElementById('evidence-form').classList.remove('hidden');
+    }
+    
+    function hideEvidenceForm() {
+        document.getElementById('evidence-form').classList.add('hidden');
+        document.getElementById('add-evidence-form').reset();
+    }
+    
+    // Submit Evidence Form
+    document.getElementById('add-evidence-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch("{% url 'disputes:add_evidence' dispute.pk %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add new evidence to the list
+                const evidenceList = document.getElementById('evidence-list');
+                const newEvidence = `
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-medium text-gray-900">${data.evidence.title}</h4>
+                                <p class="text-sm text-gray-600 mt-1">${data.evidence.description}</p>
+                                <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                    <span>${data.evidence.evidence_type}</span>
+                                    <span>Submitted by ${data.evidence.submitted_by}</span>
+                                    <span>${data.evidence.submitted_at}</span>
+                                </div>
+                            </div>
+                            ${data.evidence.file_url ? `<a href="${data.evidence.file_url}" target="_blank" class="text-blue-600 hover:text-blue-800">View File</a>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                if (evidenceList.children.length === 1 && evidenceList.children[0].textContent.includes('No evidence')) {
+                    evidenceList.innerHTML = newEvidence;
+                } else {
+                    evidenceList.insertAdjacentHTML('afterbegin', newEvidence);
+                }
+                
+                hideEvidenceForm();
+            } else {
+                alert('Error submitting evidence: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting evidence');
+        });
+    });
+    
+    // Submit Comment Form
+    document.getElementById('comment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        fetch("{% url 'disputes:add_comment' dispute.pk %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add new comment to the list
+                const commentsList = document.getElementById('comments-list');
+                const newComment = `
+                    <div class="${data.comment.is_internal ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'} rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium text-gray-900">${data.comment.author}</p>
+                                <p class="text-sm text-gray-600 mt-1">${data.comment.comment}</p>
+                            </div>
+                            <span class="text-xs text-gray-500">${data.comment.created_at}</span>
+                        </div>
+                        ${data.comment.is_internal ? '<p class="text-xs text-yellow-700 mt-2">Internal Note</p>' : ''}
+                    </div>
+                `;
+                
+                if (commentsList.children.length === 1 && commentsList.children[0].textContent.includes('No comments')) {
+                    commentsList.innerHTML = newComment;
+                } else {
+                    commentsList.insertAdjacentHTML('afterbegin', newComment);
+                }
+                
+                // Clear the form
+                document.getElementById('comment-form').reset();
+            } else {
+                alert('Error posting comment: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while posting comment');
+        });
+    });
+</script>
+{% endblock %}

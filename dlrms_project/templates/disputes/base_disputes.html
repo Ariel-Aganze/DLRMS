@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Include sidebar navigation - THIS REMAINS FIXED -->
+        {% include 'includes/sidebar.html' with active_page=active_page|default:'disputes' %}
+
+        <!-- Main Content Area -->
+        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-6">
+                {% block dispute_content %}
+                <!-- Dispute-specific content goes here -->
+                {% endblock dispute_content %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
