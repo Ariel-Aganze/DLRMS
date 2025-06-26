@@ -37,6 +37,9 @@ class DisputeListView(LoginRequiredMixin, ListView):
                 assigned_officer=user,
                 dispute_type__in=['boundary', 'encroachment']
             )
+        elif user.role == 'notary':
+            # Notaries see only disputes assigned to them
+            queryset = queryset.filter(assigned_officer=user)
         elif user.role in ['registry_officer', 'admin']:
             # Officers and admins see all disputes
             pass
@@ -105,7 +108,7 @@ class DisputeDetailView(LoginRequiredMixin, DetailView):
         if user.role == 'landowner':
             if dispute.complainant != user and dispute.respondent != user:
                 raise HttpResponseForbidden("You don't have permission to view this dispute.")
-        elif user.role == 'surveyor':
+        elif user.role in ['surveyor', 'notary']:
             if dispute.assigned_officer != user:
                 raise HttpResponseForbidden("You don't have permission to view this dispute.")
         
@@ -126,18 +129,18 @@ class DisputeDetailView(LoginRequiredMixin, DetailView):
         context['mediation_sessions'] = dispute.mediation_sessions.select_related('mediator')
         
         # Filter internal comments for non-officers
-        if self.request.user.role not in ['registry_officer', 'admin']:
+        if self.request.user.role not in ['registry_officer', 'admin', 'notary']:
             context['comments'] = context['comments'].filter(is_internal=False)
         
         return context
 
 
 class DisputeResolveView(RoleRequiredMixin, UpdateView):
-    """Resolve a dispute - for officers only"""
+    """Resolve a dispute - for officers and notaries"""
     model = Dispute
     form_class = DisputeResolutionForm
     template_name = 'disputes/dispute_resolve.html'
-    allowed_roles = ['registry_officer', 'admin']
+    allowed_roles = ['registry_officer', 'admin', 'notary']
     
     def form_valid(self, form):
         dispute = form.save(commit=False)
@@ -161,6 +164,33 @@ class DisputeResolveView(RoleRequiredMixin, UpdateView):
         return redirect('disputes:dispute_detail', pk=dispute.pk)
 
 
+class DisputeAssignView(RoleRequiredMixin, UpdateView):
+    """Assign dispute to an officer"""
+    model = Dispute
+    form_class = DisputeAssignmentForm
+    template_name = 'disputes/dispute_assign.html'
+    allowed_roles = ['registry_officer', 'admin']
+    
+    def form_valid(self, form):
+        dispute = form.save()
+        
+        # Create timeline entry
+        DisputeTimeline.objects.create(
+            dispute=dispute,
+            event='Officer Assigned',
+            description=f'Dispute assigned to {dispute.assigned_officer.get_full_name()} by {self.request.user.get_full_name()}',
+            created_by=self.request.user
+        )
+        
+        # Update status if needed
+        if dispute.status == 'submitted':
+            dispute.status = 'under_investigation'
+            dispute.save()
+        
+        messages.success(self.request, f'Dispute assigned to {dispute.assigned_officer.get_full_name()} successfully.')
+        return redirect('disputes:dispute_detail', pk=dispute.pk)
+
+
 # Ajax views for adding comments and evidence
 def add_comment(request, pk):
     """Add comment to dispute via AJAX"""
@@ -179,8 +209,8 @@ def add_comment(request, pk):
             comment.dispute = dispute
             comment.author = request.user
             
-            # Only officers can post internal comments
-            if request.user.role not in ['registry_officer', 'admin']:
+            # Only officers and notaries can post internal comments
+            if request.user.role not in ['registry_officer', 'admin', 'notary']:
                 comment.is_internal = False
             
             comment.save()

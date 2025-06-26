@@ -1,0 +1,93 @@
+{% extends 'disputes/base_disputes.html' %}
+{% load static %}
+
+{% block title %}Assign Dispute - DLRMS{% endblock %}
+
+{% block dispute_content %}
+<!-- Page Header -->
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Assign Dispute</h1>
+    <p class="text-sm text-gray-600 mt-1">
+        Assign this dispute to an investigating officer
+    </p>
+</div>
+
+<!-- Dispute Summary -->
+<div class="bg-gray-50 rounded-lg p-4 mb-6">
+    <h2 class="text-lg font-semibold text-gray-900">{{ object.dispute_number }} - {{ object.title }}</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3 text-sm">
+        <div>
+            <span class="text-gray-500">Type:</span>
+            <span class="font-medium">{{ object.get_dispute_type_display }}</span>
+        </div>
+        <div>
+            <span class="text-gray-500">Filed by:</span>
+            <span class="font-medium">{{ object.complainant.get_full_name }}</span>
+        </div>
+        <div>
+            <span class="text-gray-500">Current Status:</span>
+            <span class="font-medium">{{ object.get_status_display }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Form -->
+<div class="bg-white rounded-lg shadow-sm">
+    <form method="post" class="p-6">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Assign To -->
+            <div>
+                <label for="{{ form.assigned_officer.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Assign To <span class="text-red-500">*</span>
+                </label>
+                {{ form.assigned_officer }}
+                {% if form.assigned_officer.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.assigned_officer.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-gray-500">Select the officer who will investigate this dispute</p>
+            </div>
+            
+            <!-- Priority -->
+            <div>
+                <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    Priority Level <span class="text-red-500">*</span>
+                </label>
+                {{ form.priority }}
+                {% if form.priority.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.priority.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-gray-500">Set the priority level for this dispute</p>
+            </div>
+        </div>
+        
+        <!-- Information Box -->
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 class="text-sm font-medium text-blue-900 mb-2">Assignment Notes</h3>
+            <ul class="text-sm text-blue-700 space-y-1">
+                <li>• The assigned officer will be notified immediately</li>
+                <li>• Status will change to "Under Investigation" if currently "Submitted"</li>
+                <li>• You can reassign the dispute at any time</li>
+                <li>• Consider officer workload and expertise when assigning</li>
+            </ul>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="mt-6 flex items-center justify-between">
+            <a href="{% url 'disputes:dispute_detail' object.pk %}" class="text-gray-600 hover:text-gray-900">
+                Cancel
+            </a>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Assign Officer
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

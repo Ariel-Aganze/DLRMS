@@ -15,7 +15,7 @@ class HomeView(TemplateView):
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -32,14 +32,14 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 field_agent=user,
                 status='field_inspection'
             ).select_related('applicant').order_by('-submitted_at')
-            
+
             # Disputes assigned to surveyor for investigation or mediation
             assigned_disputes = Dispute.objects.filter(
                 assigned_officer=user,
                 status__in=['under_investigation', 'mediation'],
                 dispute_type__in=['boundary', 'encroachment']
-            ).select_related('parcel', 'complainant').order_by('-filed_at')  # Make sure `filed_at` exists
-            
+            ).select_related('parcel', 'complainant').order_by('-filed_at')
+
             context.update({
                 'assigned_applications': assigned_applications,
                 'pending_inspections_count': assigned_applications.count(),
@@ -57,72 +57,48 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         # Notary-specific context
         elif user.role == 'notary':
-            from documents.models import Document
-            from land_management.models import OwnershipTransfer
-            from signatures.models import DigitalSignature
-            
-            pending_documents = Document.objects.filter(
-                document_type__in=['transfer_agreement', 'legal_document'],
-                is_verified=False
-            ).select_related('uploaded_by').order_by('-uploaded_at')
-            
-            active_transfers = OwnershipTransfer.objects.filter(
-                notary_required=True,
-                status__in=['initiated', 'pending_approval']
-            ).select_related('current_owner', 'new_owner', 'parcel').order_by('-initiated_at')
-            
-            recent_notarizations = DigitalSignature.objects.filter(
-                signer=user,
-                document_type__in=['transfer_agreement', 'legal_document'],
-                status='signed'
-            ).select_related('related_document').order_by('-signed_at')[:10]
-            
-            today = timezone.now().date()
-            month_start = today.replace(day=1)
-            
+            from disputes.models import Dispute, DisputeTimeline
+
+            # Get disputes assigned to this notary
+            assigned_disputes = Dispute.objects.filter(
+                assigned_officer=user
+            ).select_related('parcel', 'complainant').order_by('-filed_at')
+
+            # Calculate statistics
             context.update({
-                'pending_documents': pending_documents[:5],
-                'pending_notarization_count': pending_documents.count(),
-                
-                'active_transfers': active_transfers[:4],
-                'active_transfers_count': active_transfers.count(),
-                
-                'notarized_today_count': DigitalSignature.objects.filter(
-                    signer=user,
-                    signed_at__date=today,
-                    status='signed'
+                'assigned_disputes': assigned_disputes[:5],
+                'assigned_disputes_count': assigned_disputes.count(),
+                'active_investigations': assigned_disputes.filter(
+                    status__in=['under_investigation', 'mediation']
                 ).count(),
-                
-                'notarized_this_month': DigitalSignature.objects.filter(
-                    signer=user,
-                    signed_at__date__gte=month_start,
-                    status='signed'
+                'resolved_this_month': assigned_disputes.filter(
+                    status='resolved',
+                    resolution_date__month=timezone.now().month,
+                    resolution_date__year=timezone.now().year
                 ).count(),
-                
-                'recent_notarizations': recent_notarizations,
-                
-                'weekly_count': DigitalSignature.objects.filter(
-                    signer=user,
-                    signed_at__date__gte=today - timezone.timedelta(days=7),
-                    status='signed'
+                'pending_actions': assigned_disputes.filter(
+                    status__in=['under_investigation', 'mediation']
                 ).count(),
+                'recent_activities': DisputeTimeline.objects.filter(
+                    dispute__assigned_officer=user
+                ).select_related('dispute').order_by('-created_at')[:5]
             })
 
         # Landowner or other roles
         else:
             context['recent_applications'] = ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')[:4]
             context['recent_parcels'] = user.land_parcels.all().order_by('-created_at')[:3]
-            
+
             context['pending_applications_count'] = ParcelApplication.objects.filter(
-                applicant=user, 
+                applicant=user,
                 status__in=['submitted', 'under_review', 'field_inspection']
             ).count()
-            
+
             context['parcel_titles_count'] = ParcelTitle.objects.filter(
                 owner=user,
                 is_active=True
             ).count()
-        
+
         context['today'] = timezone.now().date()
 
         # Admin and Registry Officer stats

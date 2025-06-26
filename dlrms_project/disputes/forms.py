@@ -108,9 +108,9 @@ class DisputeAssignmentForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show registry officers and admins as assignees
+        # Include notaries in the assignee list along with registry officers and admins
         self.fields['assigned_officer'].queryset = User.objects.filter(
-            role__in=['registry_officer', 'admin']
+            role__in=['registry_officer', 'admin', 'notary']
         )
 
 
@@ -159,7 +159,7 @@ class MediationSessionForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show officers as mediators
+        # Include notaries as potential mediators along with officers
         self.fields['mediator'].queryset = User.objects.filter(
-            role__in=['registry_officer', 'admin']
+            role__in=['registry_officer', 'admin', 'notary']
         )
