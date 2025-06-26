@@ -6,7 +6,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.utils import timezone
 from applications.models import ParcelApplication, ParcelTitle
-from disputes.models import Dispute
+# Import dispute model directly at the module level and store a reference
+from disputes.models import Dispute as DisputeModel  # Rename to avoid potential namespace conflicts
 
 User = get_user_model()
 
@@ -34,7 +35,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             ).select_related('applicant').order_by('-submitted_at')
 
             # Disputes assigned to surveyor for investigation or mediation
-            assigned_disputes = Dispute.objects.filter(
+            assigned_disputes = DisputeModel.objects.filter(
                 assigned_officer=user,
                 status__in=['under_investigation', 'mediation'],
                 dispute_type__in=['boundary', 'encroachment']
@@ -57,10 +58,10 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         # Notary-specific context
         elif user.role == 'notary':
-            from disputes.models import Dispute, DisputeTimeline
+            from disputes.models import DisputeTimeline
 
             # Get disputes assigned to this notary
-            assigned_disputes = Dispute.objects.filter(
+            assigned_disputes = DisputeModel.objects.filter(
                 assigned_officer=user
             ).select_related('parcel', 'complainant').order_by('-filed_at')
 
@@ -113,11 +114,14 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             ).count()
             context['recent_users'] = all_users.order_by('-date_joined')[:20]
 
-            # Dispute statistics
-            context['total_disputes'] = Dispute.objects.count()
-            context['open_disputes'] = Dispute.objects.filter(status='open').count()
-            context['resolved_disputes'] = Dispute.objects.filter(status='resolved').count()
-            context['recent_disputes'] = Dispute.objects.order_by('-filed_at')[:5]
+            # Dispute statistics - use DisputeModel instead of Dispute
+            context['total_disputes'] = DisputeModel.objects.count()
+            context['open_disputes'] = DisputeModel.objects.filter(status='open').count()
+            context['pending_disputes'] = DisputeModel.objects.filter(status='open').count()  # Mapping 'open' to 'pending'
+            context['disputes_under_investigation'] = DisputeModel.objects.filter(status='under_investigation').count()
+            context['disputes_in_mediation'] = DisputeModel.objects.filter(status='mediation').count()
+            context['resolved_disputes'] = DisputeModel.objects.filter(status='resolved').count()
+            context['recent_disputes'] = DisputeModel.objects.order_by('-filed_at')[:5]
 
         return context
 
