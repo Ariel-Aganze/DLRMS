@@ -110,8 +110,8 @@
                         <div class="text-sm font-medium text-gray-900">{{ dispute.title|truncatechars:50 }}</div>
                         <div class="text-sm text-gray-500">
                             Filed by: {{ dispute.complainant.get_full_name }}
-                            {% if dispute.respondent %}
-                                vs {{ dispute.respondent.get_full_name }}
+                            {% if dispute.respondent_name %}
+                                vs {{ dispute.respondent_name }}
                             {% endif %}
                         </div>
                     </td>

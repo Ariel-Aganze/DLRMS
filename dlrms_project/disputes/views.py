@@ -6,6 +6,10 @@ from django.urls import reverse_lazy
 from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponseForbidden
+from django.contrib.auth.decorators import login_required
+
+from accounts.admin import User
+
 
 from .models import Dispute, DisputeComment, DisputeEvidence, DisputeTimeline, MediationSession
 from .forms import (
@@ -128,6 +132,11 @@ class DisputeDetailView(LoginRequiredMixin, DetailView):
         context['timeline'] = dispute.timeline.select_related('created_by')
         context['mediation_sessions'] = dispute.mediation_sessions.select_related('mediator')
         
+        if self.request.user.role in ['registry_officer', 'admin', 'notary']:
+            context['available_mediators'] = User.objects.filter(
+                role__in=['registry_officer', 'admin', 'notary']
+            )
+
         # Filter internal comments for non-officers
         if self.request.user.role not in ['registry_officer', 'admin', 'notary']:
             context['comments'] = context['comments'].filter(is_internal=False)
@@ -279,3 +288,41 @@ def add_evidence(request, pk):
             return JsonResponse({'error': 'Invalid form data'}, status=400)
     
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+def schedule_mediation(request, pk):
+    """Schedule a mediation session for a dispute"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Only POST method is allowed'})
+
+    # Check user role
+    if request.user.role not in ['registry_officer', 'admin', 'notary']:
+        return HttpResponseForbidden("You don't have permission to schedule mediation sessions.")
+
+    dispute = get_object_or_404(Dispute, pk=pk)
+    
+    # Create mediation session
+    form = MediationSessionForm(request.POST)
+    if form.is_valid():
+        session = form.save(commit=False)
+        session.dispute = dispute
+        session.save()
+        
+        # Update dispute status to mediation if not already
+        if dispute.status != 'mediation':
+            dispute.status = 'mediation'
+            dispute.save()
+        
+        # Create timeline entry
+        DisputeTimeline.objects.create(
+            dispute=dispute,
+            event='Mediation Scheduled',
+            description=f'Mediation session scheduled for {session.scheduled_date.strftime("%B %d, %Y at %I:%M %p")} at {session.location}',
+            created_by=request.user
+        )
+        
+        messages.success(request, 'Mediation session scheduled successfully.')
+        return redirect('disputes:dispute_detail', pk=dispute.pk)
+    else:
+        messages.error(request, 'Error scheduling mediation session. Please check the form data.')
+        return redirect('disputes:dispute_detail', pk=dispute.pk)

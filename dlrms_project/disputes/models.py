@@ -44,6 +44,7 @@ class Dispute(models.Model):
     # Parties Involved
     complainant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='filed_disputes')
     respondent = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_against', blank=True, null=True)
+    respondent_name = models.CharField(max_length=200, blank=True, null=True, help_text="Name of the respondent (person against whom the dispute is filed)")
     
     # Related Objects
     parcel = models.ForeignKey('land_management.LandParcel', on_delete=models.CASCADE, related_name='disputes')

@@ -14,4 +14,6 @@ urlpatterns = [
     # AJAX endpoints
     path('<int:pk>/add-comment/', views.add_comment, name='add_comment'),
     path('<int:pk>/add-evidence/', views.add_evidence, name='add_evidence'),
+
+    path('<int:pk>/schedule-mediation/', views.schedule_mediation, name='schedule_mediation'),
 ]

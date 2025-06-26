@@ -73,9 +73,7 @@
                     <dt class="text-sm font-medium text-gray-500">Related Parcel</dt>
                     <dd class="mt-1 text-sm text-gray-900">
                         {{ dispute.parcel.parcel_id }} - {{ dispute.parcel.location }}
-                        <a href="{% url 'land_management:parcel_detail' dispute.parcel.pk %}" class="text-blue-600 hover:text-blue-800 ml-2">
-                            View Parcel
-                        </a>
+                        
                     </dd>
                 </div>
                 
@@ -253,11 +251,10 @@
                     <p class="text-xs text-gray-500">{{ dispute.complainant.email }}</p>
                 </div>
                 
-                {% if dispute.respondent %}
+                {% if dispute.respondent_name %}
                 <div>
                     <p class="text-sm font-medium text-gray-500">Respondent</p>
-                    <p class="mt-1 text-sm text-gray-900">{{ dispute.respondent.get_full_name }}</p>
-                    <p class="text-xs text-gray-500">{{ dispute.respondent.email }}</p>
+                    <p class="mt-1 text-sm text-gray-900">{{ dispute.respondent_name }}</p>
                 </div>
                 {% endif %}
                 
@@ -495,14 +492,18 @@
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
                 </div>
                 <div class="mb-4">
-                    <label for="mediation-mediator" class="block text-sm font-medium text-gray-700 mb-2">Mediator</label>
-                    <select name="mediator" id="mediation-mediator" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
-                        <option value="">Select Mediator</option>
-                        <option value="{{ user.id }}">{{ user.get_full_name }} (Me)</option>
-                        <!-- Add other officers here -->
-                    </select>
-                </div>
+    <label for="mediation-mediator" class="block text-sm font-medium text-gray-700 mb-2">Mediator</label>
+    <select name="mediator" id="mediation-mediator" required
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <option value="">Select Mediator</option>
+        <option value="{{ user.id }}">{{ user.get_full_name }} (Me)</option>
+        {% for mediator in available_mediators %}
+            {% if mediator.id != user.id %}
+                <option value="{{ mediator.id }}">{{ mediator.get_full_name }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+</div>
                 <div class="flex justify-end gap-2">
                     <button type="button" onclick="hideMediationForm()" class="px-4 py-2 text-gray-600 hover:text-gray-900">
                         Cancel
@@ -565,19 +566,37 @@
     }
     
     // Handle mediation form submission
-    document.getElementById('mediation-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        formData.append('dispute_id', '{{ dispute.pk }}');
-        
-        // For now, just update status to mediation
-        alert('Mediation scheduling feature will be implemented soon. Status will be updated to "In Mediation".');
-        
-        // Update status to mediation
-        document.getElementById('quick-status').value = 'mediation';
-        document.getElementById('status-update-form').submit();
+    // Handle mediation form submission
+document.getElementById('mediation-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    // Submit the form to the schedule-mediation endpoint
+    fetch("{% url 'disputes:schedule_mediation' dispute.pk %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            return response.json();
+        }
+    })
+    .then(data => {
+        if (data && data.status === 'error') {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error scheduling mediation:', error);
+        alert('An error occurred while scheduling the mediation session.');
     });
+});
     
     // Close modals when clicking outside
     window.onclick = function(event) {

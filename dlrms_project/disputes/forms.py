@@ -11,7 +11,8 @@ class DisputeForm(forms.ModelForm):
     
     class Meta:
         model = Dispute
-        fields = ['title', 'description', 'dispute_type', 'parcel', 'respondent']
+        # Replace 'respondent' with 'respondent_name'
+        fields = ['title', 'description', 'dispute_type', 'parcel', 'respondent_name']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500',
@@ -28,8 +29,10 @@ class DisputeForm(forms.ModelForm):
             'parcel': forms.Select(attrs={
                 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500'
             }),
-            'respondent': forms.Select(attrs={
-                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500'
+            # Change the widget from Select to TextInput
+            'respondent_name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500',
+                'placeholder': 'Enter the name of the person you are disputing with'
             }),
         }
     
@@ -42,10 +45,6 @@ class DisputeForm(forms.ModelForm):
             self.fields['parcel'].queryset = LandParcel.objects.filter(
                 Q(owner=user) | Q(disputes__complainant=user)
             ).distinct()
-            
-            # Exclude the current user from respondents
-            self.fields['respondent'].queryset = User.objects.exclude(id=user.id)
-            self.fields['respondent'].required = False
 
 
 class DisputeCommentForm(forms.ModelForm):
