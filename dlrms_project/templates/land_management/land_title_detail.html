@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Title Details - {{ title.title_number }} - DLRMS{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        {% include 'includes/sidebar.html' with active_page='my_titles' %}
+        
+        <div class="flex-1 ml-80">
+            <div class="p-6">
+                <div class="mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Land Title Details</h1>
+                            <p class="text-sm text-gray-600 mt-1">Title Number: {{ title.title_number }}</p>
+                        </div>
+                        <a href="{% url 'land_management:my_titles' %}" 
+                           class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200">
+                            Back to My Titles
+                        </a>
+                    </div>
+                </div>
+
+                {% if messages %}
+                <div class="mb-6">
+                    {% for message in messages %}
+                    <div class="p-4 {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %} rounded-lg">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Alerts Section -->
+                {% if pending_transfer %}
+                <div class="mb-6 p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-lg">
+                    <div class="flex">
+                        <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium">Pending Transfer</p>
+                            <p class="text-sm">There is a pending ownership transfer for this land. Status: {{ pending_transfer.get_status_display }}</p>
+                            {% if pending_transfer.current_owner == request.user and pending_transfer.status in 'initiated,awaiting_receiver' %}
+                            <a href="{% url 'land_management:cancel_transfer' pk=pending_transfer.pk %}" 
+                               class="text-sm underline hover:no-underline"
+                               onclick="return confirm('Are you sure you want to cancel this transfer?')">
+                                Cancel Transfer
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_disputes %}
+                <div class="mb-6 p-4 bg-red-100 border border-red-400 text-red-800 rounded-lg">
+                    <div class="flex">
+                        <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium">Active Dispute</p>
+                            <p class="text-sm">This land has active disputes. Ownership transfer is not allowed until disputes are resolved.</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Land Information -->
+                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Land Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-sm text-gray-500">Parcel ID</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.parcel_id }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Location</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.location }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Size (Hectares)</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.size_hectares }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Property Type</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.get_property_type_display }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">District</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.district }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Sector</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.sector }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Cell</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.cell }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Village</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.village }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Title Information -->
+                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Title Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-sm text-gray-500">Title Number</p>
+                            <p class="text-gray-900 font-medium">{{ title.title_number }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Issue Date</p>
+                            <p class="text-gray-900 font-medium">{{ title.issue_date|date:"d M Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Status</p>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if title.is_active %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {% if title.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Current Owner</p>
+                            <p class="text-gray-900 font-medium">{{ title.parcel.owner.get_full_name }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                {% if title.is_active and not pending_transfer and not active_disputes %}
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
+                    <div class="flex gap-4">
+                        <a href="{% url 'land_management:initiate_transfer' title_pk=title.pk %}" 
+                           class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                            Initiate Transfer
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

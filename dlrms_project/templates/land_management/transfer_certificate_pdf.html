@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Land Transfer Certificate</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px double #000;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .certificate-number {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .info-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .info-label {
+            display: table-cell;
+            width: 40%;
+            font-weight: bold;
+        }
+        .info-value {
+            display: table-cell;
+            width: 60%;
+        }
+        .declaration {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            text-align: justify;
+        }
+        .signature-section {
+            margin-top: 50px;
+        }
+        .signature-box {
+            display: inline-block;
+            width: 45%;
+            text-align: center;
+            margin-top: 60px;
+        }
+        .signature-line {
+            border-bottom: 1px solid #000;
+            margin-bottom: 5px;
+        }
+        .seal {
+            position: absolute;
+            right: 50px;
+            bottom: 100px;
+            width: 150px;
+            height: 150px;
+            border: 3px solid #000;
+            border-radius: 50%;
+            text-align: center;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Democratic Republic of Congo</h1>
+        <p>Ministry of Land Affairs</p>
+        <p>Digital Land Registry Management System</p>
+        <h2 style="margin-top: 20px;">CERTIFICATE OF LAND OWNERSHIP TRANSFER</h2>
+    </div>
+
+    <div class="certificate-number">
+        Certificate No: {{ transfer.transfer_number }}
+    </div>
+
+    <div class="content">
+        <div class="section">
+            <div class="section-title">TRANSFER DETAILS</div>
+            <div class="info-row">
+                <div class="info-label">Transfer Date:</div>
+                <div class="info-value">{{ transfer.completed_at|date:"d F Y" }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Transfer Reason:</div>
+                <div class="info-value">
+                    {{ transfer.get_reason_display }}
+                    {% if transfer.reason == 'other' and transfer.other_reason %}
+                        ({{ transfer.other_reason }})
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">PARTIES INVOLVED</div>
+            <div class="info-row">
+                <div class="info-label">Previous Owner:</div>
+                <div class="info-value">{{ transfer.current_owner.get_full_name }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Previous Owner ID:</div>
+                <div class="info-value">{{ transfer.current_owner.national_id }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">New Owner:</div>
+                <div class="info-value">{{ transfer.new_owner.get_full_name }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">New Owner ID:</div>
+                <div class="info-value">{{ transfer.new_owner.national_id }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">PROPERTY INFORMATION</div>
+            <div class="info-row">
+                <div class="info-label">Parcel ID:</div>
+                <div class="info-value">{{ transfer.parcel.parcel_id }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Title Number:</div>
+                <div class="info-value">{{ transfer.title.title_number }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Location:</div>
+                <div class="info-value">{{ transfer.parcel.location }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">District:</div>
+                <div class="info-value">{{ transfer.parcel.district }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Size:</div>
+                <div class="info-value">{{ transfer.parcel.size_hectares }} hectares</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Property Type:</div>
+                <div class="info-value">{{ transfer.parcel.get_property_type_display }}</div>
+            </div>
+        </div>
+
+        <div class="declaration">
+            <p><strong>DECLARATION:</strong></p>
+            <p>This is to certify that the ownership of the above-described property has been legally transferred from {{ transfer.current_owner.get_full_name }} to {{ transfer.new_owner.get_full_name }} in accordance with the laws and regulations of the Democratic Republic of Congo.</p>
+            <p>This transfer has been duly registered in the Digital Land Registry Management System and all necessary verifications have been completed.</p>
+            {% if transfer.review_notes %}
+            <p><strong>Additional Notes:</strong> {{ transfer.review_notes }}</p>
+            {% endif %}
+        </div>
+
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-line">&nbsp;</div>
+                <p>{{ notary.get_full_name }}<br>
+                Notary Public<br>
+                License No: {{ notary.license_number|default:"N/A" }}</p>
+            </div>
+            <div class="signature-box" style="float: right;">
+                <div class="signature-line">&nbsp;</div>
+                <p>Date: {{ date|date:"d F Y" }}</p>
+            </div>
+        </div>
+
+        <div class="seal">
+            <p style="margin-top: 20px; font-weight: bold;">OFFICIAL SEAL</p>
+            <p style="font-size: 12px;">DLRMS</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>This certificate is generated electronically and is valid without physical signature as per Digital Land Registry Act.</p>
+        <p>Verify authenticity at: dlrms.gov.cd/verify/{{ transfer.transfer_number }}</p>
+    </div>
+</body>
+</html>

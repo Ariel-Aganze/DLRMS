@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Initiate Transfer - DLRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .readonly-field {
+        background-color: #f3f4f6;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50">
+    <div class="layout-container flex h-full grow flex-col">
+        {% include 'includes/sidebar.html' with active_page='my_titles' %}
+        
+        <div class="flex-1 ml-80">
+            <div class="p-6">
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-900">Initiate Ownership Transfer</h1>
+                    <p class="text-sm text-gray-600 mt-1">Transfer ownership of your land to another person</p>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" id="transfer-form">
+                    {% csrf_token %}
+                    
+                    <!-- Land Information (Read-only) -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Land Information</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Parcel ID</label>
+                                <input type="text" value="{{ parcel.parcel_id }}" 
+                                       class="form-control readonly-field" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                                <input type="text" value="{{ parcel.location }}" 
+                                       class="form-control readonly-field" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Size (Hectares)</label>
+                                <input type="text" value="{{ parcel.size_hectares }}" 
+                                       class="form-control readonly-field" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
+                                <input type="text" value="{{ parcel.get_property_type_display }}" 
+                                       class="form-control readonly-field" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Active Title</label>
+                                <input type="text" value="{{ title.title_number }}" 
+                                       class="form-control readonly-field" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transfer Details -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Transfer Details</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Reason for Transfer <span class="text-red-500">*</span>
+                                </label>
+                                {{ form.reason }}
+                            </div>
+                            <div id="other-reason-div" style="display: none;">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Please Specify
+                                </label>
+                                {{ form.other_reason }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Transfer Value (Optional)
+                                </label>
+                                {{ form.transfer_value }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Required Documents</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Sale Deed <span class="text-red-500">*</span>
+                                </label>
+                                {{ form.sale_deed }}
+                                <p class="text-xs text-gray-500 mt-1">Upload the sale deed document</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Your ID Document <span class="text-red-500">*</span>
+                                </label>
+                                {{ form.current_owner_id_document }}
+                                <p class="text-xs text-gray-500 mt-1">Upload a copy of your ID</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Receiver Information -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Receiver Information</h2>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Receiver's National ID <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.receiver_national_id }}
+                            <button type="button" id="check-receiver" 
+                                    class="mt-2 bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700">
+                                Check Receiver Details
+                            </button>
+                        </div>
+
+                        <div id="receiver-details" style="display: none;">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                    {{ form.receiver_first_name }}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                    {{ form.receiver_last_name }}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                    {{ form.receiver_phone }}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    {{ form.receiver_email }}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <label class="flex items-center">
+                                    {{ form.confirm_receiver }}
+                                    <span class="ml-2 text-sm text-gray-700">{{ form.confirm_receiver.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="manual-entry-note" class="mt-2 text-sm text-gray-600" style="display: none;">
+                            If the receiver is not found in the system, you can enter their details manually.
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="flex justify-between">
+                        <a href="{% url 'land_management:title_detail' pk=title.pk %}" 
+                           class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400">
+                            Cancel
+                        </a>
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                            Submit Transfer Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide other reason field
+    const reasonSelect = document.getElementById('id_reason');
+    const otherReasonDiv = document.getElementById('other-reason-div');
+    
+    reasonSelect.addEventListener('change', function() {
+        if (this.value === 'other') {
+            otherReasonDiv.style.display = 'block';
+        } else {
+            otherReasonDiv.style.display = 'none';
+        }
+    });
+    
+    // Check receiver details
+    const checkReceiverBtn = document.getElementById('check-receiver');
+    const receiverDetails = document.getElementById('receiver-details');
+    const manualNote = document.getElementById('manual-entry-note');
+    
+    checkReceiverBtn.addEventListener('click', function() {
+        const nationalId = document.getElementById('receiver_national_id').value;
+        
+        if (!nationalId) {
+            alert('Please enter receiver\'s National ID');
+            return;
+        }
+        
+        fetch(`{% url 'land_management:check_receiver' %}?national_id=${nationalId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.found) {
+                    // Populate fields
+                    document.getElementById('id_receiver_first_name').value = data.first_name;
+                    document.getElementById('id_receiver_last_name').value = data.last_name;
+                    document.getElementById('id_receiver_phone').value = data.phone;
+                    document.getElementById('id_receiver_email').value = data.email;
+                    
+                    // Make fields readonly
+                    ['id_receiver_first_name', 'id_receiver_last_name', 'id_receiver_phone', 'id_receiver_email'].forEach(id => {
+                        const field = document.getElementById(id);
+                        field.readOnly = true;
+                        field.classList.add('readonly-field');
+                    });
+                    
+                    manualNote.style.display = 'none';
+                } else {
+                    // Enable manual entry
+                    ['id_receiver_first_name', 'id_receiver_last_name', 'id_receiver_phone', 'id_receiver_email'].forEach(id => {
+                        const field = document.getElementById(id);
+                        field.readOnly = false;
+                        field.classList.remove('readonly-field');
+                        field.value = '';
+                    });
+                    
+                    manualNote.style.display = 'block';
+                }
+                
+                receiverDetails.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error checking receiver details');
+            });
+    });
+});
+</script>
+{% endblock %}

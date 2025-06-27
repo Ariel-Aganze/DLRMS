@@ -6,7 +6,6 @@ from django.urls import reverse_lazy
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.http import JsonResponse
-
 # Import only the models that exist in this app
 from .models import LandParcel, OwnershipTransfer, ParcelBoundary
 
@@ -14,6 +13,22 @@ from .models import LandParcel, OwnershipTransfer, ParcelBoundary
 from applications.models import ParcelApplication, ParcelTitle
 from core.mixins import RoleRequiredMixin
 from notifications.models import Notification
+# Land Tranfer
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.http import HttpResponse, Http404
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from datetime import datetime, timedelta
+from .forms import TransferInitiationForm, ReceiverConfirmationForm, TransferReviewForm
+from disputes.models import Dispute
+from django.contrib.auth.decorators import login_required
+from io import BytesIO
+from django.core.files.base import ContentFile
+
+
+User = get_user_model()
+
 
 
 class ParcelListView(LoginRequiredMixin, ListView):
@@ -332,3 +347,390 @@ def get_parcel_details(request, parcel_id):
         return JsonResponse({'error': 'Parcel not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+class MyLandTitlesView(LoginRequiredMixin, ListView):
+    """View for landowners to see their land titles"""
+    model = ParcelTitle
+    template_name = 'land_management/my_land_titles.html'
+    context_object_name = 'titles'
+    
+    def get_queryset(self):
+        # Get titles where user is the current owner and title is active
+        return ParcelTitle.objects.filter(
+            parcel__owner=self.request.user,
+            is_active=True  # Changed from status='active' to is_active=True
+        ).select_related('parcel').order_by('-issue_date')
+
+
+class LandTitleDetailView(LoginRequiredMixin, DetailView):
+    """View for displaying land title details with transfer option"""
+    model = ParcelTitle
+    template_name = 'land_management/land_title_detail.html'
+    context_object_name = 'title'
+    
+    def get_object(self):
+        title = super().get_object()
+        # Ensure user owns this title
+        if title.parcel.owner != self.request.user and self.request.user.role not in ['admin', 'registry_officer']:
+            raise Http404("You don't have permission to view this title.")
+        return title
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        parcel = self.object.parcel
+        
+        # Check for pending transfers
+        context['pending_transfer'] = OwnershipTransfer.objects.filter(
+            parcel=parcel,
+            status__in=['initiated', 'awaiting_receiver', 'under_review']
+        ).first()
+        
+        # Check for active disputes
+        context['active_disputes'] = Dispute.objects.filter(
+            parcel=parcel,
+            status__in=['open', 'under_investigation', 'mediation']
+        ).exists()
+        
+        return context
+
+
+class InitiateTransferView(LoginRequiredMixin, CreateView):
+    """View for initiating ownership transfer"""
+    model = OwnershipTransfer
+    form_class = TransferInitiationForm
+    template_name = 'land_management/initiate_transfer.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.title = get_object_or_404(ParcelTitle, pk=kwargs['title_pk'])
+        self.parcel = self.title.parcel
+        
+        # Verify ownership
+        if self.parcel.owner != request.user:
+            messages.error(request, "You can only transfer land that you own.")
+            return redirect('land_management:my_titles')
+        
+        # Check for pending transfers
+        pending_transfer = OwnershipTransfer.objects.filter(
+            parcel=self.parcel,
+            status__in=['initiated', 'awaiting_receiver', 'under_review']
+        ).first()
+        
+        if pending_transfer:
+            messages.warning(request, "There's already a pending transfer for this land.")
+            return redirect('land_management:title_detail', pk=self.title.pk)
+        
+        # Check for active disputes
+        if Dispute.objects.filter(
+            parcel=self.parcel,
+            status__in=['open', 'under_investigation', 'mediation']
+        ).exists():
+            messages.error(request, "Cannot transfer land with active disputes.")
+            return redirect('land_management:title_detail', pk=self.title.pk)
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['parcel'] = self.parcel
+        kwargs['title'] = self.title
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['parcel'] = self.parcel
+        context['title'] = self.title
+        return context
+    
+    def form_valid(self, form):
+        with transaction.atomic():
+            # Set transfer details
+            form.instance.parcel = self.parcel
+            form.instance.title = self.title
+            form.instance.current_owner = self.request.user
+            
+            # Try to find the new owner by national ID
+            try:
+                new_owner = User.objects.get(national_id=form.cleaned_data['receiver_national_id'])
+                form.instance.new_owner = new_owner
+                form.instance.status = 'awaiting_receiver'
+                
+                # Save the transfer first
+                response = super().form_valid(form)
+                
+                # Now create the notification after the transfer is saved
+                Notification.objects.create(
+                    recipient=new_owner,
+                    title='Land Transfer Request',
+                    message=f'{self.request.user.get_full_name()} wants to transfer land (Parcel: {self.parcel.parcel_id}) to you. Please confirm within 3 days.',
+                    notification_type='transfer_status',
+                    related_transfer=form.instance  # Now form.instance has been saved
+                )
+                
+                messages.success(self.request, "Transfer initiated successfully. Waiting for receiver confirmation.")
+                return response
+                
+            except User.DoesNotExist:
+                messages.error(self.request, "No user found with that National ID.")
+                return self.form_invalid(form)
+    
+    def get_success_url(self):
+        return reverse_lazy('land_management:title_detail', kwargs={'pk': self.title.pk})
+
+
+@login_required
+def check_receiver_details(request):
+    """AJAX view to check receiver details by national ID"""
+    national_id = request.GET.get('national_id')
+    if not national_id:
+        return JsonResponse({'found': False})
+    
+    try:
+        user = User.objects.get(national_id=national_id)
+        return JsonResponse({
+            'found': True,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'phone': user.phone_number,
+            'email': user.email
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'found': False})
+
+
+class TransferConfirmationView(LoginRequiredMixin, UpdateView):
+    """View for receiver to confirm transfer"""
+    model = OwnershipTransfer
+    form_class = ReceiverConfirmationForm
+    template_name = 'land_management/transfer_confirmation.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        
+        # Verify receiver
+        if self.object.new_owner != request.user:
+            messages.error(request, "You are not the designated receiver for this transfer.")
+            return redirect('core:dashboard')
+        
+        # Check status
+        if self.object.status != 'awaiting_receiver':
+            messages.error(request, "This transfer is no longer awaiting your confirmation.")
+            return redirect('core:dashboard')
+        
+        # Check deadline
+        if self.object.is_expired:
+            self.object.status = 'canceled'
+            self.object.save()
+            messages.error(request, "The confirmation deadline has passed. Transfer canceled.")
+            return redirect('core:dashboard')
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def form_valid(self, form):
+        with transaction.atomic():
+            form.instance.status = 'under_review'
+            form.instance.receiver_confirmed_at = timezone.now()
+            
+            response = super().form_valid(form)
+            
+            # Notify notaries
+            notaries = User.objects.filter(role='notary')
+            for notary in notaries:
+                Notification.objects.create(
+                    recipient=notary,
+                    title='New Transfer for Review',
+                    message=f'Transfer {self.object.transfer_number} is ready for review.',
+                    notification_type='approval_required',
+                    related_transfer=self.object
+                )
+            
+            # Notify current owner
+            Notification.objects.create(
+                recipient=self.object.current_owner,
+                title='Transfer Confirmed by Receiver',
+                message=f'{self.object.new_owner.get_full_name()} has confirmed the transfer. Awaiting notary review.',
+                notification_type='transfer_status',
+                related_transfer=self.object
+            )
+            
+            messages.success(self.request, "Transfer confirmed successfully. Awaiting notary review.")
+            return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
+    
+    def get_success_url(self):
+        return reverse_lazy('core:dashboard')
+
+
+class TransferListView(RoleRequiredMixin, LoginRequiredMixin, ListView):
+    """View for notaries to see transfers pending review"""
+    allowed_roles = ['notary', 'admin', 'registry_officer']
+    model = OwnershipTransfer
+    template_name = 'land_management/transfer_list.html'
+    context_object_name = 'transfers'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by status
+        status = self.request.GET.get('status', 'under_review')
+        if status == 'all':
+            return queryset.order_by('-initiated_at')
+        
+        return queryset.filter(status=status).order_by('-initiated_at')
+
+
+class TransferReviewView(RoleRequiredMixin, LoginRequiredMixin, UpdateView):
+    """View for notary to review and approve/reject transfer"""
+    allowed_roles = ['notary', 'admin', 'registry_officer']
+    model = OwnershipTransfer
+    form_class = TransferReviewForm
+    template_name = 'land_management/transfer_review.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        
+        if self.object.status != 'under_review':
+            messages.error(request, "This transfer is not under review.")
+            return redirect('land_management:transfer_list')
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        transfer = self.object
+        
+        # Get active disputes
+        context['active_disputes'] = Dispute.objects.filter(
+            parcel=transfer.parcel,
+            status__in=['open', 'under_investigation', 'mediation']
+        )
+        
+        # Get parcel history
+        context['previous_transfers'] = OwnershipTransfer.objects.filter(
+            parcel=transfer.parcel,
+            status='approved'
+        ).order_by('-completed_at')[:5]
+        
+        return context
+    
+    def form_valid(self, form):
+        decision = form.data.get('decision')
+        
+        with transaction.atomic():
+            form.instance.reviewed_by = self.request.user
+            form.instance.review_date = timezone.now()
+            form.instance.status = decision
+            
+            if decision == 'approved':
+                form.instance.completed_at = timezone.now()
+                
+                # Update parcel owner
+                parcel = form.instance.parcel
+                parcel.owner = form.instance.new_owner
+                parcel.save()
+                
+                # Update title status
+                old_title = form.instance.title
+                old_title.status = 'transferred'
+                old_title.save()
+                
+                # Generate transfer certificate
+                self._generate_transfer_certificate(form.instance)
+                
+                message = "Transfer approved successfully."
+            else:
+                message = "Transfer rejected."
+            
+            response = super().form_valid(form)
+            
+            # Notify both parties
+            for user in [form.instance.current_owner, form.instance.new_owner]:
+                Notification.objects.create(
+                    recipient=user,
+                    title=f'Transfer {decision.title()}',
+                    message=f'Transfer {form.instance.transfer_number} has been {decision}. Review notes: {form.instance.review_notes}',
+                    notification_type='transfer_status',
+                    related_transfer=form.instance
+                )
+            
+            messages.success(self.request, message)
+            return response
+    
+    def _generate_transfer_certificate(self, transfer):
+        """Generate PDF transfer certificate"""
+        template = get_template('land_management/transfer_certificate_pdf.html')
+        context = {
+            'transfer': transfer,
+            'notary': self.request.user,
+            'date': datetime.now()
+        }
+        html = template.render(context)
+        
+        # Create PDF
+        result = BytesIO()
+        pdf = pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
+        
+        if not pdf.err:
+            # Save PDF to transfer model
+            transfer.transfer_certificate.save(
+                f'transfer_certificate_{transfer.transfer_number}.pdf',
+                ContentFile(result.getvalue())
+            )
+    
+    def get_success_url(self):
+        return reverse_lazy('land_management:transfer_list')
+
+
+@login_required
+def cancel_transfer(request, pk):
+    """View to cancel a transfer"""
+    transfer = get_object_or_404(OwnershipTransfer, pk=pk)
+    
+    # Only current owner can cancel
+    if transfer.current_owner != request.user:
+        messages.error(request, "You don't have permission to cancel this transfer.")
+        return redirect('core:dashboard')
+    
+    # Can only cancel if not yet reviewed
+    if transfer.status not in ['initiated', 'awaiting_receiver']:
+        messages.error(request, "Cannot cancel transfer at this stage.")
+        return redirect('land_management:title_detail', pk=transfer.title.pk)
+    
+    transfer.status = 'canceled'
+    transfer.save()
+    
+    # Notify receiver if applicable
+    if transfer.status == 'awaiting_receiver':
+        Notification.objects.create(
+            recipient=transfer.new_owner,
+            title='Transfer Canceled',
+            message=f'{transfer.current_owner.get_full_name()} has canceled the land transfer.',
+            notification_type='transfer_status',
+            related_transfer=transfer
+        )
+    
+    messages.success(request, "Transfer canceled successfully.")
+    return redirect('land_management:title_detail', pk=transfer.title.pk)
+
+
+@login_required
+def download_transfer_certificate(request, pk):
+    """Download transfer certificate PDF"""
+    transfer = get_object_or_404(OwnershipTransfer, pk=pk)
+    
+    # Check permissions
+    allowed_users = [transfer.current_owner, transfer.new_owner]
+    allowed_roles = ['admin', 'registry_officer', 'notary']
+    
+    if request.user not in allowed_users and request.user.role not in allowed_roles:
+        raise Http404("You don't have permission to download this certificate.")
+    
+    if not transfer.transfer_certificate:
+        raise Http404("Transfer certificate not found.")
+    
+    response = HttpResponse(transfer.transfer_certificate.read(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="transfer_certificate_{transfer.transfer_number}.pdf"'
+    return response

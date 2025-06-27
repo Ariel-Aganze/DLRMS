@@ -94,18 +94,18 @@ class LandParcel(models.Model):
         ordering = ['-created_at']
 
 class OwnershipTransfer(models.Model):
-    """Model for land ownership transfers"""
+    """Model for tracking land ownership transfers"""
     
     TRANSFER_STATUS_CHOICES = [
         ('initiated', 'Initiated'),
-        ('pending_approval', 'Pending Approval'),
+        ('awaiting_receiver', 'Awaiting Receiver Confirmation'),
+        ('under_review', 'Under Review'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ('canceled', 'Canceled'),
     ]
     
-    TRANSFER_TYPE_CHOICES = [
+    TRANSFER_REASON_CHOICES = [
         ('sale', 'Sale'),
         ('gift', 'Gift'),
         ('inheritance', 'Inheritance'),
@@ -117,36 +117,73 @@ class OwnershipTransfer(models.Model):
     # Basic Information
     transfer_number = models.CharField(max_length=50, unique=True)
     parcel = models.ForeignKey(LandParcel, on_delete=models.CASCADE, related_name='ownership_transfers')
-    transfer_type = models.CharField(max_length=20, choices=TRANSFER_TYPE_CHOICES)
-    status = models.CharField(max_length=20, choices=TRANSFER_STATUS_CHOICES, default='initiated')
+    title = models.ForeignKey('applications.ParcelTitle', on_delete=models.CASCADE, related_name='transfers')
     
-    # Parties
-    current_owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transfers_as_current_owner')
-    new_owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transfers_as_new_owner')
+    # Transfer Parties
+    current_owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transfers_as_seller')
+    new_owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transfers_as_buyer')
     
     # Transfer Details
-    transfer_value = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True, help_text="Transfer value in Francs")
-    conditions = models.TextField(blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=TRANSFER_STATUS_CHOICES, default='initiated')
+    reason = models.CharField(max_length=20, choices=TRANSFER_REASON_CHOICES)
+    other_reason = models.CharField(max_length=200, blank=True, null=True)
     
-    # Legal Requirements
-    legal_document_required = models.BooleanField(default=True)
-    notary_required = models.BooleanField(default=True)
-    court_approval_required = models.BooleanField(default=False)
+    # Financial Information (optional, for tracking purposes)
+    transfer_value = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     
-    # Processing
-    initiated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='initiated_transfers')
-    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_transfers')
-    approval_date = models.DateTimeField(blank=True, null=True)
-    completion_date = models.DateTimeField(blank=True, null=True)
-    rejection_reason = models.TextField(blank=True, null=True)
+    # Documents
+    sale_deed = models.FileField(upload_to='transfers/sale_deeds/', blank=True, null=True)
+    current_owner_id_document = models.FileField(upload_to='transfers/owner_ids/', blank=True, null=True)
+    new_owner_id_document = models.FileField(upload_to='transfers/buyer_ids/', blank=True, null=True)
+    transfer_certificate = models.FileField(upload_to='transfers/certificates/', blank=True, null=True)
+    
+    # Receiver Details (stored when entered)
+    receiver_national_id = models.CharField(max_length=50)
+    receiver_first_name = models.CharField(max_length=100)
+    receiver_last_name = models.CharField(max_length=100)
+    receiver_phone = models.CharField(max_length=20)
+    receiver_email = models.EmailField()
+    
+    # Review Information
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
+                                   related_name='reviewed_transfers')
+    review_date = models.DateTimeField(blank=True, null=True)
+    review_notes = models.TextField(blank=True, null=True)
     
     # Timestamps
     initiated_at = models.DateTimeField(auto_now_add=True)
+    receiver_confirmed_at = models.DateTimeField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Deadline tracking
+    receiver_deadline = models.DateTimeField(blank=True, null=True)
+    
     def __str__(self):
-        return f"Transfer {self.transfer_number} - {self.current_owner} to {self.new_owner}"
+        return f"Transfer {self.transfer_number}: {self.current_owner} to {self.new_owner}"
+    
+    def save(self, *args, **kwargs):
+        if not self.transfer_number:
+            # Generate unique transfer number
+            import uuid
+            from datetime import datetime
+            self.transfer_number = f"TRF-{datetime.now().strftime('%Y%m')}-{str(uuid.uuid4())[:8].upper()}"
+        
+        # Set receiver deadline (3 days from initiation)
+        if not self.receiver_deadline and self.status == 'initiated':
+            from datetime import timedelta
+            from django.utils import timezone
+            self.receiver_deadline = timezone.now() + timedelta(days=3)
+        
+        super().save(*args, **kwargs)
+    
+    @property
+    def is_expired(self):
+        """Check if receiver confirmation deadline has passed"""
+        if self.receiver_deadline and self.status == 'awaiting_receiver':
+            from django.utils import timezone
+            return timezone.now() > self.receiver_deadline
+        return False
     
     class Meta:
         verbose_name = "Ownership Transfer"
