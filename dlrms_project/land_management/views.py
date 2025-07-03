@@ -661,25 +661,29 @@ class TransferReviewView(RoleRequiredMixin, LoginRequiredMixin, UpdateView):
     
     def _generate_transfer_certificate(self, transfer):
         """Generate PDF transfer certificate"""
-        template = get_template('land_management/transfer_certificate_pdf.html')
-        context = {
-            'transfer': transfer,
-            'notary': self.request.user,
-            'date': datetime.now()
-        }
-        html = template.render(context)
-        
-        # Create PDF
-        result = BytesIO()
-        pdf = pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
-        
-        if not pdf.err:
+        try:
+            # Import the certificate generator
+            from certificates.certificate_generator import TransferCertificateGenerator
+            
+            # Create generator instance
+            generator = TransferCertificateGenerator()
+            
+            # Generate the PDF
+            pdf_content = generator.generate_transfer_certificate(
+                transfer=transfer,
+                notary=self.request.user
+            )
+            
             # Save PDF to transfer model
             transfer.transfer_certificate.save(
                 f'transfer_certificate_{transfer.transfer_number}.pdf',
-                ContentFile(result.getvalue())
+                ContentFile(pdf_content)
             )
-    
+            
+            return True
+        except Exception as e:
+            print(f"Error generating transfer certificate: {e}")
+            return False
     def get_success_url(self):
         return reverse_lazy('land_management:transfer_list')
 
