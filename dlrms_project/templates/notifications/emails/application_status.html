@@ -1,0 +1,24 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block email_content %}
+    <h2 style="color: #1f2937;">Application Status Update</h2>
+    
+    <p>Dear {{ recipient_name }},</p>
+    
+    <p>{{ notification.message }}</p>
+    
+    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 4px; margin: 20px 0;">
+        <p style="margin: 0;"><strong>What's next?</strong></p>
+        <ul style="margin: 10px 0;">
+            <li>Log in to DLRMS to view your application details</li>
+            <li>Check the status of your application</li>
+            <li>Download any available documents</li>
+        </ul>
+    </div>
+    
+    <a href="{{ site_url }}/applications/parcel/" class="button">View Applications</a>
+    
+    <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+        If you have any questions, please contact your local registry office.
+    </p>
+{% endblock %}

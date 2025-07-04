@@ -171,14 +171,24 @@ LEAFLET_CONFIG = {
     ],
 }
 
-# Email Configuration (for notifications)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
-# EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-# EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-# DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@dlrms.cd')
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Use SMTP backend
+# For development, you can use console backend:
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Production email settings (example with Gmail)
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'appdevmailfortesting@gmail.com'  # Your email
+EMAIL_HOST_PASSWORD = 'lyxs qnlg ougd ksoa'  # Your app password
+
+# Default email settings
+DEFAULT_FROM_EMAIL = 'DLRMS System <noreply@dlrms.gov.cd>'
+SERVER_EMAIL = 'DLRMS Server <server@dlrms.gov.cd>'
+
+# Site URL for email links
+SITE_URL = 'http://192.168.1.68:8000'  # To change to the actual domain
 
 # File Upload Settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
@@ -207,7 +217,7 @@ CACHES = {
 
 CSRF_TRUSTED_ORIGINS = [
     'https://yourdomain.com',
-    'https://76a3-2c0f-eb68-64d-8500-d9cb-9ee3-aa12-f2f1.ngrok-free.app',  # Remove the trailing slash
+    'https://76a3-2c0f-eb68-64d-8500-d9cb-9ee3-aa12-f2f1.ngrok-free.app',  
     # Add other trusted origins if needed
 ]
 

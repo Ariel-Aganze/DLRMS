@@ -1,0 +1,25 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block email_content %}
+    {% if notification.priority == 'high' %}
+        <span class="priority-badge priority-high">IMPORTANT</span>
+    {% endif %}
+    
+    <h2 style="color: #1f2937;">Document Ready for Download</h2>
+    
+    <p>Dear {{ recipient_name }},</p>
+    
+    <p>{{ notification.message }}</p>
+    
+    <div style="background-color: #e0f2fe; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #0284c7;">
+        <p style="margin: 0; color: #0c4a6e;"><strong>📄 Your document is ready!</strong></p>
+        <p style="margin: 10px 0 0 0; color: #0c4a6e;">Log in to DLRMS to download your certificate or document.</p>
+    </div>
+    
+    <a href="{{ site_url }}/certificates/" class="button">Download Document</a>
+    
+    <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+        Documents are available for download at any time from your DLRMS account.
+    </p>
+{% endblock %}
+

@@ -1,0 +1,20 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block email_content %}
+    <h2 style="color: #1f2937;">Land Transfer Update</h2>
+    
+    <p>Dear {{ recipient_name }},</p>
+    
+    <p>{{ notification.message }}</p>
+    
+    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 4px; margin: 20px 0;">
+        <p style="margin: 0;"><strong>Transfer Information:</strong></p>
+        <p style="margin: 10px 0;">Please log in to DLRMS to view complete transfer details and take any required actions.</p>
+    </div>
+    
+    <a href="{{ site_url }}/land-management/transfers/" class="button">View Transfer Details</a>
+    
+    <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+        For security reasons, complete transfer details are only available within DLRMS.
+    </p>
+{% endblock %}

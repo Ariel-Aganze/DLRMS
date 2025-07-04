@@ -1,0 +1,26 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block email_content %}
+    {% if notification.priority == 'urgent' %}
+        <span class="priority-badge priority-urgent">URGENT ACTION REQUIRED</span>
+    {% elif notification.priority == 'high' %}
+        <span class="priority-badge priority-high">ACTION REQUIRED</span>
+    {% endif %}
+    
+    <h2 style="color: #1f2937;">Action Required</h2>
+    
+    <p>Dear {{ recipient_name }},</p>
+    
+    <p>{{ notification.message }}</p>
+    
+    <div style="background-color: #fef3c7; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+        <p style="margin: 0; color: #78350f;"><strong>⚠️ Your attention is needed</strong></p>
+        <p style="margin: 10px 0 0 0; color: #78350f;">Please log in to DLRMS to take the required action.</p>
+    </div>
+    
+    <a href="{{ site_url }}/dashboard/" class="button" style="background-color: #f59e0b;">Take Action Now</a>
+    
+    <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+        This action may be time-sensitive. Please respond as soon as possible.
+    </p>
+{% endblock %}

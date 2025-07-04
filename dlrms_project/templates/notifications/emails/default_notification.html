@@ -1,0 +1,23 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block email_content %}
+    {% if notification.priority == 'urgent' %}
+        <span class="priority-badge priority-urgent">URGENT</span>
+    {% elif notification.priority == 'high' %}
+        <span class="priority-badge priority-high">IMPORTANT</span>
+    {% else %}
+        <span class="priority-badge priority-normal">NOTIFICATION</span>
+    {% endif %}
+    
+    <h2 style="color: #1f2937; margin-top: 10px;">{{ notification.title }}</h2>
+    
+    <p>Dear {{ recipient_name }},</p>
+    
+    <p>{{ notification.message }}</p>
+    
+    <a href="{{ site_url }}/notifications/" class="button">View in DLRMS</a>
+    
+    <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+        Sent on: {{ notification.created_at|date:"F d, Y at H:i" }}
+    </p>
+{% endblock %}
