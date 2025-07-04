@@ -109,6 +109,30 @@ class Certificate(models.Model):
         verbose_name_plural = "Certificates"
         ordering = ['-created_at']
 
+    def save(self, *args, **kwargs):
+        # Check if this is a status change to 'issued'
+        if self.pk:  # If this is an update
+            old_certificate = Certificate.objects.filter(pk=self.pk).first()
+            if old_certificate and old_certificate.status != 'issued' and self.status == 'issued':
+                # Certificate is being issued, send notification
+                try:
+                    from notifications.models import Notification
+                    Notification.objects.create(
+                        recipient=self.owner,
+                        title='Certificate Issued!',
+                        message=f'Your {self.get_certificate_type_display()} certificate {self.certificate_number} has been issued and is ready for use.',
+                        notification_type='document_uploaded',
+                        priority='high'
+                    )
+                except Exception as e:
+                    # Don't let notification failure stop the save
+                    print(f"Failed to create notification: {e}")
+        
+        if not self.certificate_number:
+            self.generate_certificate_number()
+        
+        super().save(*args, **kwargs)
+
 
 class CertificateTemplate(models.Model):
     """Model for storing certificate templates"""

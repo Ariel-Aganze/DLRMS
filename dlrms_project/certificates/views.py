@@ -14,6 +14,8 @@ from .models import Certificate, CertificateAuditLog
 from .generator import CertificateGenerator
 from applications.models import ParcelApplication
 from signatures.models import DigitalSignature
+from notifications.models import Notification
+from accounts.models import User
 
 
 class CertificateListView(LoginRequiredMixin, ListView):
@@ -162,6 +164,53 @@ class GenerateCertificateView(LoginRequiredMixin, View):
                 details={'certificate_number': certificate.certificate_number, 'pre_signed': True}
             )
             
+            # Create notifications
+            notifications_to_create = []
+            
+            # 1. Notify the landowner that their certificate is ready
+            notifications_to_create.append(
+                Notification(
+                    recipient=application.applicant,
+                    title='Certificate Ready!',
+                    message=f'Your {certificate.get_certificate_type_display()} certificate {certificate.certificate_number} has been generated and is ready for download.',
+                    notification_type='document_uploaded',
+                    priority='high',
+                    sender=request.user
+                )
+            )
+            
+            # 2. Notify other registry officers and admin
+            other_officers = User.objects.filter(
+                role__in=['registry_officer', 'admin'], 
+                is_active=True
+            ).exclude(id=request.user.id)
+            
+            for officer in other_officers:
+                notifications_to_create.append(
+                    Notification(
+                        recipient=officer,
+                        title='Certificate Generated',
+                        message=f'Certificate {certificate.certificate_number} has been generated for {application.applicant.get_full_name()} by {request.user.get_full_name()}',
+                        notification_type='system_alert',
+                        sender=request.user
+                    )
+                )
+            
+            # 3. If there was a field agent, notify them too
+            if application.field_agent:
+                notifications_to_create.append(
+                    Notification(
+                        recipient=application.field_agent,
+                        title='Certificate Issued',
+                        message=f'Certificate has been issued for application {application.application_number} that you inspected',
+                        notification_type='system_alert',
+                        sender=request.user
+                    )
+                )
+            
+            # Bulk create all notifications
+            Notification.objects.bulk_create(notifications_to_create)
+            
             messages.success(request, f'Certificate {certificate.certificate_number} has been generated successfully!')
             return redirect('applications:application_detail', pk=application_id)
             
@@ -219,6 +268,17 @@ class DownloadCertificateView(LoginRequiredMixin, View):
             messages.error(request, 'Certificate PDF not found. Please regenerate the certificate.')
             return redirect('certificates:certificate_detail', pk=pk)
         
+        # Check if this is the first download by the owner
+        first_download_by_owner = False
+        if user == certificate.owner:
+            owner_downloads = CertificateAuditLog.objects.filter(
+                certificate=certificate,
+                action='downloaded',
+                performed_by=user
+            ).count()
+            if owner_downloads == 0:
+                first_download_by_owner = True
+        
         # Log download action
         CertificateAuditLog.objects.create(
             certificate=certificate,
@@ -228,10 +288,32 @@ class DownloadCertificateView(LoginRequiredMixin, View):
             user_agent=request.META.get('HTTP_USER_AGENT', '')
         )
         
+        # If first download by owner, notify registry officers
+        if first_download_by_owner:
+            registry_officers = User.objects.filter(
+                role__in=['registry_officer', 'admin'], 
+                is_active=True
+            )
+            
+            notifications_to_create = []
+            for officer in registry_officers:
+                notifications_to_create.append(
+                    Notification(
+                        recipient=officer,
+                        title='Certificate Downloaded by Owner',
+                        message=f'{user.get_full_name()} has downloaded their certificate {certificate.certificate_number} for the first time',
+                        notification_type='system_alert',
+                        sender=user
+                    )
+                )
+            
+            Notification.objects.bulk_create(notifications_to_create)
+        
         # Serve the PDF
         response = HttpResponse(certificate.pdf_file.read(), content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="certificate_{certificate.certificate_number}.pdf"'
         return response
+
 
 
 class VerifyCertificateView(View):
