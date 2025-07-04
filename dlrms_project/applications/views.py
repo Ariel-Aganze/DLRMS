@@ -9,6 +9,8 @@ from django.utils import timezone
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
 
+from notifications.models import Notification
+
 from .models import ParcelApplication, ParcelDocument, ParcelTitle, User
 from .forms import ParcelApplicationForm, ApplicationAssignmentForm, ApplicationReviewForm
 from land_management.models import LandParcel
@@ -23,7 +25,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.views.generic import DetailView
 
-# Landowner Views
 class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
     """View for landowners to submit parcel applications"""
     model = ParcelApplication
@@ -38,6 +39,28 @@ class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
     
     def form_valid(self, form):
         response = super().form_valid(form)
+        
+        # Notify registry officers and admin about new application
+        registry_officers = User.objects.filter(
+            role__in=['registry_officer', 'admin'], 
+            is_active=True
+        )
+        
+        notifications_to_create = []
+        for officer in registry_officers:
+            notifications_to_create.append(
+                Notification(
+                    recipient=officer,
+                    title='New Application Submitted',
+                    message=f'New parcel application {form.instance.application_number} submitted by {self.request.user.get_full_name()}',
+                    notification_type='application_status',
+                    # Don't use related_application since it expects TitleApplication
+                    sender=self.request.user
+                )
+            )
+        
+        Notification.objects.bulk_create(notifications_to_create)
+        
         messages.success(self.request, 'Your parcel application has been submitted successfully.')
         return response
 
@@ -81,8 +104,6 @@ class ParcelApplicationDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-# Registry Officer Views - FIXED MRO by putting RoleRequiredMixin first
-
 
 class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
     """View for registry officers to assign field agents to applications"""
@@ -99,7 +120,35 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
         # Assign field agent and update status
         application.field_agent = form.cleaned_data['field_agent']
         application.status = 'field_inspection'
+        
+        # Add assignment notes if provided
+        notes = form.cleaned_data.get('notes', '')
+        if notes:
+            if application.review_notes:
+                application.review_notes += f"\n\nField Agent Assignment Note: {notes}"
+            else:
+                application.review_notes = f"Field Agent Assignment Note: {notes}"
+        
         application.save()
+        
+        # Create notification for the surveyor
+        Notification.objects.create(
+            recipient=application.field_agent,
+            title='New Field Inspection Assignment',
+            message=f'You have been assigned to inspect application {application.application_number} for property at {application.property_address}',
+            notification_type='approval_required',
+            priority='high',
+            sender=self.request.user
+        )
+        
+        # Also notify the applicant
+        Notification.objects.create(
+            recipient=application.applicant,
+            title='Field Agent Assigned',
+            message=f'Field agent {application.field_agent.get_full_name()} has been assigned to inspect your application {application.application_number}',
+            notification_type='application_status',
+            sender=self.request.user
+        )
         
         messages.success(self.request, f'Field agent {application.field_agent.get_full_name()} assigned successfully.')
         
@@ -149,6 +198,25 @@ class AssignFieldAgentView(RoleRequiredMixin, LoginRequiredMixin, FormView):
                     else:
                         application.review_notes = f"Field Agent Assignment Note: {notes}"
                 application.save()
+                
+                # Create notification for the surveyor
+                Notification.objects.create(
+                    recipient=field_agent,
+                    title='New Field Inspection Assignment',
+                    message=f'You have been assigned to inspect application {application.application_number} for property at {application.property_address}',
+                    notification_type='approval_required',
+                    priority='high',
+                    sender=request.user
+                )
+                
+                # Also notify the applicant
+                Notification.objects.create(
+                    recipient=application.applicant,
+                    title='Field Agent Assigned',
+                    message=f'Field agent {field_agent.get_full_name()} has been assigned to inspect your application {application.application_number}',
+                    notification_type='application_status',
+                    sender=request.user
+                )
                 
                 return JsonResponse({
                     'success': True,
@@ -229,6 +297,42 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
                 application.size_hectares = size_hectares
                 application.save()
                 
+                # Create notifications
+                notifications_to_create = []
+                
+                # Notify the applicant
+                notifications_to_create.append(
+                    Notification(
+                        recipient=application.applicant,
+                        title='Field Inspection Completed',
+                        message=f'Field inspection for your application {application.application_number} has been completed',
+                        notification_type='application_status',
+                        priority='high',
+                        sender=request.user
+                    )
+                )
+                
+                # Notify registry officers and admin for final review
+                registry_officers = User.objects.filter(
+                    role__in=['registry_officer', 'admin'], 
+                    is_active=True
+                )
+                
+                for officer in registry_officers:
+                    notifications_to_create.append(
+                        Notification(
+                            recipient=officer,
+                            title='Application Ready for Final Review',
+                            message=f'Application {application.application_number} has completed field inspection and is ready for final review',
+                            notification_type='approval_required',
+                            priority='high',
+                            sender=request.user
+                        )
+                    )
+                
+                # Bulk create notifications
+                Notification.objects.bulk_create(notifications_to_create)
+                
                 message = 'Inspection report submitted successfully. Waiting for registry officer approval.'
                 messages.success(request, message)
 
@@ -250,7 +354,6 @@ class ReviewApplicationView(RoleRequiredMixin, LoginRequiredMixin, View):
 
             messages.error(request, f'Error submitting inspection report: {str(e)}')
             return redirect('applications:surveyor_inspections')
-
 
 
 # View Titles

@@ -14,6 +14,8 @@ import json
 import csv
 from datetime import datetime, timedelta
 
+from notifications.models import Notification
+
 from .models import ParcelApplication, ParcelDocument, ParcelTitle
 from .forms import ParcelApplicationForm, ApplicationAssignmentForm, ApplicationReviewForm
 from land_management.models import LandParcel
@@ -235,21 +237,46 @@ def assign_field_agent_bulk(request):
         )
         
         updated_count = 0
+        notifications_to_create = []
+        
         with transaction.atomic():
             for app in applications:
                 app.field_agent = field_agent
                 app.status = 'field_inspection'
+                if notes:
+                    if app.review_notes:
+                        app.review_notes += f"\n\nBulk Assignment Note: {notes}"
+                    else:
+                        app.review_notes = f"Bulk Assignment Note: {notes}"
                 app.save()
                 
-                # Create assignment notification (implement based on notification system)
-                # create_notification(
-                #     recipient=field_agent,
-                #     title=f'New Field Inspection Assignment',
-                #     message=f'You have been assigned to inspect application {app.application_number}',
-                #     notification_type='assignment'
-                # )
+                # Create notifications for the surveyor
+                notifications_to_create.append(
+                    Notification(
+                        recipient=field_agent,
+                        title='New Field Inspection Assignment',
+                        message=f'You have been assigned to inspect application {app.application_number}',
+                        notification_type='approval_required',
+                        priority=priority,
+                        sender=request.user
+                    )
+                )
+                
+                # Create notifications for applicants
+                notifications_to_create.append(
+                    Notification(
+                        recipient=app.applicant,
+                        title='Field Agent Assigned',
+                        message=f'Field agent {field_agent.get_full_name()} has been assigned to inspect your application {app.application_number}',
+                        notification_type='application_status',
+                        sender=request.user
+                    )
+                )
                 
                 updated_count += 1
+            
+            # Bulk create all notifications
+            Notification.objects.bulk_create(notifications_to_create)
         
         return JsonResponse({
             'success': True,
@@ -261,6 +288,7 @@ def assign_field_agent_bulk(request):
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
 
 
 @login_required
@@ -280,7 +308,7 @@ def quick_application_review(request, application_id):
         with transaction.atomic():
             if action == 'approve':
                 # Quick approve - ensure we use 'approved' not 'approve'
-                application.status = 'approved'  # CORRECT
+                application.status = 'approved'
                 application.review_notes = notes
                 application.review_date = timezone.now()
                 application.reviewed_by = request.user
@@ -332,14 +360,35 @@ def quick_application_review(request, application_id):
                     parcel.active_title_expiry = title.expiry_date
                 parcel.save()
                 
+                # Create notification for applicant
+                Notification.objects.create(
+                    recipient=application.applicant,
+                    title='Application Approved',
+                    message=f'Your application {application.application_number} has been approved via quick review',
+                    notification_type='application_status',
+                    priority='high',
+                    related_parcel=parcel,
+                    sender=request.user
+                )
+                
                 message = 'Application approved and title issued'
                 
             elif action == 'reject':
-                application.status = 'rejected'  # CORRECT
+                application.status = 'rejected'
                 application.review_notes = notes
                 application.review_date = timezone.now()
                 application.reviewed_by = request.user
                 application.save()
+                
+                # Create notification for applicant
+                Notification.objects.create(
+                    recipient=application.applicant,
+                    title='Application Rejected',
+                    message=f'Your application {application.application_number} has been rejected',
+                    notification_type='application_status',
+                    sender=request.user
+                )
+                
                 message = 'Application rejected'
                 
             else:
@@ -880,7 +929,6 @@ def registry_approval(request, application_id):
     application = get_object_or_404(ParcelApplication, pk=application_id)
     
     # Check if application is in the correct state
-    # FIXED: The status should be 'inspection_completed' not 'inspections_completed'
     if application.status != 'inspection_completed':
         return JsonResponse({
             'success': False,
@@ -918,6 +966,8 @@ def registry_approval(request, application_id):
             application.save()
             
             # If approved, create land parcel and title
+            parcel = None
+            title = None
             if decision == 'approve':
                 # Generate a unique parcel ID first
                 parcel_id = f"PCL-{application.application_number}"
@@ -973,54 +1023,82 @@ def registry_approval(request, application_id):
                         parcel.active_title_expiry = expiry_date
                     parcel.save()
                     
-                    # Send notification (if available)
-                    try:
-                        from notifications.models import Notification
-                        Notification.objects.create(
-                            recipient=application.applicant,
-                            title='Application Approved',
-                            message=f'Your {application.get_application_type_display()} application has been approved. Title number: {title.title_number}',
-                            notification_type='application_status',
-                            related_application=application
-                        )
-                    except Exception as e:
-                        print(f"Failed to create notification: {e}")
-                    
-                    return JsonResponse({
-                        'success': True,
-                        'message': f'Application approved successfully. Title {title.title_number} has been issued.',
-                        'title_number': title.title_number
-                    })
-                
                 except Exception as e:
                     print(f"Error creating parcel/title: {str(e)}")
                     import traceback
                     traceback.print_exc()
-                    return JsonResponse({
-                        'success': False,
-                        'message': f'Error processing application: {str(e)}'
-                    }, status=500)
             
+            # Create notifications for all parties
+            notifications_to_create = []
+            
+            # 1. Notify the applicant
+            if decision == 'approve':
+                message = f'Congratulations! Your application {application.application_number} has been approved.'
+                if title:
+                    message += f' Title {title.title_number} has been issued.'
+                priority = 'high'
             else:
-                # Rejection case
-                # Send notification (if available)
-                try:
-                    from notifications.models import Notification
-                    Notification.objects.create(
-                        recipient=application.applicant,
-                        title='Application Rejected',
-                        message=f'Your {application.get_application_type_display()} application has been rejected. Reason: {additional_notes}',
+                message = f'Your application {application.application_number} has been rejected. Review notes: {additional_notes}'
+                priority = 'normal'
+            
+            notifications_to_create.append(
+                Notification(
+                    recipient=application.applicant,
+                    title=f'Application {decision.title()}',
+                    message=message,
+                    notification_type='application_status',
+                    priority=priority,
+                    related_parcel=parcel,  # Only link parcel if created
+                    sender=request.user
+                )
+            )
+            
+            # 2. Notify the field agent who did the inspection
+            if application.field_agent:
+                notifications_to_create.append(
+                    Notification(
+                        recipient=application.field_agent,
+                        title=f'Application {decision.title()}',
+                        message=f'Application {application.application_number} that you inspected has been {decision}d',
                         notification_type='application_status',
-                        related_application=application
+                        sender=request.user
                     )
-                except Exception as e:
-                    print(f"Failed to create notification: {e}")
-                
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Application rejected successfully.'
-                })
-    
+                )
+            
+            # 3. Notify other registry officers and admin (excluding the current user)
+            other_officers = User.objects.filter(
+                role__in=['registry_officer', 'admin'], 
+                is_active=True
+            ).exclude(id=request.user.id)
+            
+            for officer in other_officers:
+                notifications_to_create.append(
+                    Notification(
+                        recipient=officer,
+                        title=f'Application {decision.title()} by Registry',
+                        message=f'Application {application.application_number} has been {decision}d by {request.user.get_full_name()}',
+                        notification_type='application_status',
+                        sender=request.user
+                    )
+                )
+            
+            # Bulk create all notifications
+            Notification.objects.bulk_create(notifications_to_create)
+            
+            # Prepare response
+            response_data = {
+                'success': True,
+                'message': f'Application {decision}d successfully!',
+                'application_id': application.id,
+                'new_status': application.status
+            }
+            
+            if decision == 'approve' and title:
+                response_data['title_number'] = title.title_number
+                response_data['message'] = f'Application approved successfully. Title {title.title_number} has been issued.'
+            
+            return JsonResponse(response_data)
+            
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False,

@@ -32,32 +32,52 @@
                                 
                                 <!-- Action buttons based on notification type -->
                                 {% if notification.notification_type == 'transfer_status' and notification.related_transfer %}
-                                    {% if notification.related_transfer.status == 'awaiting_receiver' and notification.related_transfer.new_owner == request.user %}
+                                    {% if notification.related_transfer.status == 'awaiting_receiver' %}
                                     <div class="mt-3">
-                                        <a href="{% url 'land_management:confirm_transfer' pk=notification.related_transfer.pk %}" 
-                                           class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
-                                            Review Transfer
+                                        <a href="{% url 'land_management:transfer_detail' notification.related_transfer.pk %}" 
+                                           class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 text-sm font-medium rounded-md hover:bg-blue-50">
+                                            View Transfer Details
                                         </a>
                                     </div>
-                                    {% elif notification.related_transfer.status == 'approved' %}
+                                    {% elif notification.related_transfer.status == 'completed' %}
                                     <div class="mt-3">
-                                        <a href="{% url 'land_management:download_certificate' pk=notification.related_transfer.pk %}" 
-                                           class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
-                                            Download Certificate
-                                        </a>
-                                    </div>
-                                    {% endif %}
-                                {% endif %}
-                                
-                                {% if notification.notification_type == 'approval_required' and notification.related_transfer %}
-                                    {% if notification.related_transfer.status == 'under_review' and request.user.role in 'notary,admin,registry_officer' %}
-                                    <div class="mt-3">
-                                        <a href="{% url 'land_management:review_transfer' pk=notification.related_transfer.pk %}" 
-                                           class="bg-yellow-600 text-white px-4 py-2 rounded text-sm hover:bg-yellow-700">
-                                            Review Transfer
-                                        </a>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Transfer Completed
+                                        </span>
                                     </div>
                                     {% endif %}
+                                {% elif notification.notification_type == 'application_status' and notification.related_application %}
+                                    <div class="mt-3">
+                                        <a href="{% url 'applications:parcel_detail_enhanced' notification.related_application.pk %}" 
+                                           class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 text-sm font-medium rounded-md hover:bg-blue-50">
+                                            View Application
+                                        </a>
+                                    </div>
+                                {% elif notification.notification_type == 'dispute_update' and notification.related_dispute %}
+                                    <div class="mt-3">
+                                        <a href="{% url 'disputes:dispute_detail' notification.related_dispute.pk %}" 
+                                           class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 text-sm font-medium rounded-md hover:bg-blue-50">
+                                            View Dispute
+                                        </a>
+                                    </div>
+                                {% elif notification.notification_type == 'document_uploaded' %}
+                                    <div class="mt-3">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Document Available
+                                        </span>
+                                    </div>
+                                {% elif notification.notification_type == 'approval_required' %}
+                                    <div class="mt-3">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            Action Required
+                                        </span>
+                                    </div>
+                                {% elif notification.notification_type == 'deadline_reminder' %}
+                                    <div class="mt-3">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            Deadline Approaching
+                                        </span>
+                                    </div>
                                 {% endif %}
                                 
                                 <p class="text-xs text-gray-500 mt-2">
@@ -65,12 +85,23 @@
                                 </p>
                             </div>
                             
-                            <div class="ml-4">
+                            <div class="ml-4 flex flex-col items-end">
                                 {% if not notification.is_read %}
                                 <button onclick="markAsRead({{ notification.id }})" 
                                         class="text-sm text-gray-500 hover:text-gray-700">
                                     Mark as read
                                 </button>
+                                {% endif %}
+                                
+                                <!-- Priority indicator -->
+                                {% if notification.priority == 'urgent' %}
+                                <span class="mt-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                    Urgent
+                                </span>
+                                {% elif notification.priority == 'high' %}
+                                <span class="mt-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
+                                    High Priority
+                                </span>
                                 {% endif %}
                             </div>
                         </div>
