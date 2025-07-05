@@ -16,6 +16,7 @@ urlpatterns = [
     path('disputes/', include('disputes.urls')),
     path('signatures/', include('signatures.urls')),
     path('certificates/', include('certificates.urls')),
+    path('reports/', include('reports.urls', namespace='reports')),
 ]
 
 # Serve media files during development

@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'notifications',
     'disputes',
     'signatures',
-     'certificates',
+    'certificates',
+    'reports',
 ]
 
 MIDDLEWARE = [
