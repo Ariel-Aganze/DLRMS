@@ -142,24 +142,41 @@ class ParcelDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         parcel = self.object
-        
-        # Get active title
+    
+    # Get active title
         context['active_title'] = parcel.get_active_title()
-        
-        # Get ownership transfers
+    
+    # Get ownership transfers
         context['ownership_transfers'] = OwnershipTransfer.objects.filter(
             parcel=parcel
         ).select_related('current_owner', 'new_owner').order_by('-initiated_at')
-        
-        # Get related applications
-        context['related_applications'] = ParcelApplication.objects.filter(
-            parcel=parcel
+    
+    # Get related applications
+    # Since ParcelApplication doesn't have a direct parcel field,
+    # we need to find applications that resulted in this parcel
+    # This might be through the title or through matching owner/address
+        related_apps = ParcelApplication.objects.filter(
+            applicant=parcel.owner,
+            property_address__icontains=parcel.location
         ).select_related('applicant', 'field_agent').order_by('-submitted_at')
-        
-        # Check if user can edit
+    
+    # Also try to find by matching the parcel through titles
+        from applications.models import ParcelTitle
+        title_application_ids = ParcelTitle.objects.filter(
+            parcel=parcel
+        ).values_list('application_id', flat=True)
+    
+        if title_application_ids:
+            related_apps = related_apps | ParcelApplication.objects.filter(
+                id__in=title_application_ids
+            )
+    
+        context['related_applications'] = related_apps.distinct()
+    
+    # Check if user can edit
         user = self.request.user
         context['can_edit'] = user.role in ['admin', 'registry_officer'] or parcel.owner == user
-        
+    
         return context
 
 
@@ -738,3 +755,60 @@ def download_transfer_certificate(request, pk):
     response = HttpResponse(transfer.transfer_certificate.read(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="transfer_certificate_{transfer.transfer_number}.pdf"'
     return response
+
+@login_required
+def get_parcel_boundary(request, parcel_id):
+    """API endpoint to get parcel boundary data"""
+    try:
+        parcel = get_object_or_404(LandParcel, id=parcel_id)
+        
+        # Check permissions
+        user = request.user
+        if user.role == 'landowner' and parcel.owner != user:
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # Get the most recent boundary data from related applications
+        boundary_data = None
+        
+        # Try to get boundary from ParcelBoundary model
+        try:
+            # Find applications that might be related to this parcel
+            # First, try to find through titles
+            from applications.models import ParcelTitle
+            title_with_app = ParcelTitle.objects.filter(
+                parcel=parcel,
+                application__isnull=False
+            ).select_related('application').first()
+            
+            if title_with_app and title_with_app.application:
+                recent_app = title_with_app.application
+            else:
+                # Otherwise, try to find by matching owner and location
+                recent_app = ParcelApplication.objects.filter(
+                    applicant=parcel.owner,
+                    property_address__icontains=parcel.location,
+                    status__in=['inspection_completed', 'approved']
+                ).order_by('-submitted_at').first()
+            
+            if recent_app:
+                boundary = ParcelBoundary.objects.filter(application=recent_app).first()
+                if boundary and boundary.polygon_geojson:
+                    boundary_data = boundary.polygon_geojson
+        except Exception as e:
+            print(f"Error getting boundary: {e}")
+        
+        return JsonResponse({
+            'success': True,
+            'parcel_id': parcel.parcel_id,
+            'boundary_data': boundary_data,
+            'center': {
+                'lat': float(parcel.latitude) if parcel.latitude else None,
+                'lng': float(parcel.longitude) if parcel.longitude else None
+            },
+            'size_hectares': float(parcel.size_hectares)
+        })
+        
+    except LandParcel.DoesNotExist:
+        return JsonResponse({'error': 'Parcel not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

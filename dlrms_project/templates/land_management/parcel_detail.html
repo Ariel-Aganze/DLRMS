@@ -1,0 +1,630 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Parcel {{ parcel.parcel_id }} - DLRMS{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    /* Fix for Leaflet map display */
+    #boundary-map {
+        height: 400px;
+        width: 100%;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Ensure tiles load properly */
+    .leaflet-container {
+        background: #f0f0f0;
+        font-family: inherit;
+    }
+    
+    .leaflet-container img {
+        max-width: none !important;
+        max-height: none !important;
+    }
+    
+    .leaflet-tile-pane {
+        opacity: 1 !important;
+    }
+    
+    .leaflet-tile {
+        width: 256px !important;
+        height: 256px !important;
+    }
+    
+    /* Fix for fullscreen */
+    #boundary-map.fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+    }
+    
+    .property-center-marker {
+        display: block;
+        border: none;
+        background: transparent;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="flex">
+        <!-- Sidebar -->
+        {% include 'includes/sidebar.html' with active_page='parcels' %}
+        
+        <!-- Main Content -->
+        <div class="flex-1" style="margin-left: 320px;">
+            <div class="px-12 py-8">
+                <!-- Header -->
+                <div class="mb-6">
+                    <nav class="flex mb-2" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                            <li class="inline-flex items-center">
+                                <a href="{% url 'core:dashboard' %}" class="text-gray-700 hover:text-blue-600">
+                                    
+                                    Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <div class="flex items-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <a href="{% url 'land_management:parcel_list' %}" class="ml-1 text-gray-700 hover:text-blue-600">
+                                        My Land Parcels
+                                    </a>
+                                </div>
+                            </li>
+                            <li aria-current="page">
+                                <div class="flex items-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="ml-1 text-gray-500">{{ parcel.parcel_id }}</span>
+                                </div>
+                            </li>
+                        </ol>
+                    </nav>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-900">Parcel Details</h1>
+                            <p class="text-gray-600 mt-1">{{ parcel.parcel_id }}</p>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3">
+                            {% if can_edit %}
+                            <a href="{% url 'land_management:parcel_update' parcel.pk %}" 
+                               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Edit Parcel
+                            </a>
+                            {% endif %}
+                            {% if active_title and parcel.owner == user %}
+                            <a href="{% url 'land_management:title_detail' active_title.pk %}" 
+                               class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                                </svg>
+                                View Title
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        <!-- Basic Information -->
+                        <div class="bg-white rounded-lg shadow-sm mb-6">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h3 class="text-lg font-medium text-gray-900">Basic Information</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Parcel ID</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.parcel_id }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Title Number</label>
+                                        <p class="mt-1 text-sm text-gray-900">
+                                            {% if parcel.title_number %}
+                                                {{ parcel.title_number }}
+                                            {% else %}
+                                                <span class="text-gray-400">Not assigned</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Status</label>
+                                        <p class="mt-1">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                {% if parcel.status == 'registered' %}bg-green-100 text-green-800{% endif %}
+                                                {% if parcel.status == 'pending' %}bg-yellow-100 text-yellow-800{% endif %}
+                                                {% if parcel.status == 'transferred' %}bg-purple-100 text-purple-800{% endif %}
+                                                {% if parcel.status == 'disputed' %}bg-red-100 text-red-800{% endif %}">
+                                                {{ parcel.get_status_display }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Property Type</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.get_property_type_display }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Size</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.size_hectares }} hectares</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Owner</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.owner.get_full_name }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Information -->
+                        <div class="bg-white rounded-lg shadow-sm mb-6">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h3 class="text-lg font-medium text-gray-900">Location Information</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">General Location</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.location }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">District</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.district }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Sector</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.sector }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Cell</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.cell }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Village</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.village }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Coordinates</label>
+                                        <p class="mt-1 text-sm text-gray-900">
+                                            {% if parcel.latitude and parcel.longitude %}
+                                                {{ parcel.latitude }}, {{ parcel.longitude }}
+                                            {% else %}
+                                                <span class="text-gray-400">Not recorded</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Property Boundary Map -->
+                        {% if parcel.latitude and parcel.longitude %}
+                        <div class="bg-white rounded-lg shadow-sm mb-6">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-blue-50 flex justify-between items-center">
+                                <h3 class="text-lg font-medium text-blue-900">Property Boundary Map</h3>
+                                <button onclick="toggleFullscreen()" 
+                                        class="inline-flex items-center px-3 py-1 border border-blue-300 rounded text-sm text-blue-700 bg-white hover:bg-blue-50">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                    </svg>
+                                    Fullscreen
+                                </button>
+                            </div>
+                            <div class="p-0">
+                                <div id="map" style="height: 500px; width: 100%;"></div>
+                                <div class="p-4 bg-blue-50 flex items-start">
+                                    <svg class="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="text-sm text-blue-800">This map shows the property boundaries as recorded during field inspection</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Related Applications -->
+                        {% if related_applications %}
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h3 class="text-lg font-medium text-gray-900">Related Applications</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead>
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Application ID
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Type
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Date
+                                                </th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Action
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            {% for app in related_applications %}
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {{ app.application_id }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {{ app.get_application_type_display }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                        {% if app.status == 'approved' %}bg-green-100 text-green-800{% endif %}
+                                                        {% if app.status == 'submitted' %}bg-blue-100 text-blue-800{% endif %}
+                                                        {% if app.status == 'field_inspection' %}bg-yellow-100 text-yellow-800{% endif %}
+                                                        {% if app.status == 'inspection_completed' %}bg-purple-100 text-purple-800{% endif %}
+                                                        {% if app.status == 'rejected' %}bg-red-100 text-red-800{% endif %}">
+                                                        {{ app.get_status_display }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {{ app.submitted_at|date:"M d, Y" }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <a href="{% url 'applications:parcel_application_detail' app.pk %}" 
+                                                       class="text-blue-600 hover:text-blue-900">
+                                                        View
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="lg:col-span-1">
+                        <!-- Active Title Information -->
+                        {% if active_title %}
+                        <div class="bg-white rounded-lg shadow-sm mb-6">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-green-50">
+                                <h3 class="text-lg font-medium text-green-900 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Active Title
+                                </h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Title Type</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ active_title.get_title_type_display }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Title Number</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ active_title.title_number }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Issue Date</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ active_title.issue_date|date:"M d, Y" }}</p>
+                                    </div>
+                                    {% if active_title.expiry_date %}
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Expiry Date</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ active_title.expiry_date|date:"M d, Y" }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <a href="{% url 'land_management:title_detail' active_title.pk %}" 
+                                   class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    View Title Details
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Ownership History -->
+                        {% if ownership_transfers %}
+                        <div class="bg-white rounded-lg shadow-sm mb-6">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h3 class="text-lg font-medium text-gray-900">Ownership History</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="flow-root">
+                                    <ul class="-mb-8">
+                                        {% for transfer in ownership_transfers %}
+                                        <li>
+                                            <div class="relative pb-8">
+                                                {% if not forloop.last %}
+                                                <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                                {% endif %}
+                                                <div class="relative flex space-x-3">
+                                                    <div>
+                                                        <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                                                            <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                                                            </svg>
+                                                        </span>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                        <div>
+                                                            <p class="text-sm text-gray-900">
+                                                                {{ transfer.current_owner.get_full_name }} 
+                                                                <svg class="inline w-4 h-4 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                                                </svg>
+                                                                {{ transfer.new_owner.get_full_name }}
+                                                            </p>
+                                                            <p class="text-xs text-gray-500 mt-1">
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                                                    {% if transfer.status == 'completed' %}bg-green-100 text-green-800{% endif %}
+                                                                    {% if transfer.status == 'under_review' %}bg-yellow-100 text-yellow-800{% endif %}
+                                                                    {% if transfer.status == 'rejected' %}bg-red-100 text-red-800{% endif %}">
+                                                                    {{ transfer.get_status_display }}
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                        <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                                            {{ transfer.initiated_at|date:"M d, Y" }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Registration Details -->
+                        <div class="bg-white rounded-lg shadow-sm">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h3 class="text-lg font-medium text-gray-900">Registration Details</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Registered By</label>
+                                        <p class="mt-1 text-sm text-gray-900">
+                                            {% if parcel.registered_by %}
+                                                {{ parcel.registered_by.get_full_name }}
+                                            {% else %}
+                                                <span class="text-gray-400">System</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Registration Date</label>
+                                        <p class="mt-1 text-sm text-gray-900">
+                                            {% if parcel.registration_date %}
+                                                {{ parcel.registration_date|date:"M d, Y" }}
+                                            {% else %}
+                                                {{ parcel.created_at|date:"M d, Y" }}
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-500">Last Updated</label>
+                                        <p class="mt-1 text-sm text-gray-900">{{ parcel.updated_at|date:"M d, Y g:i A" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if parcel.latitude and parcel.longitude %}
+        
+        var latitude = {{ parcel.latitude }};
+        var longitude = {{ parcel.longitude }};
+        var areaHectares = {{ parcel.size_hectares }};
+        
+        try {
+            // Initialize the map
+            var map = L.map('map').setView([latitude, longitude], 16);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add center marker
+            var centerMarker = L.marker([latitude, longitude], {
+                icon: L.divIcon({
+                    className: 'property-center-marker',
+                    html: '<div class="w-6 h-6 bg-red-500 rounded-full border-2 border-white flex items-center justify-center"><div class="w-2 h-2 bg-white rounded-full"></div></div>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                })
+            }).addTo(map);
+            
+            centerMarker.bindPopup('<strong>Property Center</strong><br>Lat: ' + latitude.toFixed(6) + '<br>Lng: ' + longitude.toFixed(6));
+            
+            // Check if we have boundary data
+            var hasInspectionData = false;
+            {% for app in related_applications %}
+                {% if app.status == 'inspection_completed' or app.status == 'approved' %}
+                    hasInspectionData = true;
+                {% endif %}
+            {% endfor %}
+            
+            if (hasInspectionData) {
+                // Fetch boundary data
+                fetch('/land/api/parcel/{{ parcel.id }}/boundary/')
+                    .then(function(response) { 
+                        return response.json(); 
+                    })
+                    .then(function(data) {
+                        if (data.boundary_data) {
+                            try {
+                                var polygonData = JSON.parse(data.boundary_data);
+                                console.log("Adding polygon to map", polygonData);
+                                
+                                var polygon = L.polygon(polygonData, {
+                                    color: '#ef4444',
+                                    fillColor: '#ef4444',
+                                    fillOpacity: 0.2,
+                                    weight: 3
+                                }).addTo(map);
+                                
+                                // Fit map to polygon bounds
+                                map.fitBounds(polygon.getBounds(), { padding: [50, 50] });
+                                
+                                // Add popup to polygon
+                                polygon.bindPopup(
+                                    '<div class="text-center">' +
+                                    '<strong>Property Boundary</strong><br>' +
+                                    'Area: ' + areaHectares + ' hectares' +
+                                    '</div>'
+                                );
+                                
+                            } catch (e) {
+                                console.error("Error parsing polygon data:", e);
+                                showFallbackCircle();
+                            }
+                        } else {
+                            console.log("No polygon data, showing fallback circle");
+                            showFallbackCircle();
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Error loading boundary:', error);
+                        showFallbackCircle();
+                    });
+            } else {
+                console.log("No inspection data, showing fallback circle");
+                showFallbackCircle();
+            }
+            
+            // Function to show fallback circle
+            function showFallbackCircle() {
+                if (areaHectares && areaHectares > 0) {
+                    var areaSqM = areaHectares * 10000;
+                    var radiusM = Math.sqrt(areaSqM / Math.PI);
+                    
+                    var circle = L.circle([latitude, longitude], {
+                        radius: radiusM,
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.2,
+                        weight: 2
+                    }).addTo(map);
+                    
+                    circle.bindPopup(
+                        '<div class="text-center">' +
+                        '<strong>Approximate Property Area</strong><br>' +
+                        'Area: ' + areaHectares + ' hectares<br>' +
+                        '<small class="text-gray-500">(Shown as circle with equivalent area)</small>' +
+                        '</div>'
+                    );
+                    
+                    // Fit map to circle bounds
+                    map.fitBounds(circle.getBounds(), { padding: [50, 50] });
+                }
+            }
+            
+            // Ensure map renders properly after a short delay
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 100);
+            
+        } catch (error) {
+            console.error("Error initializing map:", error);
+        }
+        
+        // Add CSS for markers
+        const style = document.createElement('style');
+        style.textContent = `
+            .property-center-marker {
+                display: block;
+                border: none;
+                background: transparent;
+            }
+            
+            /* Ensure Leaflet tiles display properly */
+            .leaflet-container {
+                font-family: inherit;
+            }
+            
+            .leaflet-tile-pane {
+                opacity: 1 !important;
+            }
+        `;
+        document.head.append(style);
+        
+        // Toggle fullscreen function
+        window.toggleFullscreen = function() {
+            var mapContainer = document.getElementById('map');
+            if (!document.fullscreenElement) {
+                mapContainer.requestFullscreen().then(function() {
+                    mapContainer.style.position = 'fixed';
+                    mapContainer.style.top = '0';
+                    mapContainer.style.left = '0';
+                    mapContainer.style.width = '100vw';
+                    mapContainer.style.height = '100vh';
+                    mapContainer.style.zIndex = '9999';
+                    mapContainer.style.background = 'white';
+                    setTimeout(function() {
+                        map.invalidateSize();
+                    }, 100);
+                });
+            } else {
+                document.exitFullscreen().then(function() {
+                    mapContainer.style.position = '';
+                    mapContainer.style.top = '';
+                    mapContainer.style.left = '';
+                    mapContainer.style.width = '100%';
+                    mapContainer.style.height = '500px';
+                    mapContainer.style.zIndex = '';
+                    mapContainer.style.background = '';
+                    setTimeout(function() {
+                        map.invalidateSize();
+                    }, 100);
+                });
+            }
+        };
+        
+        {% endif %}
+    });
+</script>
+{% endblock %}

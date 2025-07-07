@@ -19,6 +19,8 @@ urlpatterns = [
     path('transfer/<int:pk>/review/', views.TransferReviewView.as_view(), name='review_transfer'),
     path('transfer/<int:pk>/cancel/', views.cancel_transfer, name='cancel_transfer'),
     path('transfer/<int:pk>/certificate/', views.download_transfer_certificate, name='download_certificate'),
+
+    path('api/parcel/<int:parcel_id>/boundary/', views.get_parcel_boundary, name='api_parcel_boundary'),
     
     # AJAX endpoints
     path('ajax/check-receiver/', views.check_receiver_details, name='check_receiver'),

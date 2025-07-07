@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Land Parcels - DLRMS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="flex">
+        <!-- Sidebar -->
+        {% include 'includes/sidebar.html' with active_page='parcels' %}
+        
+        <!-- Main Content -->
+        <div class="flex-1" style="margin-left: 320px;">
+            <div class="px-12 py-8">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">My Land Parcels</h1>
+                        <p class="text-gray-600 mt-1">View and manage your registered land parcels</p>
+                    </div>
+                    
+                    {% if user.role in 'admin,registry_officer' %}
+                    <a href="{% url 'land_management:parcel_create' %}" 
+                       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Register New Parcel
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Search and Filter -->
+                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="md:col-span-2">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <input type="text" 
+                                       name="search" 
+                                       value="{{ search }}"
+                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Search by parcel ID, title number, location...">
+                            </div>
+                        </div>
+                        <div>
+                            <select name="status" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Status</option>
+                                {% for status_value, status_label in status_choices %}
+                                <option value="{{ status_value }}" {% if status_filter == status_value %}selected{% endif %}>
+                                    {{ status_label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                                </svg>
+                                Apply Filters
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Parcels List -->
+                {% if parcels %}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {% for parcel in parcels %}
+                    <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 hover:border-blue-300">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold">
+                                        <a href="{% url 'land_management:parcel_detail' parcel.pk %}" 
+                                           class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            {{ parcel.parcel_id }}
+                                        </a>
+                                    </h3>
+                                    {% if parcel.title_number %}
+                                    <p class="text-sm text-gray-600 mt-1">Title: {{ parcel.title_number }}</p>
+                                    {% endif %}
+                                </div>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if parcel.status == 'registered' %}bg-green-100 text-green-800{% endif %}
+                                    {% if parcel.status == 'pending' %}bg-yellow-100 text-yellow-800{% endif %}
+                                    {% if parcel.status == 'transferred' %}bg-purple-100 text-purple-800{% endif %}
+                                    {% if parcel.status == 'disputed' %}bg-red-100 text-red-800{% endif %}">
+                                    {{ parcel.get_status_display }}
+                                </span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="flex items-start">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-gray-500">Location</p>
+                                            <p class="font-medium text-gray-900">{{ parcel.location }}</p>
+                                            <p class="text-gray-600">{{ parcel.district }}, {{ parcel.sector }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-start">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-gray-500">Size</p>
+                                            <p class="font-medium text-gray-900">{{ parcel.size_hectares }} hectares</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-start">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-gray-500">Property Type</p>
+                                            <p class="font-medium text-gray-900">{{ parcel.get_property_type_display }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-start">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                        <div>
+                                            <p class="text-gray-500">Owner</p>
+                                            <p class="font-medium text-gray-900">{{ parcel.owner.get_full_name }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+                                <span class="text-sm text-gray-500">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Registered: {{ parcel.created_at|date:"M d, Y" }}
+                                </span>
+                                <a href="{% url 'land_management:parcel_detail' parcel.pk %}" 
+                                   class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+                                    View Details
+                                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav class="mt-8 flex justify-center">
+                    <div class="flex items-center space-x-1">
+                        {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Previous
+                        </a>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <span class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-lg">
+                            {{ num }}
+                        </span>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            {{ num }}
+                        </a>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Next
+                        </a>
+                        {% endif %}
+                    </div>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <!-- Empty State -->
+                <div class="bg-white rounded-lg shadow-sm p-12 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                    </svg>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">No Land Parcels Found</h3>
+                    <p class="mt-2 text-gray-600">
+                        {% if search or status_filter %}
+                            No parcels match your search criteria. Try adjusting your filters.
+                        {% else %}
+                            You don't have any registered land parcels yet.
+                        {% endif %}
+                    </p>
+                    {% if search or status_filter %}
+                    <a href="{% url 'land_management:parcel_list' %}" 
+                       class="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Clear Filters
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

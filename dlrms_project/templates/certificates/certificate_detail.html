@@ -1,196 +1,250 @@
-<!-- Create this file: dlrms_project/templates/certificates/certificate_detail.html -->
-
 {% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Certificate {{ certificate.certificate_number }} - DLRMS{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
-    <div class="mb-8 flex justify-between items-start">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">Certificate Details</h1>
-            <p class="mt-2 text-gray-600">{{ certificate.get_certificate_type_display }}</p>
-        </div>
-        <div class="flex space-x-3">
-            <a href="{% url 'certificates:download_certificate' certificate.pk %}" 
-               class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                <i class="fas fa-download mr-2"></i>Download PDF
-            </a>
-            {% if can_sign and certificate.status == 'issued' %}
-            <button onclick="showSignatureModal()" 
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <i class="fas fa-signature mr-2"></i>Add Signature
-            </button>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Certificate Information -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Basic Information -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Certificate Information</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Certificate Number</label>
-                        <p class="mt-1 text-gray-900 font-semibold">{{ certificate.certificate_number }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Status</label>
-                        <p class="mt-1">
-                            {% if certificate.is_valid %}
-                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
-                                    Valid
-                                </span>
-                            {% else %}
-                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800">
-                                    {{ certificate.get_status_display }}
-                                </span>
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Issue Date</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.issue_date|date:"F d, Y" }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Validity</label>
-                        <p class="mt-1 text-gray-900">
-                            {% if certificate.expiry_date %}
-                                Until {{ certificate.expiry_date|date:"F d, Y" }}
-                            {% else %}
-                                <span class="text-green-600 font-medium">Lifetime</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Property Information -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Property Information</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Application Number</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.application.application_number }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Property Type</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.application.property_type }}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <label class="text-sm font-medium text-gray-500">Location</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.application.property_address }}</p>
-                    </div>
-                    {% if certificate.application.size_hectares %}
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Land Size</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.application.size_hectares }} hectares</p>
-                    </div>
-                    {% endif %}
-                    {% if certificate.application.latitude and certificate.application.longitude %}
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">GPS Coordinates</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.application.latitude }}, {{ certificate.application.longitude }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Owner Information -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Owner Information</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Owner Name</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.owner.get_full_name }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">National ID</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.owner.username }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Digital Signatures -->
-            {% if signatures %}
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Digital Signatures</h2>
-                <div class="space-y-3">
-                    {% for signature in signatures %}
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="font-medium text-gray-900">{{ signature.signer.get_full_name }}</p>
-                                <p class="text-sm text-gray-500">{{ signature.signer.get_role_display }}</p>
-                            </div>
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                Verified
-                            </span>
-                        </div>
-                        <div class="mt-2 text-sm text-gray-600">
-                            <p>Signed on: {{ signature.signed_at|date:"F d, Y g:i A" }}</p>
-                            <p>Signature ID: {{ signature.signature_id }}</p>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
+<div class="min-h-screen bg-gray-50">
+    <div class="flex">
         <!-- Sidebar -->
-        <div class="space-y-6">
-            <!-- QR Code -->
-            <div class="bg-white rounded-lg shadow-sm p-6 text-center">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Verification QR Code</h3>
-                <div class="inline-block p-4 bg-gray-100 rounded-lg">
-                    <div id="qrcode" class="mx-auto"></div>
-                </div>
-                <p class="mt-4 text-sm text-gray-600">Scan to verify certificate authenticity</p>
-            </div>
-
-            <!-- Security Information -->
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Features</h3>
-                <ul class="space-y-2 text-sm text-gray-600">
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2"></i>
-                        <span>QR code verification</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2"></i>
-                        <span>Tamper-evident seal</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2"></i>
-                        <span>Blockchain verification (optional)</span>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Audit Trail -->
-            {% if user.role in 'registry_officer,admin' and audit_logs %}
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-                <div class="space-y-2">
-                    {% for log in audit_logs %}
-                    <div class="text-sm">
-                        <p class="text-gray-900">{{ log.get_action_display }}</p>
-                        <p class="text-gray-500">
-                            {% if log.performed_by %}
-                                by {{ log.performed_by.get_full_name }}
-                            {% endif %}
-                            on {{ log.timestamp|date:"M d, Y g:i A" }}
-                        </p>
+        {% include 'includes/sidebar.html' with active_page='certificates' %}
+        
+        <!-- Main Content -->
+        <div class="flex-1" style="margin-left: 320px;">
+            <div class="px-12 py-8">
+                <!-- Header -->
+                <div class="mb-8 flex justify-between items-start">
+                    <div>
+                        <nav class="flex mb-2" aria-label="Breadcrumb">
+                            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                                <li class="inline-flex items-center">
+                                    <a href="{% url 'core:dashboard' %}" class="text-gray-700 hover:text-blue-600">
+                                        
+                                        Dashboard
+                                    </a>
+                                </li>
+                                <li>
+                                    <div class="flex items-center">
+                                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <a href="{% url 'certificates:certificate_list' %}" class="ml-1 text-gray-700 hover:text-blue-600">
+                                            My Certificates
+                                        </a>
+                                    </div>
+                                </li>
+                                <li aria-current="page">
+                                    <div class="flex items-center">
+                                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="ml-1 text-gray-500">{{ certificate.certificate_number }}</span>
+                                    </div>
+                                </li>
+                            </ol>
+                        </nav>
+                        <h1 class="text-3xl font-bold text-gray-900">Certificate Details</h1>
+                        <p class="mt-2 text-gray-600">{{ certificate.get_certificate_type_display }}</p>
                     </div>
-                    {% endfor %}
+                    <div class="flex space-x-3">
+                        <a href="{% url 'certificates:download_certificate' certificate.pk %}" 
+                           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download PDF
+                        </a>
+                        {% if can_sign and certificate.status == 'issued' %}
+                        <button onclick="showSignatureModal()" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                            Add Signature
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Certificate Information -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Basic Information -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Certificate Information</h2>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Certificate Number</label>
+                                    <p class="mt-1 text-gray-900 font-semibold">{{ certificate.certificate_number }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Status</label>
+                                    <p class="mt-1">
+                                        {% if certificate.is_valid %}
+                                            <span class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                                Valid
+                                            </span>
+                                        {% else %}
+                                            <span class="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800">
+                                                {{ certificate.get_status_display }}
+                                            </span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Issue Date</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.issue_date|date:"F d, Y" }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Validity</label>
+                                    <p class="mt-1 text-gray-900">
+                                        {% if certificate.expiry_date %}
+                                            Until {{ certificate.expiry_date|date:"F d, Y" }}
+                                        {% else %}
+                                            <span class="text-green-600 font-medium">Lifetime</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Property Information -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Property Information</h2>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Application Number</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.application_number }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Property Type</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.property_type }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="text-sm font-medium text-gray-500">Location</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.property_address }}</p>
+                                </div>
+                                {% if certificate.application.size_hectares %}
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Land Size</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.size_hectares }} hectares</p>
+                                </div>
+                                {% endif %}
+                                {% if certificate.application.latitude and certificate.application.longitude %}
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">GPS Coordinates</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.latitude }}, {{ certificate.application.longitude }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Owner Information -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Owner Information</h2>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Owner Name</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.owner.get_full_name }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">National ID</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.owner.username }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Digital Signatures -->
+                        {% if signatures %}
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h2 class="text-xl font-semibold text-gray-900 mb-4">Digital Signatures</h2>
+                            <div class="space-y-3">
+                                {% for signature in signatures %}
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-gray-900">{{ signature.signer.get_full_name }}</p>
+                                            <p class="text-sm text-gray-500">{{ signature.signer.get_role_display }}</p>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                            Verified
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 text-sm text-gray-600">
+                                        <p>Signed on: {{ signature.signed_at|date:"F d, Y g:i A" }}</p>
+                                        <p>Signature ID: {{ signature.signature_id }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Sidebar -->
+                    <div class="space-y-6">
+                        <!-- QR Code -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 text-center">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Verification QR Code</h3>
+                            <div class="inline-block p-4 bg-gray-100 rounded-lg">
+                                <div id="qrcode" class="mx-auto"></div>
+                            </div>
+                            <p class="mt-4 text-sm text-gray-600">Scan to verify certificate authenticity</p>
+                        </div>
+
+                        <!-- Security Information -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Features</h3>
+                            <ul class="space-y-2 text-sm text-gray-600">
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>QR code verification</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>Digitally signed and encrypted</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>Tamper-evident seal</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>Blockchain verification (optional)</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Audit Trail -->
+                        {% if user.role in 'registry_officer,admin' and audit_logs %}
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                            <div class="space-y-2">
+                                {% for log in audit_logs %}
+                                <div class="text-sm">
+                                    <p class="text-gray-900">{{ log.get_action_display }}</p>
+                                    <p class="text-gray-500">
+                                        {% if log.performed_by %}
+                                            by {{ log.performed_by.get_full_name }}
+                                        {% endif %}
+                                        on {{ log.timestamp|date:"M d, Y g:i A" }}
+                                    </p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -201,7 +255,7 @@
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
         
-        <div class="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full">
+        <div class="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full relative z-50">
             <div class="bg-white px-6 py-4">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Add Digital Signature</h3>
                 
@@ -235,7 +289,9 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
 
+{% block extra_js %}
 <!-- Include QR Code Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -329,7 +385,3 @@ function getCsrfToken() {
 {% endif %}
 </script>
 {% endblock %}
-                        <span>Digitally signed and encrypted</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 mr-2">
