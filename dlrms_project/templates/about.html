@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+
+{% block title %}About - Digital Land Registration Management System{% endblock %}
+{% load static %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50" style='font-family: "Public Sans", "Noto Sans", sans-serif;'>
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Header - Same responsive header as homepage -->
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-4 sm:px-6 md:px-10 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4 text-[#0e141b]">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-10 w-10 md:h-12 md:w-12 object-contain" />
+                    <h2 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em]">DLRMS</h2>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <button id="mobile-menu-button" class="md:hidden flex items-center p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex flex-1 justify-end gap-8">
+                <div class="flex items-center gap-4 lg:gap-9">
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:home' %}">Home</a>
+                    <a class="text-[#197fe5] text-sm font-medium leading-normal" href="{% url 'core:about' %}">About</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:services' %}">Services</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:contact' %}">Contact</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'certificates:verify_certificate' %}">
+                        Verify Certificate
+                    </a>
+                </div>
+                <div class="flex gap-2">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'core:dashboard' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Dashboard</span>
+                        </a>
+                        <a href="{% url 'accounts:logout' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Logout</span>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'accounts:login' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Login</span>
+                        </a>
+                        <a href="{% url 'accounts:register' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Register</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Mobile Navigation Menu (Hidden by default) -->
+            <div id="mobile-menu" class="hidden md:hidden flex-col mt-4 space-y-4 border-t border-gray-200 pt-4">
+                <a class="text-[#197fe5] text-sm font-medium leading-normal py-2" href="{% url 'core:home' %}">Home</a>
+                <a class="text-[#197fe5] text-sm font-medium leading-normal py-2" href="{% url 'core:about' %}">About</a>
+                <a class="text-[#0e141b] text-sm font-medium leading-normal py-2" href="{% url 'core:services' %}">Services</a>
+                <a class="text-[#0e141b] text-sm font-medium leading-normal py-2" href="{% url 'core:contact' %}">Contact</a>
+                <a class="text-[#0e141b] text-sm font-medium leading-normal py-2" href="{% url 'certificates:verify_certificate' %}">
+                    Verify Certificate
+                </a>
+                <div class="flex flex-col gap-2 pt-2">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'core:dashboard' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Dashboard</span>
+                        </a>
+                        <a href="{% url 'accounts:logout' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Logout</span>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'accounts:login' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Login</span>
+                        </a>
+                        <a href="{% url 'accounts:register' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Register</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="px-4 sm:px-6 md:px-10 lg:px-20 xl:px-40 flex flex-1 justify-center py-8">
+            <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+                
+                <!-- Page Header -->
+                <div class="mb-10 text-center">
+                    <h1 class="text-3xl sm:text-4xl font-bold text-[#0e141b] mb-4">About DLRMS</h1>
+                </div>
+                
+                <!-- Mission Section - Minimalist design -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-8">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-4">Our Mission</h2>
+                    <p class="text-[#4e7397] mb-4">
+                        The Digital Land Registration Management System (DLRMS) modernizes land administration in North Kivu, DRC through secure, transparent, and efficient digital solutions. We streamline land registration processes, reduce disputes, and ensure land tenure security for all citizens.
+                    </p>
+                    <p class="text-[#4e7397]">
+                        Our platform brings together landowners, government officials, surveyors, and legal professionals in a unified digital ecosystem that promotes accountability, reduces fraud, and accelerates service delivery.
+                    </p>
+                </div>
+                
+                <!-- Features Section - Clean grid -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-8">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-6">Key Features</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Security -->
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 mt-1 text-[#0e141b]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">Enhanced Security</h3>
+                                <p class="text-[#4e7397] text-sm">Advanced encryption and authentication protocols protect sensitive land information and personal data.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Efficiency -->
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 mt-1 text-[#0e141b]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">Streamlined Processes</h3>
+                                <p class="text-[#4e7397] text-sm">Reduce registration time from months to days with automated workflows and digital submissions.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Transparency -->
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 mt-1 text-[#0e141b]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">Transparency</h3>
+                                <p class="text-[#4e7397] text-sm">Clear tracking of all land transactions with immutable record-keeping to reduce fraud and corruption.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Accessibility -->
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 mt-1 text-[#0e141b]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">Accessibility</h3>
+                                <p class="text-[#4e7397] text-sm">Access services remotely from any device, reducing the need for in-person visits and paperwork.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- History Timeline - Minimalist with simple numbers -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-8">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-6">Our History</h2>
+                    
+                    <div class="space-y-8">
+                        <!-- Phase 1 -->
+                        <div class="flex">
+                            <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-[#e7edf3] mr-4 text-[#0e141b] font-medium">
+                                1
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">Project Inception <span class="text-sm font-normal text-[#4e7397]">2021</span></h3>
+                                <p class="text-[#4e7397] text-sm">
+                                    DLRMS was conceived as a collaborative initiative between the North Kivu provincial government and international development partners to address challenges in land administration.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Phase 2 -->
+                        <div class="flex">
+                            <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-[#e7edf3] mr-4 text-[#0e141b] font-medium">
+                                2
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">System Development <span class="text-sm font-normal text-[#4e7397]">2022-2023</span></h3>
+                                <p class="text-[#4e7397] text-sm">
+                                    Our team developed the DLRMS platform, focusing on security, usability, and integration with existing land administration frameworks.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Phase 3 -->
+                        <div class="flex">
+                            <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border border-[#e7edf3] mr-4 text-[#0e141b] font-medium">
+                                3
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-[#0e141b] mb-1">Launch and Expansion <span class="text-sm font-normal text-[#4e7397]">2024-Present</span></h3>
+                                <p class="text-[#4e7397] text-sm">
+                                    DLRMS launched with pilot implementations in key municipalities and is now expanding across North Kivu province with plans for nationwide adoption.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Team Section - Minimal card design -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-8">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-6">Our Team</h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Team Member 1 -->
+                        <div class="border border-[#e7edf3] rounded-lg p-4">
+                            <h3 class="text-base font-medium text-[#0e141b]">Dr. Jean Mutombo</h3>
+                            <p class="text-[#197fe5] text-sm mb-2">Project Director</p>
+                            <p class="text-[#4e7397] text-sm">Leading the DLRMS initiative with over 15 years of experience in land administration and digital governance.</p>
+                        </div>
+                        
+                        <!-- Team Member 2 -->
+                        <div class="border border-[#e7edf3] rounded-lg p-4">
+                            <h3 class="text-base font-medium text-[#0e141b]">Marie Kabila</h3>
+                            <p class="text-[#197fe5] text-sm mb-2">Technical Lead</p>
+                            <p class="text-[#4e7397] text-sm">GIS specialist with expertise in spatial data management and land information systems.</p>
+                        </div>
+                        
+                        <!-- Team Member 3 -->
+                        <div class="border border-[#e7edf3] rounded-lg p-4">
+                            <h3 class="text-base font-medium text-[#0e141b]">Eric Kalumba</h3>
+                            <p class="text-[#197fe5] text-sm mb-2">Community Engagement</p>
+                            <p class="text-[#4e7397] text-sm">Focused on stakeholder relations and ensuring DLRMS meets the needs of all community members.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Values Section -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-8">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-6">Our Values</h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-base font-medium text-[#0e141b] mb-1">Integrity</h3>
+                            <p class="text-[#4e7397] text-sm">We uphold the highest standards of honesty and ethical conduct in all our operations.</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-base font-medium text-[#0e141b] mb-1">Innovation</h3>
+                            <p class="text-[#4e7397] text-sm">We continuously seek new technologies and approaches to improve land administration.</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-base font-medium text-[#0e141b] mb-1">Inclusion</h3>
+                            <p class="text-[#4e7397] text-sm">We ensure our services are accessible to all citizens regardless of background or location.</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-base font-medium text-[#0e141b] mb-1">Impact</h3>
+                            <p class="text-[#4e7397] text-sm">We measure our success by the positive change we create in communities and governance.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Partners -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-8">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-4">Our Partners</h2>
+                    <p class="text-[#4e7397] mb-4">DLRMS is developed in partnership with:</p>
+                    
+                    <ul class="text-[#4e7397] space-y-2">
+                        <li>• Ministry of Land Affairs, DRC</li>
+                        <li>• North Kivu Provincial Government</li>
+                        <li>• International Development Agency</li>
+                        <li>• Digital Governance Initiative</li>
+                        <li>• Land Rights Network</li>
+                    </ul>
+                </div>
+                
+                <!-- Call to Action -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white text-center">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-4">Join the Digital Land Revolution</h2>
+                    <p class="text-[#4e7397] mb-6 max-w-2xl mx-auto">Be part of North Kivu's transition to modern, secure, and efficient land administration.</p>
+                    <div class="flex flex-wrap justify-center gap-4">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'core:dashboard' %}" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md bg-[#197fe5] text-white hover:bg-blue-600">
+                                Go to Dashboard
+                            </a>
+                        {% else %}
+                            <a href="{% url 'accounts:register' %}" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md bg-[#197fe5] text-white hover:bg-blue-600">
+                                Register Now
+                            </a>
+                            <a href="{% url 'core:contact' %}" class="inline-flex items-center justify-center px-6 py-3 border border-[#e7edf3] text-base font-medium rounded-md text-[#0e141b] hover:bg-gray-50">
+                                Contact Us
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="flex justify-center">
+            <div class="flex max-w-[960px] flex-1 flex-col">
+                <footer class="flex flex-col gap-6 px-5 py-10 text-center @container">
+                    <div class="flex flex-wrap items-center justify-center gap-6 @[480px]:flex-row @[480px]:justify-around">
+                        <a class="text-[#4e7397] text-base font-normal leading-normal min-w-28 sm:min-w-40" href="#">Terms of Service</a>
+                        <a class="text-[#4e7397] text-base font-normal leading-normal min-w-28 sm:min-w-40" href="#">Privacy Policy</a>
+                        <a class="text-[#4e7397] text-base font-normal leading-normal min-w-28 sm:min-w-40" href="{% url 'core:contact' %}">Contact Us</a>
+                    </div>
+                    <p class="text-[#4e7397] text-base font-normal leading-normal">© 2024 DLRMS. All rights reserved.</p>
+                </footer>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- Mobile menu JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // Close mobile menu on window resize if screen becomes larger
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768) { // md breakpoint
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Page Not Found | DLRMS{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-[70vh] px-4">
+    <div class="text-center">
+        <h1 class="text-6xl font-bold text-blue-600 mb-4">404</h1>
+        {% if debug %}
+        <div class="mb-6">
+            <img src="{% static 'images/404-error.svg' %}" alt="Page Not Found" class="w-64 h-64 mx-auto">
+        </div>
+        {% else %}
+        <div class="mb-6">
+            <!-- Fallback when static files aren't available -->
+            <div class="w-64 h-64 mx-auto flex items-center justify-center bg-blue-100 rounded-full">
+                <span class="text-6xl text-blue-600">🔍</span>
+            </div>
+        </div>
+        {% endif %}
+        <h2 class="text-3xl font-semibold mb-4">Page Not Found</h2>
+        <p class="text-gray-600 mb-6 max-w-md mx-auto">Sorry, the page you are looking for doesn't exist or has been moved.</p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="/" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">Go Home</a>
+            <button onclick="history.back()" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition duration-300">Go Back</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact - Digital Land Registration Management System{% endblock %}
+{% load static %}
+
+{% block content %}
+<div class="relative flex size-full min-h-screen flex-col bg-slate-50" style='font-family: "Public Sans", "Noto Sans", sans-serif;'>
+    <div class="layout-container flex h-full grow flex-col">
+        <!-- Header - Same responsive header as homepage -->
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-4 sm:px-6 md:px-10 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4 text-[#0e141b]">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" class="h-10 w-10 md:h-12 md:w-12 object-contain" />
+                    <h2 class="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em]">DLRMS</h2>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <button id="mobile-menu-button" class="md:hidden flex items-center p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex flex-1 justify-end gap-8">
+                <div class="flex items-center gap-4 lg:gap-9">
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:home' %}">Home</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:about' %}">About</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'core:services' %}">Services</a>
+                    <a class="text-[#197fe5] text-sm font-medium leading-normal" href="{% url 'core:contact' %}">Contact</a>
+                    <a class="text-[#0e141b] text-sm font-medium leading-normal" href="{% url 'certificates:verify_certificate' %}">
+                        Verify Certificate
+                    </a>
+                </div>
+                <div class="flex gap-2">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'core:dashboard' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Dashboard</span>
+                        </a>
+                        <a href="{% url 'accounts:logout' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Logout</span>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'accounts:login' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Login</span>
+                        </a>
+                        <a href="{% url 'accounts:register' %}" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Register</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Mobile Navigation Menu (Hidden by default) -->
+            <div id="mobile-menu" class="hidden md:hidden flex-col mt-4 space-y-4 border-t border-gray-200 pt-4">
+                <a class="text-[#197fe5] text-sm font-medium leading-normal py-2" href="{% url 'core:home' %}">Home</a>
+                <a class="text-[#0e141b] text-sm font-medium leading-normal py-2" href="{% url 'core:about' %}">About</a>
+                <a class="text-[#0e141b] text-sm font-medium leading-normal py-2" href="{% url 'core:services' %}">Services</a>
+                <a class="text-[#197fe5] text-sm font-medium leading-normal py-2" href="{% url 'core:contact' %}">Contact</a>
+                <a class="text-[#0e141b] text-sm font-medium leading-normal py-2" href="{% url 'certificates:verify_certificate' %}">
+                    Verify Certificate
+                </a>
+                <div class="flex flex-col gap-2 pt-2">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'core:dashboard' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Dashboard</span>
+                        </a>
+                        <a href="{% url 'accounts:logout' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Logout</span>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'accounts:login' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#197fe5] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Login</span>
+                        </a>
+                        <a href="{% url 'accounts:register' %}" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
+                            <span class="truncate">Register</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="px-4 sm:px-6 md:px-10 lg:px-20 xl:px-40 flex flex-1 justify-center py-8">
+            <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+                
+                <!-- Page Header -->
+                <div class="mb-10 text-center">
+                    <h1 class="text-3xl sm:text-4xl font-bold text-[#0e141b] mb-4">Contact Us</h1>
+                    <p class="text-[#4e7397] max-w-2xl mx-auto">
+                        Have questions about our services or need assistance with the Digital Land Registration Management System? We're here to help.
+                    </p>
+                </div>
+                
+                <!-- Contact Information and Form Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+                    
+                    <!-- Contact Information -->
+                    <div class="lg:col-span-5 space-y-6">
+                        <div class="border border-[#e7edf3] rounded-lg p-6 bg-white">
+                            <h2 class="text-xl font-semibold text-[#0e141b] mb-6">Contact Information</h2>
+                            
+                            <!-- Office Address -->
+                            <div class="flex items-start mb-6">
+                                <div class="mr-4 text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b] mb-1">Main Office</h3>
+                                    <p class="text-[#4e7397] text-sm">
+                                        123 Land Registry Avenue<br>
+                                        Goma, North Kivu<br>
+                                        Democratic Republic of Congo
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Phone -->
+                            <div class="flex items-start mb-6">
+                                <div class="mr-4 text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b] mb-1">Phone</h3>
+                                    <p class="text-[#4e7397] text-sm">
+                                        Main: +243 997 123 456<br>
+                                        Support: +243 997 789 012
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Email -->
+                            <div class="flex items-start mb-6">
+                                <div class="mr-4 text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b] mb-1">Email</h3>
+                                    <p class="text-[#4e7397] text-sm">
+                                        General Inquiries: <a href="mailto:info@dlrms.gov.cd" class="text-[#197fe5] hover:underline">info@dlrms.gov.cd</a><br>
+                                        Support: <a href="mailto:support@dlrms.gov.cd" class="text-[#197fe5] hover:underline">support@dlrms.gov.cd</a>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Hours -->
+                            <div class="flex items-start">
+                                <div class="mr-4 text-[#0e141b]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b] mb-1">Office Hours</h3>
+                                    <p class="text-[#4e7397] text-sm">
+                                        Monday - Friday: 8:00 AM - 4:00 PM<br>
+                                        Saturday: 9:00 AM - 12:00 PM<br>
+                                        Sunday: Closed
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Regional Offices -->
+                        <div class="border border-[#e7edf3] rounded-lg p-6 bg-white">
+                            <h2 class="text-xl font-semibold text-[#0e141b] mb-4">Regional Offices</h2>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b]">Butembo Office</h3>
+                                    <p class="text-[#4e7397] text-sm">45 Kasindi Road, Butembo</p>
+                                    <p class="text-[#4e7397] text-sm">+243 997 234 567</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b]">Beni Office</h3>
+                                    <p class="text-[#4e7397] text-sm">12 Lubero Street, Beni</p>
+                                    <p class="text-[#4e7397] text-sm">+243 997 345 678</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-base font-medium text-[#0e141b]">Rutshuru Office</h3>
+                                    <p class="text-[#4e7397] text-sm">78 Kiwanja Road, Rutshuru</p>
+                                    <p class="text-[#4e7397] text-sm">+243 997 456 789</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contact Form -->
+                    <div class="lg:col-span-7">
+                        <div class="border border-[#e7edf3] rounded-lg p-6 bg-white">
+                            <h2 class="text-xl font-semibold text-[#0e141b] mb-6">Send Us a Message</h2>
+                            
+                            <form method="post" action="{% url 'core:contact' %}" class="space-y-4">
+                                {% csrf_token %}
+                                
+                                <!-- Form Messages -->
+                                {% if messages %}
+                                    <div class="mb-4">
+                                        {% for message in messages %}
+                                            <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% else %}bg-green-50 border border-green-200 text-green-800{% endif %}">
+                                                {{ message }}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- Name Fields -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="first_name" class="block text-sm font-medium text-[#0e141b] mb-1">First Name</label>
+                                        <input type="text" id="first_name" name="first_name" required class="w-full px-3 py-2 border border-[#e7edf3] rounded-md text-[#0e141b] focus:outline-none focus:ring-1 focus:ring-[#197fe5] focus:border-[#197fe5]">
+                                    </div>
+                                    <div>
+                                        <label for="last_name" class="block text-sm font-medium text-[#0e141b] mb-1">Last Name</label>
+                                        <input type="text" id="last_name" name="last_name" required class="w-full px-3 py-2 border border-[#e7edf3] rounded-md text-[#0e141b] focus:outline-none focus:ring-1 focus:ring-[#197fe5] focus:border-[#197fe5]">
+                                    </div>
+                                </div>
+                                
+                                <!-- Email & Phone -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="email" class="block text-sm font-medium text-[#0e141b] mb-1">Email Address</label>
+                                        <input type="email" id="email" name="email" required class="w-full px-3 py-2 border border-[#e7edf3] rounded-md text-[#0e141b] focus:outline-none focus:ring-1 focus:ring-[#197fe5] focus:border-[#197fe5]">
+                                    </div>
+                                    <div>
+                                        <label for="phone" class="block text-sm font-medium text-[#0e141b] mb-1">Phone Number</label>
+                                        <input type="tel" id="phone" name="phone" class="w-full px-3 py-2 border border-[#e7edf3] rounded-md text-[#0e141b] focus:outline-none focus:ring-1 focus:ring-[#197fe5] focus:border-[#197fe5]">
+                                    </div>
+                                </div>
+                                
+                                <!-- Subject -->
+                                <div>
+                                    <label for="subject" class="block text-sm font-medium text-[#0e141b] mb-1">Subject</label>
+                                    <input type="text" id="subject" name="subject" required class="w-full px-3 py-2 border border-[#e7edf3] rounded-md text-[#0e141b] focus:outline-none focus:ring-1 focus:ring-[#197fe5] focus:border-[#197fe5]">
+                                </div>
+                                
+                                <!-- Message -->
+                                <div>
+                                    <label for="message" class="block text-sm font-medium text-[#0e141b] mb-1">Message</label>
+                                    <textarea id="message" name="message" rows="5" required class="w-full px-3 py-2 border border-[#e7edf3] rounded-md text-[#0e141b] focus:outline-none focus:ring-1 focus:ring-[#197fe5] focus:border-[#197fe5]"></textarea>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <div class="flex justify-end">
+                                    <button type="submit" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md bg-[#197fe5] text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                        Send Message
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ Section -->
+                <div class="border border-[#e7edf3] rounded-lg p-6 bg-white mb-12">
+                    <h2 class="text-xl font-semibold text-[#0e141b] mb-6 text-center">Frequently Asked Questions</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="border-b border-[#e7edf3] pb-4">
+                            <h3 class="text-base font-medium text-[#0e141b] mb-2">What are the requirements for land registration?</h3>
+                            <p class="text-[#4e7397] text-sm">Land registration requires proof of ownership, identity documents, land survey details, and payment of applicable fees. For a complete list of requirements, please visit our Services page or contact our office.</p>
+                        </div>
+                        
+                        <div class="border-b border-[#e7edf3] pb-4">
+                            <h3 class="text-base font-medium text-[#0e141b] mb-2">How long does the land registration process take?</h3>
+                            <p class="text-[#4e7397] text-sm">The standard processing time is 14-21 business days after submission of a complete application. Expedited services are available for urgent requests.</p>
+                        </div>
+                        
+                        <div class="border-b border-[#e7edf3] pb-4">
+                            <h3 class="text-base font-medium text-[#0e141b] mb-2">What payment methods are accepted?</h3>
+                            <p class="text-[#4e7397] text-sm">We accept bank transfers, mobile money payments (M-Pesa, Airtel Money), and in-person cash payments at our offices.</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-base font-medium text-[#0e141b] mb-2">How can I verify the authenticity of a land certificate?</h3>
+                            <p class="text-[#4e7397] text-sm">You can verify certificates through our <a href="{% url 'certificates:verify_certificate' %}" class="text-[#197fe5] hover:underline">Certificate Verification</a> page by entering the certificate number and security code.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map Section (Placeholder) -->
+                <div class="relative h-64 md:h-80 lg:h-96 rounded-lg overflow-hidden mb-12 border border-[#e7edf3]">
+                    <div class="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                        <p class="text-[#4e7397]">Map loading...</p>
+                        <!-- In a real implementation, you would include an interactive map here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="flex justify-center">
+            <div class="flex max-w-[960px] flex-1 flex-col">
+                <footer class="flex flex-col gap-6 px-5 py-10 text-center @container">
+                    <div class="flex flex-wrap items-center justify-center gap-6 @[480px]:flex-row @[480px]:justify-around">
+                        <a class="text-[#4e7397] text-base font-normal leading-normal min-w-28 sm:min-w-40" href="#">Terms of Service</a>
+                        <a class="text-[#4e7397] text-base font-normal leading-normal min-w-28 sm:min-w-40" href="#">Privacy Policy</a>
+                        <a class="text-[#4e7397] text-base font-normal leading-normal min-w-28 sm:min-w-40" href="{% url 'core:contact' %}">Contact Us</a>
+                    </div>
+                    <p class="text-[#4e7397] text-base font-normal leading-normal">© 2024 DLRMS. All rights reserved.</p>
+                </footer>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- Mobile menu JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // Close mobile menu on window resize if screen becomes larger
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768) { // md breakpoint
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

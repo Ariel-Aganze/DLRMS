@@ -3,18 +3,48 @@
 
 {% block title %}Notifications - DLRMS{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Responsive styles */
+    @media (max-width: 768px) {
+        .ml-80 {
+            margin-left: 0 !important;
+        }
+        
+        .notification-card {
+            flex-direction: column;
+        }
+        
+        .notification-actions {
+            margin-left: 0;
+            margin-top: 1rem;
+            align-items: flex-start;
+        }
+        
+        .pagination-container {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50">
     <div class="layout-container flex h-full grow flex-col">
         {% include 'includes/sidebar.html' with active_page='notifications' %}
         
-        <div class="flex-1 ml-80">
-            <div class="p-6">
+        <div class="flex-1 md:ml-80">
+            <div class="p-4 md:p-6">
                 <div class="mb-6">
-                    <div class="flex justify-between items-center">
-                        <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Notifications</h1>
                         <button onclick="markAllAsRead()" 
-                                class="text-sm text-blue-600 hover:text-blue-800">
+                                class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
                             Mark all as read
                         </button>
                     </div>
@@ -23,7 +53,7 @@
                 <div class="space-y-4">
                     {% for notification in notifications %}
                     <div class="bg-white rounded-lg shadow-sm p-4 {% if not notification.is_read %}border-l-4 border-blue-500{% endif %}">
-                        <div class="flex justify-between items-start">
+                        <div class="flex justify-between items-start notification-card">
                             <div class="flex-1">
                                 <h3 class="text-lg font-medium text-gray-900 {% if not notification.is_read %}font-semibold{% endif %}">
                                     {{ notification.title }}
@@ -85,10 +115,13 @@
                                 </p>
                             </div>
                             
-                            <div class="ml-4 flex flex-col items-end">
+                            <div class="ml-4 flex flex-col items-end notification-actions">
                                 {% if not notification.is_read %}
                                 <button onclick="markAsRead({{ notification.id }})" 
-                                        class="text-sm text-gray-500 hover:text-gray-700">
+                                        class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
                                     Mark as read
                                 </button>
                                 {% endif %}
@@ -107,8 +140,8 @@
                         </div>
                     </div>
                     {% empty %}
-                    <div class="bg-white rounded-lg shadow-sm p-8 text-center">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="bg-white rounded-lg shadow-sm p-6 md:p-8 text-center">
+                        <svg class="mx-auto h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
                         </svg>
                         <p class="text-gray-500">No notifications yet</p>
@@ -120,22 +153,25 @@
                 {% if is_paginated %}
                 <div class="mt-6">
                     <nav class="flex justify-center">
-                        <div class="flex space-x-2">
+                        <div class="flex space-x-2 pagination-container">
                             {% if page_obj.has_previous %}
                             <a href="?page={{ page_obj.previous_page_number }}" 
-                               class="px-3 py-2 bg-white border rounded hover:bg-gray-50">
-                                Previous
+                               class="px-3 py-2 bg-white border rounded hover:bg-gray-50 text-sm">
+                                <span class="hidden sm:inline">Previous</span>
+                                <span class="sm:hidden">&laquo;</span>
                             </a>
                             {% endif %}
                             
-                            <span class="px-3 py-2 bg-blue-600 text-white rounded">
-                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            <span class="px-3 py-2 bg-blue-600 text-white rounded text-sm">
+                                <span class="hidden sm:inline">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                                <span class="sm:hidden">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
                             </span>
                             
                             {% if page_obj.has_next %}
                             <a href="?page={{ page_obj.next_page_number }}" 
-                               class="px-3 py-2 bg-white border rounded hover:bg-gray-50">
-                                Next
+                               class="px-3 py-2 bg-white border rounded hover:bg-gray-50 text-sm">
+                                <span class="hidden sm:inline">Next</span>
+                                <span class="sm:hidden">&raquo;</span>
                             </a>
                             {% endif %}
                         </div>
@@ -149,6 +185,9 @@
 
 <script>
 function markAsRead(notificationId) {
+    // Show loading indicator
+    const loadingToast = showToast('Marking as read...', 'info');
+    
     fetch(`/notifications/${notificationId}/mark-read/`, {
         method: 'POST',
         headers: {
@@ -158,13 +197,31 @@ function markAsRead(notificationId) {
     })
     .then(response => response.json())
     .then(data => {
+        // Hide loading toast
+        hideToast(loadingToast);
+        
         if (data.success) {
-            location.reload();
+            // Show success toast
+            showToast('Notification marked as read', 'success');
+            // Reload after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast('Error marking notification as read', 'error');
         }
+    })
+    .catch(error => {
+        // Hide loading toast
+        hideToast(loadingToast);
+        showToast('Error marking notification as read', 'error');
     });
 }
 
 function markAllAsRead() {
+    // Show loading indicator
+    const loadingToast = showToast('Marking all as read...', 'info');
+    
     fetch('/notifications/mark-all-read/', {
         method: 'POST',
         headers: {
@@ -174,10 +231,107 @@ function markAllAsRead() {
     })
     .then(response => response.json())
     .then(data => {
+        // Hide loading toast
+        hideToast(loadingToast);
+        
         if (data.success) {
-            location.reload();
+            // Show success toast
+            showToast('All notifications marked as read', 'success');
+            // Reload after a short delay
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast('Error marking all notifications as read', 'error');
         }
+    })
+    .catch(error => {
+        // Hide loading toast
+        hideToast(loadingToast);
+        showToast('Error marking all notifications as read', 'error');
     });
 }
+
+// Toast notification functions
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast
+    const toast = document.createElement('div');
+    toast.className = `px-4 py-2 rounded-lg text-white shadow-lg transform transition-all duration-300 translate-x-full ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 
+        'bg-blue-500'
+    }`;
+    
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ${type === 'success' 
+                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' 
+                    : type === 'error' 
+                    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>' 
+                    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                }
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Add to container
+    toastContainer.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Auto remove after 4 seconds for non-info toasts
+    if (type !== 'info') {
+        setTimeout(() => {
+            hideToast(toast);
+        }, 4000);
+    }
+    
+    return toast;
+}
+
+function hideToast(toast) {
+    if (!toast) return;
+    
+    toast.classList.add('translate-x-full');
+    setTimeout(() => {
+        toast.remove();
+    }, 300);
+}
 </script>
+
+<style>
+/* Toast styling */
+#toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 9999;
+}
+
+#toast-container > div {
+    margin-bottom: 0.5rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+@media (max-width: 640px) {
+    #toast-container {
+        left: 1rem;
+        right: 1rem;
+    }
+}
+</style>
 {% endblock %}

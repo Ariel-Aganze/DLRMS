@@ -2,6 +2,83 @@
 
 {% block title %}Applications Review Dashboard - DLRMS{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Responsive styles */
+    @media (max-width: 768px) {
+        .ml-80 {
+            margin-left: 0 !important;
+        }
+        
+        .filter-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .filter-controls {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .filter-controls > * {
+            margin-bottom: 0.75rem;
+            width: 100%;
+        }
+        
+        .action-buttons {
+            margin-top: 1rem;
+            justify-content: stretch;
+            width: 100%;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+        }
+        
+        .stat-cards {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+        
+        .table-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        
+        .table-actions a, .table-actions button {
+            padding: 0.5rem;
+        }
+    }
+    
+    @media (min-width: 640px) and (max-width: 1023px) {
+        .stat-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    
+    /* Toast styling */
+    #toastContainer {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 9999;
+    }
+
+    #toastContainer > div {
+        margin-bottom: 0.5rem;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    @media (max-width: 640px) {
+        #toastContainer {
+            left: 1rem;
+            right: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50">
     <div class="layout-container flex h-full grow flex-col">
@@ -9,10 +86,10 @@
         {% include 'includes/sidebar.html' with active_page='applications_review' %}
 
         <!-- Main Content -->
-        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
-            <div class="p-6">
+        <div class="flex-1 md:ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-4 md:p-6">
                 <div class="mb-6">
-                    <h1 class="text-2xl font-bold text-gray-900">Applications Review Dashboard</h1>
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-900">Applications Review Dashboard</h1>
                     <p class="text-sm text-gray-600 mt-1">Review and manage pending land applications</p>
                 </div>
 
@@ -27,11 +104,13 @@
                 {% endif %}
 
                 <!-- Statistics Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="grid stat-cards grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 card-hover">
                         <div class="flex items-center">
                             <div class="rounded-md bg-yellow-100 p-2 mr-4">
-                                <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Pending Review</p>
@@ -48,7 +127,9 @@
                     <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 card-hover">
                         <div class="flex items-center">
                             <div class="rounded-md bg-blue-100 p-2 mr-4">
-                                <i class="fas fa-search text-blue-600 text-xl"></i>
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Under Inspection</p>
@@ -65,7 +146,9 @@
                     <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 card-hover">
                         <div class="flex items-center">
                             <div class="rounded-md bg-green-100 p-2 mr-4">
-                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Approved Today</p>
@@ -82,7 +165,9 @@
                     <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 card-hover">
                         <div class="flex items-center">
                             <div class="rounded-md bg-red-100 p-2 mr-4">
-                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Overdue Reviews</p>
@@ -98,15 +183,17 @@
                 </div>
 
                 <!-- Filters and Actions -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 filter-container">
+                        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 filter-controls">
                             <!-- Search -->
                             <div class="relative">
                                 <input type="text" id="search-input"
                                        placeholder="Search applications..." 
                                        class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64">
-                                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                                <svg class="w-5 h-5 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
                             </div>
 
                             <!-- Status Filter -->
@@ -127,13 +214,17 @@
                             </select>
                         </div>
 
-                        <div class="flex space-x-3">
+                        <div class="flex space-x-3 action-buttons">
                             <button id="export-btn" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                <i class="fas fa-download mr-2"></i>
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
                                 Export
                             </button>
                             <button id="bulk-assign-btn" class="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                                <i class="fas fa-users mr-2"></i>
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
                                 Bulk Assign
                             </button>
                         </div>
@@ -150,48 +241,53 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         <input type="checkbox" id="select-all" class="rounded border-gray-300">
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Application
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Applicant
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Property
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Type
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Submitted
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-2 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
                             <tbody id="applications-table-body" class="bg-white divide-y divide-gray-200">
                                 {% for app in recent_applications %}
-                                <tr class="hover:bg-gray-50 transition-colors" data-app-id="{{ app.id }}">
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                <tr class="hover:bg-gray-50 transition-colors app-row" data-app-id="{{ app.id }}" data-app-status="{{ app.status }}" data-app-type="{{ app.application_type }}">
+                                    <td class="px-2 md:px-6 py-4 whitespace-nowrap">
                                         <input type="checkbox" class="app-checkbox rounded border-gray-300" value="{{ app.id }}">
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-2 md:px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-10 w-10">
                                                 <div class="h-10 w-10 
                                                     {% if app.application_type == 'property_contract' %}bg-blue-100
                                                     {% else %}bg-green-100{% endif %} 
                                                     rounded-lg flex items-center justify-center">
-                                                    <i class="
-                                                        {% if app.application_type == 'property_contract' %}fas fa-file-alt text-blue-600
-                                                        {% else %}fas fa-certificate text-green-600{% endif %}"></i>
+                                                    <svg class="w-5 h-5 {% if app.application_type == 'property_contract' %}text-blue-600
+                                                        {% else %}text-green-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        {% if app.application_type == 'property_contract' %}
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                        {% else %}
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                        {% endif %}
+                                                    </svg>
                                                 </div>
                                             </div>
                                             <div class="ml-4">
@@ -199,11 +295,11 @@
                                                 <a href="{% url 'applications:parcel_application_detail_enhanced' app.id %}" class="text-sm font-medium text-blue-600 hover:text-blue-800">
                                                     {{ app.application_number }}
                                                 </a>
-                                                <div class="text-sm text-gray-500">{{ app.get_application_type_display }}</div>
+                                                <div class="text-sm text-gray-500 md:hidden">{{ app.get_application_type_display }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-2 md:px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-8 w-8">
                                                 <div class="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
@@ -212,24 +308,24 @@
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div class="ml-3">
+                                            <div class="ml-3 hidden md:block">
                                                 <div class="text-sm font-medium text-gray-900">{{ app.owner_first_name }} {{ app.owner_last_name }}</div>
                                                 <div class="text-sm text-gray-500">{{ app.applicant.email }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">{{ app.property_address }}</div>
                                         <div class="text-sm text-gray-500">{{ app.property_type }}</div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
                                             {% if app.application_type == 'property_contract' %}bg-blue-100 text-blue-800
                                             {% else %}bg-green-100 text-green-800{% endif %}">
                                             {{ app.get_application_type_display }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-2 md:px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full 
                                             {% if app.status == 'submitted' %}bg-yellow-100 text-yellow-800
                                             {% elif app.status == 'under_review' %}bg-blue-100 text-blue-800
@@ -248,16 +344,19 @@
                                             {{ app.get_status_display }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ app.submitted_at|date:"M d, Y" }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <td class="px-2 md:px-6 py-4 whitespace-nowrap text-sm font-medium table-actions">
                                         <div class="flex space-x-2">
                                             <!-- View Details - Always shown -->
                                             <a href="{% url 'applications:parcel_application_detail_enhanced' app.id %}" 
                                                class="text-blue-600 hover:text-blue-900 transition-colors"
                                                title="View Details">
-                                                <i class="fas fa-eye"></i>
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
                                             </a>
                                             
                                             <!-- Assign Field Agent - Shown for 'submitted' status - VISIBLE TO ADMIN -->
@@ -265,7 +364,9 @@
                                             <button onclick="assignFieldAgent({{ app.id }})" 
                                                     class="text-green-600 hover:text-green-900 transition-colors"
                                                     title="Assign Field Agent">
-                                                <i class="fas fa-user-plus"></i>
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                                </svg>
                                             </button>
                                             {% endif %}
                                             
@@ -274,7 +375,9 @@
                                             <button onclick="quickReviewApp({{ app.id }})" 
                                                     class="text-purple-600 hover:text-purple-900 transition-colors"
                                                     title="Review Application">
-                                                <i class="fas fa-clipboard-check"></i>
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                                                </svg>
                                             </button>
                                             {% endif %}
 
@@ -283,7 +386,9 @@
                                             <button onclick="rejectApplication({{ app.id }})" 
                                                     class="text-red-600 hover:text-red-900 transition-colors"
                                                     title="Reject Application">
-                                                <i class="fas fa-times"></i>
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -301,9 +406,9 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="bg-white px-6 py-3 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-700">
+                    <div class="bg-white px-4 md:px-6 py-3 border-t border-gray-200">
+                        <div class="flex flex-col sm:flex-row items-center justify-between">
+                            <div class="text-sm text-gray-700 mb-2 sm:mb-0">
                                 Showing <span class="font-medium">1</span> to <span class="font-medium">{{ recent_applications|length }}</span> of <span class="font-medium">{{ stats.total_applications }}</span> applications
                             </div>
                             <div class="flex space-x-2">
@@ -321,12 +426,14 @@
 
 <!-- Field Agent Assignment Modal -->
 <div id="assignAgentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-sm md:w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
             <div class="flex justify-between items-center pb-4 border-b">
                 <h3 class="text-lg font-semibold text-gray-900">Assign Field Agent</h3>
                 <button onclick="closeAssignModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </button>
             </div>
             
@@ -374,7 +481,9 @@
             <div class="flex justify-between items-center pb-4 border-b">
                 <h3 class="text-lg font-semibold text-gray-900">Quick Review - <span id="review-app-number"></span></h3>
                 <button onclick="closeQuickReview()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </button>
             </div>
             
@@ -452,6 +561,9 @@
 <!-- Success/Error Toast Notifications -->
 <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
     // Application variables
     let currentApplicationId = null;
@@ -461,20 +573,8 @@
         currentApplicationId = appId;
         document.getElementById('application-id').value = appId;
         document.getElementById('assignAgentModal').classList.remove('hidden');
-
-    // Check if page is loaded completely to avoid JS errors
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips if needed
-        initializeTooltips();
-    });
-    
-    // Initialize tooltips (can be expanded for better UI experience)
-    function initializeTooltips() {
-        // Custom tooltip implementation could be added here
-        console.log('Tooltips initialized');
     }
-</script>
-{% endblock %}
+    
     function closeAssignModal() {
         document.getElementById('assignAgentModal').classList.add('hidden');
         document.getElementById('assign-agent-form').reset();
@@ -695,19 +795,21 @@
         const statusFilter = document.getElementById('status-filter').value;
         const typeFilter = document.getElementById('type-filter').value;
         
-        const rows = document.querySelectorAll('#applications-table-body tr');
+        const rows = document.querySelectorAll('.app-row');
         
         rows.forEach(row => {
+            // Get data attributes for filtering
             const appId = row.getAttribute('data-app-id');
+            const status = row.getAttribute('data-app-status');
+            const type = row.getAttribute('data-app-type');
+            
             if (!appId) return; // Skip empty rows
             
             const text = row.textContent.toLowerCase();
-            const status = row.querySelector('td:nth-child(6)').textContent.trim().toLowerCase();
-            const type = row.querySelector('td:nth-child(5)').textContent.trim().toLowerCase();
             
             const matchesSearch = !searchQuery || text.includes(searchQuery);
-            const matchesStatus = !statusFilter || status.includes(statusFilter.toLowerCase());
-            const matchesType = !typeFilter || type.includes(typeFilter.toLowerCase());
+            const matchesStatus = !statusFilter || status === statusFilter;
+            const matchesType = !typeFilter || type === typeFilter;
             
             row.style.display = matchesSearch && matchesStatus && matchesType ? '' : 'none';
         });
@@ -726,10 +828,15 @@
         toast.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
         toast.innerHTML = `
             <div class="flex items-center">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                              type === 'error' ? 'exclamation-circle' : 
-                              type === 'warning' ? 'exclamation-triangle' : 
-                              'info-circle'} mr-2"></i>
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    ${type === 'success' 
+                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>' 
+                        : type === 'error' 
+                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' 
+                        : type === 'warning' 
+                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>' 
+                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'}
+                </svg>
                 <span>${message}</span>
             </div>
         `;
@@ -766,5 +873,17 @@
         }
         return cookieValue;
     }
-}
+    
+    // Check if page is loaded completely to avoid JS errors
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips if needed
+        initializeTooltips();
+    });
+    
+    // Initialize tooltips (can be expanded for better UI experience)
+    function initializeTooltips() {
+        // Custom tooltip implementation could be added here
+        console.log('Tooltips initialized');
+    }
 </script>
+{% endblock %}

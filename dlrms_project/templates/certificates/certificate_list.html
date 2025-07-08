@@ -3,6 +3,64 @@
 
 {% block title %}My Certificates - DLRMS{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Responsive styles */
+    @media (max-width: 768px) {
+        .sidebar-margin {
+            margin-left: 0 !important;
+        }
+        
+        .mobile-hidden {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+        
+        .search-form {
+            flex-direction: column;
+        }
+        
+        .search-form > * {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .content-padding {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        
+        .pagination-container {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+        }
+    }
+    
+    /* Default hide mobile elements */
+    .mobile-view {
+        display: none;
+    }
+    
+    /* Table responsive improvements */
+    .table-cell-content {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    @media (min-width: 640px) and (max-width: 1023px) {
+        .sm-hidden {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen bg-gray-50">
     <div class="flex">
@@ -10,17 +68,17 @@
         {% include 'includes/sidebar.html' with active_page='certificates' %}
         
         <!-- Main Content -->
-        <div class="flex-1" style="margin-left: 320px;">
-            <div class="px-12 py-8">
+        <div class="flex-1 sidebar-margin" style="margin-left: 320px;">
+            <div class="px-4 md:px-8 lg:px-12 py-6 md:py-8 content-padding">
                 <!-- Header -->
-                <div class="mb-8">
-                    <h1 class="text-3xl font-bold text-gray-900">Digital Certificates</h1>
+                <div class="mb-6 md:mb-8">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Digital Certificates</h1>
                     <p class="mt-2 text-gray-600">View and manage your land ownership certificates</p>
                 </div>
 
                 <!-- Search and Filter -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <form method="get" class="flex gap-4">
+                <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
+                    <form method="get" class="flex gap-4 search-form">
                         <div class="flex-1 relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +89,7 @@
                                    placeholder="Search by certificate number..." 
                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
-                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center">
+                        <button type="submit" class="px-4 md:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
@@ -47,25 +105,25 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Certificate Number
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Type
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hidden">
                                             Property
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hidden sm-hidden">
                                             Issue Date
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hidden">
                                             Validity
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Status
                                         </th>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th class="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
@@ -73,13 +131,22 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     {% for certificate in certificates %}
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap">
                                             <a href="{% url 'certificates:certificate_detail' certificate.pk %}" 
                                                class="text-blue-600 hover:text-blue-800 font-medium">
                                                 {{ certificate.certificate_number }}
                                             </a>
+                                            <!-- Mobile view additional info -->
+                                            <div class="mobile-view mt-1">
+                                                <div class="text-xs text-gray-500 table-cell-content">
+                                                    {{ certificate.application.property_address }}
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    {{ certificate.issue_date|date:"M d, Y" }}
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap">
                                             {% if certificate.certificate_type == 'property_contract' %}
                                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                                                     Property Contract
@@ -90,20 +157,20 @@
                                                 </span>
                                             {% endif %}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ certificate.application.property_address }}
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900 mobile-hidden">
+                                            <div class="table-cell-content">{{ certificate.application.property_address }}</div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500 mobile-hidden sm-hidden">
                                             {{ certificate.issue_date|date:"M d, Y" }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm mobile-hidden">
                                             {% if certificate.expiry_date %}
                                                 <span class="text-gray-900">{{ certificate.expiry_date|date:"M d, Y" }}</span>
                                             {% else %}
                                                 <span class="text-green-600 font-medium">Lifetime</span>
                                             {% endif %}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap">
                                             {% if certificate.is_valid %}
                                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                                                     Valid
@@ -113,8 +180,16 @@
                                                     {{ certificate.get_status_display }}
                                                 </span>
                                             {% endif %}
+                                            <!-- Mobile view validity -->
+                                            <div class="mobile-view mt-1 text-xs text-gray-500">
+                                                {% if certificate.expiry_date %}
+                                                    Expires: {{ certificate.expiry_date|date:"M d, Y" }}
+                                                {% else %}
+                                                    <span class="text-green-600 font-medium">Lifetime validity</span>
+                                                {% endif %}
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                             <a href="{% url 'certificates:certificate_detail' certificate.pk %}" 
                                                class="text-blue-600 hover:text-blue-900 mr-3" title="View Certificate">
                                                 <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,13 +212,13 @@
 
                         <!-- Pagination -->
                         {% if is_paginated %}
-                        <div class="bg-gray-50 px-6 py-3 flex items-center justify-between">
+                        <div class="bg-gray-50 px-4 md:px-6 py-3 flex items-center justify-between pagination-container">
                             <div class="text-sm text-gray-700">
                                 Showing <span class="font-medium">{{ page_obj.start_index }}</span> to 
                                 <span class="font-medium">{{ page_obj.end_index }}</span> of 
                                 <span class="font-medium">{{ page_obj.paginator.count }}</span> results
                             </div>
-                            <nav class="flex space-x-2">
+                            <nav class="flex flex-wrap gap-2 justify-center">
                                 {% if page_obj.has_previous %}
                                     <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" 
                                        class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-100">
@@ -156,7 +231,7 @@
                                         <span class="px-3 py-1 border border-blue-500 bg-blue-500 text-white rounded-md text-sm">
                                             {{ num }}
                                         </span>
-                                    {% else %}
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                         <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" 
                                            class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-100">
                                             {{ num }}
@@ -174,12 +249,19 @@
                         </div>
                         {% endif %}
                     {% else %}
-                        <div class="text-center py-12">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="text-center py-8 md:py-12">
+                            <svg class="mx-auto h-10 w-10 md:h-12 md:w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <h3 class="mt-4 text-lg font-medium text-gray-900">No Certificates Found</h3>
-                            <p class="mt-2 text-gray-500">You don't have any certificates yet.</p>
+                            <p class="mt-2 text-gray-500">
+                                {% if request.GET.search %}
+                                    No certificates match your search criteria.
+                                    <a href="{% url 'certificates:certificate_list' %}" class="text-blue-600 hover:text-blue-800">View all certificates</a>
+                                {% else %}
+                                    You don't have any certificates yet.
+                                {% endif %}
+                            </p>
                         </div>
                     {% endif %}
                 </div>

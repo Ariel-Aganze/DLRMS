@@ -2,6 +2,43 @@
 
 {% block title %}My Parcel Applications - DLRMS{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Responsive styles */
+    @media (max-width: 768px) {
+        .ml-80 {
+            margin-left: 0 !important;
+        }
+        
+        .mobile-hidden {
+            display: none;
+        }
+        
+        .search-filter-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+    }
+    
+    /* Default hide mobile elements */
+    .mobile-view {
+        display: none;
+    }
+    
+    /* Search highlight */
+    .highlight {
+        background-color: rgba(253, 224, 71, 0.3);
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50">
     <div class="layout-container flex h-full grow flex-col">
@@ -9,16 +46,19 @@
         {% include 'includes/sidebar.html' with active_page='parcel_application_list' %}
 
         <!-- Main Content -->
-        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
+        <div class="flex-1 md:ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-4 md:p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Parcel Applications</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Parcel Applications</h1>
                         <p class="text-sm text-gray-600 mt-1">View and track your parcel registration applications</p>
                     </div>
                     
-                    <a href="{% url 'applications:parcel_application_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        <i class="fas fa-plus mr-2"></i>New Application
+                    <a href="{% url 'applications:parcel_application_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        New Application
                     </a>
                 </div>
 
@@ -32,83 +72,261 @@
                 </div>
                 {% endif %}
                 
+                <!-- Search and Filters -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center space-y-4 sm:space-y-0 search-filter-container">
+                        <!-- Search -->
+                        <div class="relative">
+                            <input type="text" id="search-input"
+                                   placeholder="Search applications..." 
+                                   class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64">
+                            <svg class="w-5 h-5 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Status Filter -->
+                        <select id="status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Status</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="field_inspection">Field Inspection</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+
+                        <!-- Application Type Filter -->
+                        <select id="type-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">All Types</option>
+                            <option value="property_contract">Property Contract</option>
+                            <option value="parcel_certificate">Parcel Certificate</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                     {% if applications %}
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Application No.
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Owner
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Property Address
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Application Type
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Submitted
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                {% for application in applications %}
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                                        {{ application.application_number }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ application.owner_first_name }} {{ application.owner_last_name }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ application.property_address }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ application.get_application_type_display }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                        {% if application.status == 'submitted' %}bg-yellow-100 text-yellow-800
-                                        {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
-                                        {% elif application.status == 'field_inspection' %}bg-purple-100 text-purple-800
-                                        {% elif application.status == 'approved' %}bg-green-100 text-green-800
-                                        {% elif application.status == 'rejected' %}bg-red-100 text-red-800
-                                        {% endif %}">
-                                            {{ application.get_status_display }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ application.submitted_at|date:"M d, Y" }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <a href="{% url 'applications:parcel_application_detail' application.id %}" class="text-blue-600 hover:text-blue-900">
-                                            View Details
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Application No.
+                                        </th>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Owner
+                                        </th>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hidden">
+                                            Property Address
+                                        </th>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hidden">
+                                            Application Type
+                                        </th>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider mobile-hidden">
+                                            Submitted
+                                        </th>
+                                        <th scope="col" class="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="applications-table-body">
+                                    {% for application in applications %}
+                                    <tr class="application-row" data-app-status="{{ application.status }}" data-app-type="{{ application.application_type }}">
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                                            {{ application.application_number }}
+                                            <!-- Mobile view additional info -->
+                                            <div class="mobile-view mt-1">
+                                                <div class="text-xs text-gray-500">
+                                                    {{ application.property_address }}
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    {{ application.get_application_type_display }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ application.owner_first_name }} {{ application.owner_last_name }}
+                                        </td>
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500 mobile-hidden">
+                                            {{ application.property_address }}
+                                        </td>
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500 mobile-hidden">
+                                            {{ application.get_application_type_display }}
+                                        </td>
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                            {% if application.status == 'submitted' %}bg-yellow-100 text-yellow-800
+                                            {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
+                                            {% elif application.status == 'field_inspection' %}bg-purple-100 text-purple-800
+                                            {% elif application.status == 'approved' %}bg-green-100 text-green-800
+                                            {% elif application.status == 'rejected' %}bg-red-100 text-red-800
+                                            {% endif %}">
+                                                {{ application.get_status_display }}
+                                            </span>
+                                            <!-- Mobile view submission date -->
+                                            <div class="mobile-view mt-1 text-xs text-gray-500">
+                                                {{ application.submitted_at|date:"M d, Y" }}
+                                            </div>
+                                        </td>
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500 mobile-hidden">
+                                            {{ application.submitted_at|date:"M d, Y" }}
+                                        </td>
+                                        <td class="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <a href="{% url 'applications:parcel_application_detail' application.id %}" class="text-blue-600 hover:text-blue-900 inline-flex items-center">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     {% else %}
                         <div class="p-6 text-center">
                             <p class="text-gray-500 mb-4">You don't have any parcel applications yet.</p>
                             <a href="{% url 'applications:parcel_application_create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                <i class="fas fa-plus mr-2"></i>Submit New Application
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Submit New Application
                             </a>
                         </div>
                     {% endif %}
+                </div>
+                
+                <!-- No results message (hidden by default) -->
+                <div id="no-results-message" class="hidden mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>No applications found matching your search criteria.</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search and Filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search-input');
+        const statusFilter = document.getElementById('status-filter');
+        const typeFilter = document.getElementById('type-filter');
+        const noResultsMessage = document.getElementById('no-results-message');
+        
+        // Add event listeners
+        searchInput.addEventListener('input', filterApplications);
+        statusFilter.addEventListener('change', filterApplications);
+        typeFilter.addEventListener('change', filterApplications);
+        
+        // Function to filter applications
+        function filterApplications() {
+            const searchQuery = searchInput.value.toLowerCase();
+            const selectedStatus = statusFilter.value;
+            const selectedType = typeFilter.value;
+            
+            const rows = document.querySelectorAll('#applications-table-body tr.application-row');
+            let visibleCount = 0;
+            
+            // Clear previous highlights
+            clearHighlights();
+            
+            rows.forEach(row => {
+                const status = row.getAttribute('data-app-status');
+                const type = row.getAttribute('data-app-type');
+                const text = row.textContent.toLowerCase();
+                
+                // Check if row matches all filters
+                const matchesSearch = searchQuery === '' || text.includes(searchQuery);
+                const matchesStatus = selectedStatus === '' || status === selectedStatus;
+                const matchesType = selectedType === '' || type === selectedType;
+                
+                const shouldShow = matchesSearch && matchesStatus && matchesType;
+                row.style.display = shouldShow ? '' : 'none';
+                
+                // Count visible rows
+                if (shouldShow) {
+                    visibleCount++;
+                    
+                    // Highlight search terms if there's a search query
+                    if (searchQuery !== '') {
+                        highlightSearchTerms(row, searchQuery);
+                    }
+                }
+            });
+            
+            // Show/hide no results message
+            if (visibleCount === 0 && rows.length > 0) {
+                noResultsMessage.classList.remove('hidden');
+            } else {
+                noResultsMessage.classList.add('hidden');
+            }
+        }
+        
+        // Function to clear highlights
+        function clearHighlights() {
+            const highlights = document.querySelectorAll('.highlight');
+            highlights.forEach(el => {
+                const parent = el.parentNode;
+                parent.replaceChild(document.createTextNode(el.textContent), el);
+                parent.normalize();
+            });
+        }
+        
+        // Function to highlight search terms
+        function highlightSearchTerms(row, term) {
+            const textNodes = getTextNodes(row);
+            
+            textNodes.forEach(node => {
+                const text = node.nodeValue;
+                const lowerText = text.toLowerCase();
+                let position = lowerText.indexOf(term);
+                
+                if (position !== -1) {
+                    const spanNode = document.createElement('span');
+                    spanNode.className = 'highlight';
+                    
+                    const before = document.createTextNode(text.substring(0, position));
+                    const highlight = document.createTextNode(text.substring(position, position + term.length));
+                    const after = document.createTextNode(text.substring(position + term.length));
+                    
+                    spanNode.appendChild(highlight);
+                    
+                    const parent = node.parentNode;
+                    parent.replaceChild(after, node);
+                    parent.insertBefore(spanNode, after);
+                    parent.insertBefore(before, spanNode);
+                }
+            });
+        }
+        
+        // Helper function to get all text nodes
+        function getTextNodes(element) {
+            const textNodes = [];
+            const walk = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+            
+            let node;
+            while (node = walk.nextNode()) {
+                if (node.nodeValue.trim() !== '') {
+                    textNodes.push(node);
+                }
+            }
+            
+            return textNodes;
+        }
+    });
+</script>
 {% endblock %}

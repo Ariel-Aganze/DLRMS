@@ -333,7 +333,7 @@
                     <div class="mb-6">
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-lg font-semibold text-gray-900">Recent System Activity</h2>
-                            <a href="#" class="text-blue-600 hover:text-blue-800 text-sm">View All Activity</a>
+                            <a href="{% url 'reports:dashboard' %}" class="text-blue-600 hover:text-blue-800 text-sm">View All Activity</a>
                         </div>
                         
                         <div class="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -989,7 +989,7 @@
                                 </div>
                             </a>
                             
-                            <a href="{% url 'land_management:map' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
+                            <a href="{% url 'land_management:parcel_list' %}" class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:border-blue-300 transition-colors">
                                 <div class="flex items-center">
                                     <div class="rounded-md bg-yellow-100 p-2 mr-3">
                                         <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -997,8 +997,8 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <p class="text-sm font-medium text-gray-900">View Map</p>
-                                        <p class="text-xs text-gray-500">See your parcels on a map</p>
+                                        <p class="text-sm font-medium text-gray-900">View Parcels</p>
+                                        <p class="text-xs text-gray-500">See your parcels</p>
                                     </div>
                                 </div>
                             </a>

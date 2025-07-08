@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}Surveyor Dashboard - DLRMS{% endblock %}
+
+{% block content %}
+<div class="flex h-screen bg-slate-50 flex-col md:flex-row">
+    {% include 'includes/sidebar.html' with active_page='dashboard' %}
+    
+    <div class="flex-1 md:ml-80 w-full overflow-auto">
+        <div class="p-4 md:p-6">
+            <!-- Header Section -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Surveyor Dashboard</h1>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Welcome, {{ user.first_name }}. Manage your field inspections and surveys.
+                    </p>
+                </div>
+                <div class="mt-3 sm:mt-0 flex flex-wrap gap-2">
+                    <a href="{% url 'applications:surveyor_inspections' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        View All Inspections
+                    </a>
+                    <a href="{% url 'land_management:map' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                        </svg>
+                        View Map
+                    </a>
+                </div>
+            </div>
+
+            {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                <div class="px-4 py-3 rounded-md {% if message.tags == 'success' %}bg-green-100 border border-green-400 text-green-700{% elif message.tags == 'info' %}bg-blue-100 border border-blue-400 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 border border-yellow-400 text-yellow-700{% elif message.tags == 'error' %}bg-red-100 border border-red-400 text-red-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Pending Inspections -->
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="rounded-md bg-blue-100 p-3 mr-4 flex-shrink-0">
+                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l6-6m-6 6l-2-2"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Pending Inspections</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ pending_inspections_count }}</p>
+                            <p class="text-xs text-gray-500">Assigned to you</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Completed Inspections -->
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="rounded-md bg-green-100 p-3 mr-4 flex-shrink-0">
+                            <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Completed Inspections</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ completed_inspections_count }}</p>
+                            <p class="text-xs text-gray-500">Total completed</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Urgent Inspections -->
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="rounded-md bg-red-100 p-3 mr-4 flex-shrink-0">
+                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Urgent Inspections</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ urgent_inspections }}</p>
+                            <p class="text-xs text-gray-500">High priority</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Assigned Disputes -->
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="rounded-md bg-yellow-100 p-3 mr-4 flex-shrink-0">
+                            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Assigned Disputes</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ assigned_disputes_count }}</p>
+                            <p class="text-xs text-gray-500">Requiring attention</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Left Column: Pending Inspections (2 columns wide) -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Pending Field Inspections</h2>
+                            <a href="{% url 'applications:surveyor_inspections' %}" class="text-sm text-blue-600 hover:text-blue-800">
+                                View All
+                            </a>
+                        </div>
+                        
+                        {% if assigned_applications %}
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Application
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                                                Applicant
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                                                Location
+                                            </th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {% for app in assigned_applications %}
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900">{{ app.application_number }}</div>
+                                                <div class="text-xs text-gray-500 sm:hidden">{{ app.owner_first_name }} {{ app.owner_last_name }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
+                                                <div class="text-sm text-gray-900">{{ app.owner_first_name }} {{ app.owner_last_name }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
+                                                <div class="text-sm text-gray-900">{{ app.property_address|truncatechars:25 }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                                <a href="{% url 'applications:parcel_application_detail' app.id %}" class="text-blue-600 hover:text-blue-900">
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 text-gray-500">
+                                <p>You don't have any pending field inspections.</p>
+                                <p class="text-sm mt-1">Field inspections will appear here once they are assigned to you.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Recently Completed Inspections -->
+                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Recently Completed</h2>
+                            <a href="#" class="text-sm text-blue-600 hover:text-blue-800">
+                                View All
+                            </a>
+                        </div>
+                        
+                        {% if completed_inspections %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {% for app in completed_inspections %}
+                                <div class="p-4 border border-gray-200 rounded-md">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">{{ app.application_number }}</p>
+                                            <p class="text-xs text-gray-500">{{ app.property_address|truncatechars:30 }}</p>
+                                        </div>
+                                        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full
+                                            {% if app.status == 'approved' %}bg-green-100 text-green-800
+                                            {% elif app.status == 'rejected' %}bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ app.get_status_display }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                                        <p class="text-xs text-gray-500">{{ app.review_date|date:"M d, Y" }}</p>
+                                        <a href="{% url 'applications:parcel_application_detail' app.id %}" class="text-xs text-blue-600 hover:text-blue-800">
+                                            Details
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 text-gray-500">
+                                <p>No completed inspections yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Right Column: Tools & Activities -->
+                <div class="lg:col-span-1">
+                    <!-- Quick Tools -->
+                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Field Tools</h2>
+                        
+                        <div class="space-y-3">
+                            <a href="{% url 'land_management:map' %}" class="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-blue-50 transition-colors">
+                                <div class="rounded-md bg-blue-100 p-2 mr-3 flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">GIS Map View</p>
+                                    <p class="text-xs text-gray-500">View land parcels on map</p>
+                                </div>
+                            </a>
+                            
+                            <a href="{% url 'applications:surveyor_inspections' %}" class="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-blue-50 transition-colors">
+                                <div class="rounded-md bg-green-100 p-2 mr-3 flex-shrink-0">
+                                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 012-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Field Inspections</p>
+                                    <p class="text-xs text-gray-500">Manage all inspections</p>
+                                </div>
+                            </a>
+                            
+                            <a href="#" class="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-blue-50 transition-colors">
+                                <div class="rounded-md bg-red-100 p-2 mr-3 flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Report Disputes</p>
+                                    <p class="text-xs text-gray-500">Flag boundary issues</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Assigned Disputes -->
+                    {% if assigned_disputes %}
+                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Assigned Disputes</h2>
+                            <a href="#" class="text-sm text-blue-600 hover:text-blue-800">
+                                View All
+                            </a>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            {% for dispute in assigned_disputes %}
+                            <div class="p-4 border border-gray-200 rounded-md">
+                                <div class="flex justify-between items-start">
+                                    <p class="text-sm font-medium text-gray-900">{{ dispute.dispute_number }}</p>
+                                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full
+                                        {% if dispute.status == 'under_investigation' %}bg-blue-100 text-blue-800
+                                        {% elif dispute.status == 'mediation' %}bg-yellow-100 text-yellow-800
+                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ dispute.get_status_display }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">{{ dispute.title|truncatechars:50 }}</p>
+                                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                                    <p class="text-xs text-gray-500">Filed: {{ dispute.filed_at|date:"M d, Y" }}</p>
+                                    <a href="{% url 'disputes:dispute_detail' dispute.id %}" class="text-xs text-blue-600 hover:text-blue-800">
+                                        Details
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,6 +3,38 @@
 
 {% block title %}Application Details - DLRMS{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Responsive styles */
+    @media (max-width: 768px) {
+        .ml-80 {
+            margin-left: 0 !important;
+        }
+        
+        .timeline-item {
+            margin-bottom: 1.5rem;
+        }
+        
+        .timeline-item:last-child .timeline-line {
+            display: none;
+        }
+        
+        .inspection-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+    
+    .timeline-dot {
+        min-width: 1rem;
+        min-height: 1rem;
+    }
+    
+    .timeline-line {
+        min-height: 2.5rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="relative flex size-full min-h-screen flex-col bg-slate-50">
     <div class="layout-container flex h-full grow flex-col">
@@ -10,16 +42,19 @@
         {% include 'includes/sidebar.html' with active_page='parcel_application_list' %}
 
         <!-- Main Content -->
-        <div class="flex-1 ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
+        <div class="flex-1 md:ml-80"> <!-- Adjusted margin to account for fixed sidebar -->
+            <div class="p-4 md:p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Application Details</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Application Details</h1>
                         <p class="text-sm text-gray-600 mt-1">{{ application.application_number }}</p>
                     </div>
                     
-                    <a href="{% url 'applications:parcel_application_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Applications
+                    <a href="{% url 'applications:parcel_application_list' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 inline-flex items-center text-sm">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Applications
                     </a>
                 </div>
 
@@ -33,14 +68,14 @@
                 </div>
                 {% endif %}
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Application Details Card -->
-                    <div class="md:col-span-2 bg-white rounded-lg shadow-sm p-6">
+                    <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-4 md:p-6">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Application Information</h2>
                         
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                             <span class="text-sm text-gray-500">Application Status:</span>
-                            <span class="px-3 py-1 text-sm font-semibold rounded-full
+                            <span class="px-3 py-1 text-sm font-semibold rounded-full w-fit
                                 {% if application.status == 'submitted' %}bg-yellow-100 text-yellow-800
                                 {% elif application.status == 'under_review' %}bg-blue-100 text-blue-800
                                 {% elif application.status == 'field_inspection' %}bg-purple-100 text-purple-800
@@ -52,7 +87,7 @@
                             </span>
                         </div>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                             <div>
                                 <h3 class="text-sm font-medium text-gray-500">Owner Information</h3>
                                 <div class="mt-2 bg-gray-50 p-3 rounded-lg">
@@ -85,24 +120,24 @@
                         <div class="mb-6">
                             <h3 class="text-sm font-medium text-gray-500">Application Timeline</h3>
                             <div class="mt-2 bg-gray-50 p-3 rounded-lg">
-                                <div class="flex">
+                                <div class="flex timeline-item">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-4 h-4 bg-blue-600 rounded-full"></div>
-                                        <div class="h-full w-0.5 bg-gray-300"></div>
+                                        <div class="w-4 h-4 bg-blue-600 rounded-full timeline-dot"></div>
+                                        <div class="h-full w-0.5 bg-gray-300 timeline-line"></div>
                                     </div>
-                                    <div class="ml-4 mb-4">
+                                    <div class="ml-4">
                                         <p class="text-sm font-medium text-gray-900">Submitted</p>
                                         <p class="text-xs text-gray-500">{{ application.submitted_at|date:"M d, Y H:i" }}</p>
                                     </div>
                                 </div>
                                 
                                 {% if application.field_agent %}
-                                <div class="flex">
+                                <div class="flex timeline-item">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-4 h-4 bg-purple-600 rounded-full"></div>
-                                        <div class="h-full w-0.5 bg-gray-300"></div>
+                                        <div class="w-4 h-4 bg-purple-600 rounded-full timeline-dot"></div>
+                                        <div class="h-full w-0.5 bg-gray-300 timeline-line"></div>
                                     </div>
-                                    <div class="ml-4 mb-4">
+                                    <div class="ml-4">
                                         <p class="text-sm font-medium text-gray-900">Field Inspection Assigned</p>
                                         <p class="text-xs text-gray-500">
                                             Field Agent: {{ application.field_agent.get_full_name }}
@@ -112,12 +147,12 @@
                                 {% endif %}
                                 
                                 {% if application.status in 'inspection_completed,approved,rejected' and application.review_date %}
-                                <div class="flex">
+                                <div class="flex timeline-item">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-4 h-4 bg-indigo-600 rounded-full"></div>
-                                        <div class="h-full w-0.5 {% if application.status in 'approved,rejected' %}bg-gray-300{% else %}bg-transparent{% endif %}"></div>
+                                        <div class="w-4 h-4 bg-indigo-600 rounded-full timeline-dot"></div>
+                                        <div class="h-full w-0.5 {% if application.status in 'approved,rejected' %}bg-gray-300{% else %}bg-transparent{% endif %} timeline-line"></div>
                                     </div>
-                                    <div class="ml-4 mb-4">
+                                    <div class="ml-4">
                                         <p class="text-sm font-medium text-gray-900">Field Inspection Completed</p>
                                         <p class="text-xs text-gray-500">
                                             {{ application.review_date|date:"M d, Y H:i" }}
@@ -133,9 +168,9 @@
                                 {% endif %}
                                 
                                 {% if application.status in 'approved,rejected' %}
-                                <div class="flex">
+                                <div class="flex timeline-item">
                                     <div class="flex flex-col items-center">
-                                        <div class="w-4 h-4 {% if application.status == 'approved' %}bg-green-600{% else %}bg-red-600{% endif %} rounded-full"></div>
+                                        <div class="w-4 h-4 {% if application.status == 'approved' %}bg-green-600{% else %}bg-red-600{% endif %} rounded-full timeline-dot"></div>
                                         <div class="h-full w-0.5 bg-transparent"></div>
                                     </div>
                                     <div class="ml-4">
@@ -162,7 +197,7 @@
                         <div class="mb-6">
                             <h3 class="text-sm font-medium text-gray-500">Field Inspection Details</h3>
                             <div class="mt-2 bg-gray-50 p-3 rounded-lg">
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 inspection-grid">
                                     <div>
                                         <p class="text-xs text-gray-500">Coordinates</p>
                                         <p class="text-sm text-gray-900">{{ application.latitude|floatformat:6 }}, {{ application.longitude|floatformat:6 }}</p>
@@ -184,7 +219,7 @@
                     </div>
                     
                     <!-- Sidebar with Documents and Actions -->
-                    <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Documents & Actions</h2>
                         
                         <!-- Documents Section -->
@@ -194,18 +229,24 @@
                                 {% for document in documents %}
                                 <div class="flex items-center bg-gray-50 p-3 rounded-lg">
                                     <div class="text-gray-400 mr-3">
-                                        <i class="fas fa-file-alt"></i>
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
                                     </div>
                                     <div class="flex-1">
                                         <p class="text-sm font-medium text-gray-900">{{ document.get_document_type_display }}</p>
                                         <p class="text-xs text-gray-500">Uploaded on {{ document.uploaded_at|date:"M d, Y" }}</p>
                                     </div>
                                     <a href="{{ document.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-download"></i>
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                        </svg>
                                     </a>
                                 </div>
                                 {% empty %}
-                                <p class="text-sm text-gray-500">No documents available</p>
+                                <div class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg text-center">
+                                    No documents available
+                                </div>
                                 {% endfor %}
                             </div>
                         </div>
@@ -221,7 +262,10 @@
                                 <form action="{% url 'applications:assign_field_agent' application.id %}" method="post">
                                     {% csrf_token %}
                                     {{ assignment_form|crispy }}
-                                    <button type="submit" class="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <button type="submit" class="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
                                         Assign Agent
                                     </button>
                                 </form>
@@ -233,7 +277,10 @@
                             <div class="bg-indigo-50 p-4 rounded-lg mb-4">
                                 <h4 class="text-sm font-medium text-indigo-800 mb-2">Review Inspection Report</h4>
                                 <p class="text-xs text-indigo-700 mb-3">The field inspection has been completed. Please review the inspection details and make a final decision.</p>
-                                <a href="{% url 'applications:property_boundary_map' application.id %}" class="block w-full text-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 mb-2">
+                                <a href="{% url 'applications:property_boundary_map' application.id %}" class="block w-full text-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 mb-2 flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                    </svg>
                                     View Property Map
                                 </a>
                                 <!-- Add approve/reject buttons here if needed -->
@@ -245,7 +292,10 @@
                             <div class="bg-blue-50 p-4 rounded-lg mb-4">
                                 <h4 class="text-sm font-medium text-blue-800 mb-2">Conduct Field Inspection</h4>
                                 <p class="text-xs text-blue-700 mb-3">You have been assigned to conduct a field inspection for this application.</p>
-                                <a href="{% url 'applications:field_inspection' application.id %}" class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <a href="{% url 'applications:field_inspection' application.id %}" class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                    </svg>
                                     Start Field Inspection
                                 </a>
                             </div>
@@ -256,7 +306,10 @@
                             <div class="bg-green-50 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-green-800 mb-2">Application Approved</h4>
                                 <p class="text-xs text-green-700 mb-3">Your application has been approved and the title has been issued.</p>
-                                <a href="{% url 'applications:parcel_title_list' %}" class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                <a href="{% url 'applications:parcel_title_list' %}" class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
                                     View My Titles
                                 </a>
                             </div>
@@ -267,7 +320,10 @@
                             <div class="bg-red-50 p-4 rounded-lg">
                                 <h4 class="text-sm font-medium text-red-800 mb-2">Application Rejected</h4>
                                 <p class="text-xs text-red-700 mb-3">Your application has been rejected. Please review the feedback and consider reapplying.</p>
-                                <a href="{% url 'applications:parcel_application_create' %}" class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                <a href="{% url 'applications:parcel_application_create' %}" class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
                                     Submit New Application
                                 </a>
                             </div>
