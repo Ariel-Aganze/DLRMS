@@ -86,6 +86,16 @@ class ParcelApplication(models.Model):
     property_type = models.CharField(max_length=100)
     application_type = models.CharField(max_length=30, choices=APPLICATION_TYPE_CHOICES)
     
+    # ADD THESE NEW FIELDS:
+    # Link to created parcel (after approval)
+    parcel = models.ForeignKey('land_management.LandParcel', on_delete=models.SET_NULL, 
+                              null=True, blank=True, related_name='source_applications')
+    
+    # Coordinate and size data (from field inspection)
+    latitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7, blank=True, null=True)
+    size_hectares = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
+    
     # Status and Processing
     status = models.CharField(max_length=20, choices=APPLICATION_STATUS_CHOICES, default='submitted')
     field_agent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_applications')

@@ -3,6 +3,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from .models import ParcelApplication, ParcelDocument
 from land_management.models import LandParcel
+from django.contrib.auth import get_user_model
+
 
 class ParcelApplicationForm(forms.ModelForm):
     """Form for submitting a parcel application"""

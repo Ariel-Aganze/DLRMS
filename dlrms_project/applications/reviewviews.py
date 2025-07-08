@@ -969,7 +969,7 @@ def registry_approval(request, application_id):
             parcel = None
             title = None
             if decision == 'approve':
-                # Generate a unique parcel ID first
+                # Generate a unique parcel ID
                 parcel_id = f"PCL-{application.application_number}"
                 
                 try:
@@ -978,8 +978,8 @@ def registry_approval(request, application_id):
                     latitude = application.latitude if application.latitude is not None else -1.9441
                     longitude = application.longitude if application.longitude is not None else 30.0619
                     
-                    # Create land parcel with safe float conversions
-                    parcel = LandParcel(
+                    # Create land parcel
+                    parcel = LandParcel.objects.create(
                         parcel_id=parcel_id,
                         owner=application.applicant,
                         location=application.property_address,
@@ -995,7 +995,6 @@ def registry_approval(request, application_id):
                         registration_date=timezone.now(),
                         registered_by=request.user
                     )
-                    parcel.save()
                     
                     # Link parcel to application
                     application.parcel = parcel
@@ -1023,10 +1022,13 @@ def registry_approval(request, application_id):
                         parcel.active_title_expiry = expiry_date
                     parcel.save()
                     
+                    print(f"Successfully created parcel {parcel.parcel_id} and title {title.title_number}")
+                    
                 except Exception as e:
                     print(f"Error creating parcel/title: {str(e)}")
                     import traceback
                     traceback.print_exc()
+                    raise  # Re-raise to trigger rollback
             
             # Create notifications for all parties
             notifications_to_create = []
@@ -1044,7 +1046,7 @@ def registry_approval(request, application_id):
             notifications_to_create.append(
                 Notification(
                     recipient=application.applicant,
-                    title=f'Application {decision.title()}',
+                    title=f'Application {decision.title()}d',
                     message=message,
                     notification_type='application_status',
                     priority=priority,
@@ -1058,7 +1060,7 @@ def registry_approval(request, application_id):
                 notifications_to_create.append(
                     Notification(
                         recipient=application.field_agent,
-                        title=f'Application {decision.title()}',
+                        title=f'Application {decision.title()}d',
                         message=f'Application {application.application_number} that you inspected has been {decision}d',
                         notification_type='application_status',
                         sender=request.user
@@ -1075,7 +1077,7 @@ def registry_approval(request, application_id):
                 notifications_to_create.append(
                     Notification(
                         recipient=officer,
-                        title=f'Application {decision.title()} by Registry',
+                        title=f'Application {decision.title()}d by Registry',
                         message=f'Application {application.application_number} has been {decision}d by {request.user.get_full_name()}',
                         notification_type='application_status',
                         sender=request.user
@@ -1095,7 +1097,8 @@ def registry_approval(request, application_id):
             
             if decision == 'approve' and title:
                 response_data['title_number'] = title.title_number
-                response_data['message'] = f'Application approved successfully. Title {title.title_number} has been issued.'
+                response_data['parcel_id'] = parcel.parcel_id
+                response_data['message'] = f'Application approved successfully. Title {title.title_number} has been issued for parcel {parcel.parcel_id}.'
             
             return JsonResponse(response_data)
             

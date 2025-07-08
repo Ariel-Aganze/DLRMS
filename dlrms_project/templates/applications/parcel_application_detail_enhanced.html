@@ -647,6 +647,71 @@
 
 {% block extra_js %}
 <script>
+    // Define helper functions at the top - BEFORE they are used
+    
+    // Get CSRF token from cookies
+    function getCsrfToken() {
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Toast notification
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const bgColor = {
+            'success': 'bg-green-500',
+            'error': 'bg-red-500',
+            'warning': 'bg-yellow-500',
+            'info': 'bg-blue-500'
+        }[type] || 'bg-blue-500';
+        
+        toast.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 
+                              type === 'error' ? 'exclamation-circle' : 
+                              type === 'warning' ? 'exclamation-triangle' : 
+                              'info-circle'} mr-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
+            document.body.appendChild(toastContainer);
+        }
+        
+        toastContainer.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full');
+        }, 10);
+        
+        // Remove after 4 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 4000);
+    }
+
     // Main initialization when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
         console.log("Document loaded, initializing components...");
@@ -664,88 +729,99 @@
         const registrySubmitBtn = document.getElementById('registry-submit-btn');
         
         if (registrySubmitBtn) {
-    console.log("Registry submit button found, adding event listener");
-    
-    registrySubmitBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // Prevent any default action
-        console.log("Registry submit button clicked");
-        
-        // Validate input
-        let decision = '';
-        const registryApproveBtn = document.getElementById('registry-approve');
-        const registryRejectBtn = document.getElementById('registry-reject');
-        
-        if (registryApproveBtn && registryApproveBtn.checked) {
-            decision = 'approve';
-        } else if (registryRejectBtn && registryRejectBtn.checked) {
-            decision = 'reject';
+            console.log("Registry submit button found, adding event listener");
+            
+            registrySubmitBtn.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent any default action
+                console.log("Registry submit button clicked");
+                
+                // Validate input
+                let decision = '';
+                const registryApproveBtn = document.getElementById('registry-approve');
+                const registryRejectBtn = document.getElementById('registry-reject');
+                
+                if (registryApproveBtn && registryApproveBtn.checked) {
+                    decision = 'approve';
+                } else if (registryRejectBtn && registryRejectBtn.checked) {
+                    decision = 'reject';
+                }
+                
+                console.log("Selected decision:", decision);
+                
+                if (!decision) {
+                    showToast('Please select a decision (approve or reject).', 'error');
+                    return;
+                }
+                
+                // Get application ID from the button data attribute
+                const appId = registrySubmitBtn.getAttribute('data-app-id');
+                console.log("Application ID:", appId);
+                
+                if (!appId) {
+                    showToast('Application ID not found.', 'error');
+                    return;
+                }
+                
+                // Prepare data
+                const data = {
+                    decision: decision,
+                    notes: document.getElementById('registry-notes') ? document.getElementById('registry-notes').value : ''
+                };
+                
+                console.log("Data to send:", data);
+                
+                // Show loading state
+                registrySubmitBtn.disabled = true;
+                registrySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+                
+                // Construct the URL
+                const url = `/applications/review/api/applications/${appId}/registry-approval/`;
+                console.log("API URL:", url);
+                
+                // Send request to server
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    console.log("Response status:", response.status);
+                    console.log("Response headers:", response.headers);
+                    
+                    // Check if response is ok
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Response data:", data);
+                    if (data.success) {
+                        showToast(data.message || 'Application processed successfully!', 'success');
+                        // Refresh page after short delay to show updated status
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showToast(data.message || 'An error occurred during processing.', 'error');
+                        registrySubmitBtn.disabled = false;
+                        registrySubmitBtn.innerHTML = 'Submit Decision';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('An error occurred. Please check the console for details.', 'error');
+                    registrySubmitBtn.disabled = false;
+                    registrySubmitBtn.innerHTML = 'Submit Decision';
+                });
+            });
+        } else {
+            console.log("Registry submit button not found");
         }
-        
-        console.log("Selected decision:", decision);
-        
-        if (!decision) {
-            showToast('Please select a decision (approve or reject).', 'error');
-            return;
-        }
-        
-        // Get application ID from the button data attribute
-        const appId = registrySubmitBtn.getAttribute('data-app-id');
-        console.log("Application ID:", appId);
-        
-        // Prepare data
-        const data = {
-            decision: decision,
-            notes: document.getElementById('registry-notes') ? document.getElementById('registry-notes').value : ''
-        };
-        
-        console.log("Data to send:", data);
-        
-        // Show loading state
-        registrySubmitBtn.disabled = true;
-        registrySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-        
-        // Construct the URL
-        const url = `/applications/review/api/applications/${appId}/registry-approval/`;
-        console.log("API URL:", url);
-        
-        // Send request to server
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            console.log("Response status:", response.status);
-            console.log("Response headers:", response.headers);
-            return response.json();
-        })
-        .then(data => {
-            console.log("Response data:", data);
-            if (data.success) {
-                showToast(data.message, 'success');
-                // Refresh page after short delay to show updated status
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                showToast(data.message || 'An error occurred during processing.', 'error');
-                registrySubmitBtn.disabled = false;
-                registrySubmitBtn.innerHTML = 'Submit Decision';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('An error occurred. Please check the console for details.', 'error');
-            registrySubmitBtn.disabled = false;
-            registrySubmitBtn.innerHTML = 'Submit Decision';
-        });
-    });
-} else {
-    console.log("Registry submit button not found");
-}
     });
 
     // Initialize map modal event handlers
@@ -1181,69 +1257,6 @@
             const alert = alertContainer.querySelector('div[role="alert"]');
             if (alert) alert.remove();
         }, 5000);
-    }
-    
-    // Toast notification
-    function showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        const bgColor = {
-            'success': 'bg-green-500',
-            'error': 'bg-red-500',
-            'warning': 'bg-yellow-500',
-            'info': 'bg-blue-500'
-        }[type] || 'bg-blue-500';
-        
-        toast.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full`;
-        toast.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                              type === 'error' ? 'exclamation-circle' : 
-                              type === 'warning' ? 'exclamation-triangle' : 
-                              'info-circle'} mr-2"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        
-        // Create toast container if it doesn't exist
-        let toastContainer = document.getElementById('toastContainer');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toastContainer';
-            toastContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
-            document.body.appendChild(toastContainer);
-        }
-        
-        toastContainer.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => {
-            toast.classList.remove('translate-x-full');
-        }, 10);
-        
-        // Remove after 4 seconds
-        setTimeout(() => {
-            toast.classList.add('translate-x-full');
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
-        }, 4000);
-    }
-    
-    // Get CSRF token from cookies
-    function getCsrfToken() {
-        const name = 'csrftoken';
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
     }
 </script>
 {% endblock %}
