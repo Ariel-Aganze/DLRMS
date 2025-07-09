@@ -90,7 +90,7 @@ class GenerateCertificateView(LoginRequiredMixin, View):
         # Get signature data from POST
         signature_data = request.POST.get('signature_data')
         if not signature_data:
-            messages.error(request, 'Please provide a signature before generating the certificate.')
+            # messages.error(request, 'Please provide a signature before generating the certificate.')
             return redirect('certificates:generate_certificate', application_id=application_id)
         
         try:

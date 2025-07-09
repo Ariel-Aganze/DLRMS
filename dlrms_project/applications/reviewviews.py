@@ -923,6 +923,8 @@ class ApplicationsReportView(RoleRequiredMixin, LoginRequiredMixin, TemplateView
 @require_POST
 def registry_approval(request, application_id):
     """View for registry officers to make final approval/rejection after inspection"""
+    print(f"Registry approval called for application {application_id}")
+    
     if request.user.role not in ['registry_officer', 'admin']:
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
@@ -939,6 +941,8 @@ def registry_approval(request, application_id):
         data = json.loads(request.body)
         decision = data.get('decision')
         additional_notes = data.get('notes', '')
+        
+        print(f"Decision: {decision}, Notes: {additional_notes}")
         
         if decision not in ['approve', 'reject']:
             return JsonResponse({
@@ -965,6 +969,8 @@ def registry_approval(request, application_id):
             application.review_date = timezone.now()
             application.save()
             
+            print(f"Application status updated to: {application.status}")
+            
             # If approved, create land parcel and title
             parcel = None
             title = None
@@ -983,6 +989,7 @@ def registry_approval(request, application_id):
                     try:
                         from land_management.models import ParcelBoundary
                         boundary = ParcelBoundary.objects.filter(application=application).first()
+                        print(f"Boundary found: {boundary is not None}")
                     except Exception as e:
                         print(f"Could not retrieve boundary: {e}")
                     
@@ -998,17 +1005,39 @@ def registry_approval(request, application_id):
                         longitude = float(application.longitude) if application.longitude else 30.0619
                         size_hectares = float(application.size_hectares) if application.size_hectares else 1.0
                     
-                    # Extract location details from property address if possible
-                    # You might want to parse the address or add these fields to ParcelApplication
+                    print(f"Coordinates: lat={latitude}, lng={longitude}, size={size_hectares}")
+                    
+                    # Extract location details from property address
                     property_parts = application.property_address.split(',') if application.property_address else []
+                    
+                    # Map property_type string to valid LandParcel choices
+                    property_type_text = application.property_type.lower() if application.property_type else 'residential'
+                    
+                    # Create mapping for common property types
+                    property_type_map = {
+                        'residential': 'residential',
+                        'commercial': 'commercial',
+                        'agricultural': 'agricultural',
+                        'industrial': 'industrial',
+                        'mixed': 'mixed',
+                        'mixed use': 'mixed',
+                        'agriculture': 'agricultural',
+                        'residence': 'residential',
+                        'commerce': 'commercial',
+                        'industry': 'industrial'
+                    }
+                    
+                    # Get the mapped property type or default to residential
+                    property_type = property_type_map.get(property_type_text, 'residential')
+                    
+                    print(f"Creating parcel with property_type: {property_type}")
                     
                     # Create land parcel
                     parcel = LandParcel(
                         parcel_id=parcel_id,
                         owner=application.applicant,
                         location=application.property_address,
-                        property_type=application.property_type,
-                        # Use default values or parse from address
+                        property_type=property_type,
                         district=property_parts[1].strip() if len(property_parts) > 1 else 'Kigali',
                         sector=property_parts[2].strip() if len(property_parts) > 2 else 'Default Sector',
                         cell=property_parts[3].strip() if len(property_parts) > 3 else 'Default Cell',
@@ -1022,16 +1051,11 @@ def registry_approval(request, application_id):
                     )
                     parcel.save()
                     
+                    print(f"Parcel created: {parcel.parcel_id}")
+                    
                     # Link parcel to application
                     application.parcel = parcel
                     application.save()
-                    
-                    # If boundary exists, update it to link to the parcel
-                    # This maintains the relationship for future reference
-                    if boundary:
-                        # You might want to create a relationship between boundary and parcel
-                        # For now, we've stored the coordinates in the parcel itself
-                        pass
                     
                     # Determine title type and expiry
                     title_type = application.application_type
@@ -1055,18 +1079,17 @@ def registry_approval(request, application_id):
                         parcel.active_title_expiry = expiry_date
                     parcel.save()
                     
-                    print(f"Successfully created parcel {parcel.parcel_id} and title {title.title_number}")
-                    print(f"Parcel coordinates: lat={latitude}, lng={longitude}, size={size_hectares} hectares")
+                    print(f"Title created: {title.title_number}")
                     
                 except Exception as e:
                     print(f"Error creating parcel/title: {str(e)}")
                     import traceback
                     traceback.print_exc()
                     
-                    # Don't fail the entire transaction, but log the error
+                    # Return error but keep the application status updated
                     return JsonResponse({
                         'success': False,
-                        'message': f'Application status updated but failed to create parcel/title: {str(e)}'
+                        'message': f'Application approved but failed to create parcel/title: {str(e)}'
                     }, status=500)
             
             # Create notifications for all parties
@@ -1114,7 +1137,8 @@ def registry_approval(request, application_id):
                 )
             
             # Bulk create notifications
-            Notification.objects.bulk_create(notifications_to_create)
+            if notifications_to_create:
+                Notification.objects.bulk_create(notifications_to_create)
             
             # Prepare success response
             response_message = f'Application successfully {decision}d!'

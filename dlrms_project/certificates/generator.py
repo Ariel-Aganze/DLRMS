@@ -59,53 +59,94 @@ class CertificateGenerator:
             leading=14
         ))
     
+    def _add_official_seal_overlay(self, canvas, certificate):
+        """Add official seal as an overlay on the certificate"""
+        seal_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'armoiries_rdc.png')
+        official_seal_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'seal.png')
+        
+        if os.path.exists(seal_path):
+        # Main seal - bottom center of the certificate
+            canvas.saveState()
+        
+        # Set transparency for the seal
+            canvas.setFillAlpha(0.3)  # opacity for watermark effect
+        
+        # Large seal in the center-bottom area
+            seal_size = 5.5 * inch
+            seal_x = (self.page_width - seal_size) / 2
+            seal_y = 3 * inch
+        
+            canvas.drawImage(seal_path, seal_x, seal_y, 
+                            width=seal_size, height=seal_size, 
+                            preserveAspectRatio=True, mask='auto')
+        
+            canvas.restoreState()
+        
+        # Smaller, more opaque seal near signature area
+            canvas.saveState()
+            canvas.setFillAlpha(0.7)  # More visible for signature area
+        
+            small_seal_size = 1.2 * inch
+        # Position it to the left of signature area
+            small_seal_x = (self.page_width - small_seal_size) / 2
+            small_seal_y = 0.5 * inch
+        
+            canvas.drawImage(official_seal_path, small_seal_x, small_seal_y, 
+                            width=small_seal_size, height=small_seal_size, 
+                            preserveAspectRatio=True, mask='auto')
+        
+            canvas.restoreState()
+
     def generate_certificate(self, certificate, signature_data=None, signer_name=None, sign_date=None):
-        """Generate PDF certificate with optional embedded signature"""
+        """Generate PDF certificate with optional embedded signature and official seal"""
         buffer = BytesIO()
-        
-        # Create canvas
+    
+    # Create canvas
         c = canvas.Canvas(buffer, pagesize=A4)
-        
-        # Add watermark
+    
+    # Add watermark
         self._add_watermark(c)
-        
-        # Add border
+    
+    # Add border
         self._add_border(c)
-        
-        # Add header
+    
+    # Add header
         self._add_header(c, certificate)
-        
-        # Add QR code (smaller and repositioned)
+    
+    # Add QR code (smaller and repositioned)
         qr_image_path = self._generate_qr_code(certificate)
         c.drawImage(qr_image_path, self.page_width - 2*inch, self.page_height - 2*inch, 
                     width=1*inch, height=1*inch)
-        
-        # Clean up temporary file
+    
+    # Clean up temporary file
         if os.path.exists(qr_image_path):
             os.unlink(qr_image_path)
-        
-        # Add certificate content
+    
+    # Add certificate content
         if certificate.certificate_type == 'property_contract':
             self._add_property_contract_content(c, certificate)
         else:
             self._add_parcel_certificate_content(c, certificate)
-        
-        # Add signatures section
+    
+    # Add official seal overlay (before signatures so it appears behind)
+        self._add_official_seal_overlay(c, certificate)
+    
+    # Add signatures section
         self._add_signatures_section(c, certificate, signature_data, signer_name, sign_date)
-        
-        # Add footer
+    
+    # Add footer
         self._add_footer(c, certificate)
-        
-        # Save PDF
+    
+    # Save PDF
         c.save()
-        
-        # Get PDF content
+    
+    # Get PDF content
         pdf_content = buffer.getvalue()
         buffer.close()
-        
-        # Calculate document hash
+    
+    # Calculate document hash
         document_hash = hashlib.sha256(pdf_content).hexdigest()
-        
+    
         return pdf_content, document_hash
     
     def _add_watermark(self, canvas):

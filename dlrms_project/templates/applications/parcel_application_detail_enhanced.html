@@ -327,10 +327,7 @@
         <p class="text-sm text-blue-700 mt-1">Field inspection has been completed. Please review and make a final decision.</p>
     </div>
     <div class="p-6">
-        <!-- Alert container for messages -->
-        <div id="alert-container"></div>
-        
-        <!-- CSRF Token -->
+        <!-- Add CSRF token -->
         {% csrf_token %}
         
         <div class="mb-4">
@@ -338,7 +335,9 @@
             <div class="p-4 bg-gray-50 rounded-lg">
                 <p class="text-gray-700 whitespace-pre-line">{{ application.review_notes }}</p>
                 <div class="mt-2 text-sm text-gray-500">
+                    {% if application.reviewed_by %}
                     Reported on {{ application.review_date|date:"M d, Y" }} by {{ application.reviewed_by.get_full_name }}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -361,11 +360,13 @@
                 </div>
                 <div>
                     <label for="registry-notes" class="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
-                    <textarea id="registry-notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Add any additional notes..."></textarea>
+                    <textarea id="registry-notes" rows="3" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                              placeholder="Add any additional notes..."></textarea>
                 </div>
             </div>
             
-            <!-- Fixed Submit Button with data-app-id attribute -->
+            <!-- IMPORTANT: Add data-app-id attribute to the button -->
             <div class="mt-6">
                 <button id="registry-submit-btn" 
                         type="button" 
@@ -675,7 +676,7 @@
                 }
             }
         }
-        // If not found in cookies, try to get from form
+        // Fallback to form input
         if (!cookieValue) {
             const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
             if (csrfInput) {
@@ -686,7 +687,7 @@
     }
     
     // Toast notification
-    function showToast(message, type = 'info') {
+   function showToast(message, type = 'info') {
         const toast = document.createElement('div');
         const bgColor = {
             'success': 'bg-green-500',
@@ -706,7 +707,6 @@
             </div>
         `;
         
-        // Create toast container if it doesn't exist
         let toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) {
             toastContainer = document.createElement('div');
@@ -717,12 +717,10 @@
         
         toastContainer.appendChild(toast);
         
-        // Animate in
         setTimeout(() => {
             toast.classList.remove('translate-x-full');
         }, 10);
         
-        // Remove after 4 seconds
         setTimeout(() => {
             toast.classList.add('translate-x-full');
             setTimeout(() => {
@@ -730,6 +728,87 @@
             }, 300);
         }, 4000);
     }
+
+
+    // Registry approval handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const registrySubmitBtn = document.getElementById('registry-submit-btn');
+        
+        if (registrySubmitBtn) {
+            registrySubmitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Get decision
+                let decision = '';
+                const approveRadio = document.getElementById('registry-approve');
+                const rejectRadio = document.getElementById('registry-reject');
+                
+                if (approveRadio && approveRadio.checked) {
+                    decision = 'approve';
+                } else if (rejectRadio && rejectRadio.checked) {
+                    decision = 'reject';
+                }
+                
+                if (!decision) {
+                    showToast('Please select a decision (approve or reject).', 'error');
+                    return;
+                }
+                
+                // Get application ID
+                const appId = this.getAttribute('data-app-id');
+                if (!appId) {
+                    showToast('Application ID not found. Please refresh the page.', 'error');
+                    return;
+                }
+                
+                // Get notes
+                const notes = document.getElementById('registry-notes').value || '';
+                
+                // Disable button and show loading
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+                
+                // Send request
+                fetch(`/applications/review/api/applications/${appId}/registry-approval/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        decision: decision,
+                        notes: notes
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || 'Application processed successfully!', 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error(data.message || 'Processing failed');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast(error.message || 'An error occurred. Please try again.', 'error');
+                    registrySubmitBtn.disabled = false;
+                    registrySubmitBtn.innerHTML = 'Submit Decision';
+                });
+            });
+        }
+    });
+
 
     // Main initialization when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
