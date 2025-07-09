@@ -24,6 +24,12 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.views.generic import DetailView
+from django.views.decorators.http import require_POST
+from land_management.models import ParcelBoundary
+
+
+
+
 
 class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
     """View for landowners to submit parcel applications"""
@@ -1099,3 +1105,108 @@ def direct_polygon_test(request, application_id):
             return HttpResponse(f"No boundary found for application {application_id}")
     except Exception as e:
         return HttpResponse(f"Error: {str(e)}")
+    
+@login_required
+@require_POST
+def complete_field_inspection(request, application_id):
+    """
+    Complete field inspection and update application with boundary data
+    This should be called when a surveyor completes the field inspection
+    """
+    if request.user.role not in ['surveyor', 'admin']:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        application = ParcelApplication.objects.get(pk=application_id)
+        
+        # Check if this is the assigned field agent
+        if request.user.role == 'surveyor' and application.field_agent != request.user:
+            return JsonResponse({'error': 'You are not assigned to this application'}, status=403)
+        
+        # Check if application is in field inspection status
+        if application.status != 'field_inspection':
+            return JsonResponse({
+                'success': False,
+                'message': f'Application is not in field inspection status. Current status: {application.status}'
+            }, status=400)
+        
+        # Get boundary data if it exists
+        try:
+            boundary = ParcelBoundary.objects.get(application=application)
+            
+            # Update application with boundary data
+            with transaction.atomic():
+                # Update coordinates and size from boundary
+                if boundary.center_lat and boundary.center_lng:
+                    application.latitude = boundary.center_lat
+                    application.longitude = boundary.center_lng
+                
+                if boundary.area_hectares:
+                    application.size_hectares = boundary.area_hectares
+                
+                # Update status to inspection completed
+                application.status = 'inspection_completed'
+                
+                # Add inspection notes
+                data = json.loads(request.body) if request.body else {}
+                inspection_notes = data.get('notes', '')
+                
+                inspection_report = f"\n\nField Inspection Report ({timezone.now().strftime('%Y-%m-%d %H:%M')}):\n"
+                inspection_report += f"Inspector: {request.user.get_full_name()}\n"
+                inspection_report += f"Coordinates: {application.latitude}, {application.longitude}\n"
+                inspection_report += f"Area: {application.size_hectares} hectares\n"
+                if inspection_notes:
+                    inspection_report += f"Notes: {inspection_notes}\n"
+                
+                if application.review_notes:
+                    application.review_notes += inspection_report
+                else:
+                    application.review_notes = inspection_report
+                
+                application.save()
+                
+                # Create notification for registry officers
+                registry_officers = User.objects.filter(
+                    role__in=['registry_officer', 'admin'],
+                    is_active=True
+                )
+                
+                for officer in registry_officers:
+                    Notification.objects.create(
+                        recipient=officer,
+                        title='Field Inspection Completed',
+                        message=f'Field inspection for application {application.application_number} has been completed and is ready for final review.',
+                        notification_type='application_status',
+                        sender=request.user
+                    )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Field inspection completed successfully',
+                    'application_id': application.id,
+                    'new_status': application.status,
+                    'coordinates': {
+                        'latitude': float(application.latitude) if application.latitude else None,
+                        'longitude': float(application.longitude) if application.longitude else None
+                    },
+                    'size_hectares': float(application.size_hectares) if application.size_hectares else None
+                })
+                
+        except ParcelBoundary.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'No boundary data found for this application. Please ensure boundary is mapped first.'
+            }, status=400)
+            
+    except ParcelApplication.DoesNotExist:
+        return JsonResponse({'error': 'Application not found'}, status=404)
+        
+    except Exception as e:
+        print(f"Error completing field inspection: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'success': False,
+            'message': f'An error occurred: {str(e)}'
+        }, status=500)

@@ -973,32 +973,65 @@ def registry_approval(request, application_id):
                 parcel_id = f"PCL-{application.application_number}"
                 
                 try:
-                    # Get values with proper None handling and defaults
-                    size_hectares = application.size_hectares if application.size_hectares is not None else 1.0
-                    latitude = application.latitude if application.latitude is not None else -1.9441
-                    longitude = application.longitude if application.longitude is not None else 30.0619
+                    # Check if parcel already exists
+                    existing_parcel = LandParcel.objects.filter(parcel_id=parcel_id).first()
+                    if existing_parcel:
+                        parcel_id = f"PCL-{application.application_number}-{int(timezone.now().timestamp())}"
+                    
+                    # Get boundary data if it exists
+                    boundary = None
+                    try:
+                        from land_management.models import ParcelBoundary
+                        boundary = ParcelBoundary.objects.filter(application=application).first()
+                    except Exception as e:
+                        print(f"Could not retrieve boundary: {e}")
+                    
+                    # Get coordinates and size - prefer boundary data, then application data, then defaults
+                    if boundary:
+                        # Use boundary data if available
+                        latitude = float(boundary.center_lat) if boundary.center_lat else -1.9441
+                        longitude = float(boundary.center_lng) if boundary.center_lng else 30.0619
+                        size_hectares = float(boundary.area_hectares) if boundary.area_hectares else 1.0
+                    else:
+                        # Fall back to application data
+                        latitude = float(application.latitude) if application.latitude else -1.9441
+                        longitude = float(application.longitude) if application.longitude else 30.0619
+                        size_hectares = float(application.size_hectares) if application.size_hectares else 1.0
+                    
+                    # Extract location details from property address if possible
+                    # You might want to parse the address or add these fields to ParcelApplication
+                    property_parts = application.property_address.split(',') if application.property_address else []
                     
                     # Create land parcel
-                    parcel = LandParcel.objects.create(
+                    parcel = LandParcel(
                         parcel_id=parcel_id,
                         owner=application.applicant,
                         location=application.property_address,
                         property_type=application.property_type,
-                        district='North Kivu',  # Default values
-                        sector='Default Sector',
-                        cell='Default Cell',
-                        village='Default Village',
-                        size_hectares=float(size_hectares),
-                        latitude=float(latitude),
-                        longitude=float(longitude),
+                        # Use default values or parse from address
+                        district=property_parts[1].strip() if len(property_parts) > 1 else 'Kigali',
+                        sector=property_parts[2].strip() if len(property_parts) > 2 else 'Default Sector',
+                        cell=property_parts[3].strip() if len(property_parts) > 3 else 'Default Cell',
+                        village=property_parts[4].strip() if len(property_parts) > 4 else 'Default Village',
+                        size_hectares=size_hectares,
+                        latitude=latitude,
+                        longitude=longitude,
                         status='registered',
                         registration_date=timezone.now(),
                         registered_by=request.user
                     )
+                    parcel.save()
                     
                     # Link parcel to application
                     application.parcel = parcel
                     application.save()
+                    
+                    # If boundary exists, update it to link to the parcel
+                    # This maintains the relationship for future reference
+                    if boundary:
+                        # You might want to create a relationship between boundary and parcel
+                        # For now, we've stored the coordinates in the parcel itself
+                        pass
                     
                     # Determine title type and expiry
                     title_type = application.application_type
@@ -1023,12 +1056,18 @@ def registry_approval(request, application_id):
                     parcel.save()
                     
                     print(f"Successfully created parcel {parcel.parcel_id} and title {title.title_number}")
+                    print(f"Parcel coordinates: lat={latitude}, lng={longitude}, size={size_hectares} hectares")
                     
                 except Exception as e:
                     print(f"Error creating parcel/title: {str(e)}")
                     import traceback
                     traceback.print_exc()
-                    raise  # Re-raise to trigger rollback
+                    
+                    # Don't fail the entire transaction, but log the error
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'Application status updated but failed to create parcel/title: {str(e)}'
+                    }, status=500)
             
             # Create notifications for all parties
             notifications_to_create = []
@@ -1038,80 +1077,71 @@ def registry_approval(request, application_id):
                 message = f'Congratulations! Your application {application.application_number} has been approved.'
                 if title:
                     message += f' Title {title.title_number} has been issued.'
-                priority = 'high'
-            else:
-                message = f'Your application {application.application_number} has been rejected. Review notes: {additional_notes}'
-                priority = 'normal'
-            
-            notifications_to_create.append(
-                Notification(
-                    recipient=application.applicant,
-                    title=f'Application {decision.title()}d',
-                    message=message,
-                    notification_type='application_status',
-                    priority=priority,
-                    related_parcel=parcel,  # Only link parcel if created
-                    sender=request.user
+                
+                notifications_to_create.append(
+                    Notification(
+                        recipient=application.applicant,
+                        title='Application Approved',
+                        message=message,
+                        notification_type='application_status',
+                        priority='high',
+                        related_parcel=parcel,
+                        sender=request.user
+                    )
                 )
-            )
+            else:
+                notifications_to_create.append(
+                    Notification(
+                        recipient=application.applicant,
+                        title='Application Rejected',
+                        message=f'Your application {application.application_number} has been rejected. Reason: {additional_notes}',
+                        notification_type='application_status',
+                        priority='high',
+                        sender=request.user
+                    )
+                )
             
-            # 2. Notify the field agent who did the inspection
+            # 2. Notify field agent who did the inspection
             if application.field_agent:
                 notifications_to_create.append(
                     Notification(
                         recipient=application.field_agent,
-                        title=f'Application {decision.title()}d',
-                        message=f'Application {application.application_number} that you inspected has been {decision}d',
+                        title=f'Application {decision.capitalize()}d',
+                        message=f'Application {application.application_number} that you inspected has been {decision}d by registry.',
                         notification_type='application_status',
                         sender=request.user
                     )
                 )
             
-            # 3. Notify other registry officers and admin (excluding the current user)
-            other_officers = User.objects.filter(
-                role__in=['registry_officer', 'admin'], 
-                is_active=True
-            ).exclude(id=request.user.id)
-            
-            for officer in other_officers:
-                notifications_to_create.append(
-                    Notification(
-                        recipient=officer,
-                        title=f'Application {decision.title()}d by Registry',
-                        message=f'Application {application.application_number} has been {decision}d by {request.user.get_full_name()}',
-                        notification_type='application_status',
-                        sender=request.user
-                    )
-                )
-            
-            # Bulk create all notifications
+            # Bulk create notifications
             Notification.objects.bulk_create(notifications_to_create)
             
-            # Prepare response
-            response_data = {
+            # Prepare success response
+            response_message = f'Application successfully {decision}d!'
+            if decision == 'approve' and parcel and title:
+                response_message += f' Parcel {parcel.parcel_id} and Title {title.title_number} created.'
+            
+            return JsonResponse({
                 'success': True,
-                'message': f'Application {decision}d successfully!',
+                'message': response_message,
                 'application_id': application.id,
-                'new_status': application.status
-            }
-            
-            if decision == 'approve' and title:
-                response_data['title_number'] = title.title_number
-                response_data['parcel_id'] = parcel.parcel_id
-                response_data['message'] = f'Application approved successfully. Title {title.title_number} has been issued for parcel {parcel.parcel_id}.'
-            
-            return JsonResponse(response_data)
+                'new_status': application.status,
+                'parcel_id': parcel.parcel_id if parcel else None,
+                'title_number': title.title_number if title else None
+            })
             
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False,
-            'message': 'Invalid request data.'
+            'message': 'Invalid JSON data'
         }, status=400)
+        
     except Exception as e:
-        print(f"Error in registry approval: {str(e)}")
+        print(f"Unexpected error in registry_approval: {str(e)}")
         import traceback
         traceback.print_exc()
+        
         return JsonResponse({
             'success': False,
-            'message': f'Error processing application: {str(e)}'
+            'message': f'An unexpected error occurred: {str(e)}'
         }, status=500)

@@ -321,52 +321,64 @@
                         
                         <!-- Registry Approval Panel (only shown for inspection_completed status) -->
                         {% if application.status == 'inspection_completed' and user.role in 'registry_officer,admin' %}
-                        <div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
-                            <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
-                                <h3 class="text-lg font-medium text-blue-900">Registry Officer Approval</h3>
-                                <p class="text-sm text-blue-700 mt-1">Field inspection has been completed. Please review and make a final decision.</p>
-                            </div>
-                            <div class="p-6">
-                                <div class="mb-4">
-                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Field Agent Report</h4>
-                                    <div class="p-4 bg-gray-50 rounded-lg">
-                                        <p class="text-gray-700 whitespace-pre-line">{{ application.review_notes }}</p>
-                                        <div class="mt-2 text-sm text-gray-500">
-                                            Reported on {{ application.review_date|date:"M d, Y" }} by {{ application.reviewed_by.get_full_name }}
-                                        </div>
-                                    </div>
-                                </div>
+<div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b border-gray-200 bg-blue-50">
+        <h3 class="text-lg font-medium text-blue-900">Registry Officer Approval</h3>
+        <p class="text-sm text-blue-700 mt-1">Field inspection has been completed. Please review and make a final decision.</p>
+    </div>
+    <div class="p-6">
+        <!-- Alert container for messages -->
+        <div id="alert-container"></div>
+        
+        <!-- CSRF Token -->
+        {% csrf_token %}
+        
+        <div class="mb-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Field Agent Report</h4>
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-gray-700 whitespace-pre-line">{{ application.review_notes }}</p>
+                <div class="mt-2 text-sm text-gray-500">
+                    Reported on {{ application.review_date|date:"M d, Y" }} by {{ application.reviewed_by.get_full_name }}
+                </div>
+            </div>
+        </div>
 
-                                <div class="mt-6">
-                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Make Decision</h4>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">Decision</label>
-                                            <div class="space-y-2">
-                                                <div class="flex items-center">
-                                                    <input type="radio" id="registry-approve" name="registry-decision" value="approve" class="h-4 w-4 text-blue-600">
-                                                    <label for="registry-approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
-                                                </div>
-                                                <div class="flex items-center">
-                                                    <input type="radio" id="registry-reject" name="registry-decision" value="reject" class="h-4 w-4 text-red-600">
-                                                    <label for="registry-reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label for="registry-notes" class="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
-                                            <textarea id="registry-notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 flex justify-end">
-                                        <button id="registry-submit-btn" data-app-id="{{ application.id }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                            Submit Decision
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+        <div class="mt-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Make Decision</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Decision</label>
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="radio" id="registry-approve" name="registry-decision" value="approve" class="h-4 w-4 text-blue-600">
+                            <label for="registry-approve" class="ml-2 block text-sm text-gray-900">Approve Application</label>
                         </div>
-                        {% endif %}
+                        <div class="flex items-center">
+                            <input type="radio" id="registry-reject" name="registry-decision" value="reject" class="h-4 w-4 text-red-600">
+                            <label for="registry-reject" class="ml-2 block text-sm text-gray-900">Reject Application</label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="registry-notes" class="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+                    <textarea id="registry-notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Add any additional notes..."></textarea>
+                </div>
+            </div>
+            
+            <!-- Fixed Submit Button with data-app-id attribute -->
+            <div class="mt-6">
+                <button id="registry-submit-btn" 
+                        type="button" 
+                        data-app-id="{{ application.id }}"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Submit Decision
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
                     </div>
 
                     <!-- Right Column - Documents and Actions -->
@@ -663,6 +675,13 @@
                 }
             }
         }
+        // If not found in cookies, try to get from form
+        if (!cookieValue) {
+            const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfInput) {
+                cookieValue = csrfInput.value;
+            }
+        }
         return cookieValue;
     }
     
@@ -725,104 +744,150 @@
             initializeMap();
         }
         
-        // Registry approval form handler
+        // Registry approval form handler - FIXED VERSION
+        setupRegistryApproval();
+    });
+
+    // Separate function for setting up registry approval to ensure proper initialization
+    function setupRegistryApproval() {
         const registrySubmitBtn = document.getElementById('registry-submit-btn');
         
         if (registrySubmitBtn) {
-            console.log("Registry submit button found, adding event listener");
+            console.log("Registry submit button found");
             
-            registrySubmitBtn.addEventListener('click', function(e) {
-                e.preventDefault(); // Prevent any default action
-                console.log("Registry submit button clicked");
-                
-                // Validate input
-                let decision = '';
-                const registryApproveBtn = document.getElementById('registry-approve');
-                const registryRejectBtn = document.getElementById('registry-reject');
-                
-                if (registryApproveBtn && registryApproveBtn.checked) {
-                    decision = 'approve';
-                } else if (registryRejectBtn && registryRejectBtn.checked) {
-                    decision = 'reject';
-                }
-                
-                console.log("Selected decision:", decision);
-                
-                if (!decision) {
-                    showToast('Please select a decision (approve or reject).', 'error');
-                    return;
-                }
-                
-                // Get application ID from the button data attribute
-                const appId = registrySubmitBtn.getAttribute('data-app-id');
-                console.log("Application ID:", appId);
-                
-                if (!appId) {
-                    showToast('Application ID not found.', 'error');
-                    return;
-                }
-                
-                // Prepare data
-                const data = {
-                    decision: decision,
-                    notes: document.getElementById('registry-notes') ? document.getElementById('registry-notes').value : ''
-                };
-                
-                console.log("Data to send:", data);
-                
-                // Show loading state
-                registrySubmitBtn.disabled = true;
-                registrySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-                
-                // Construct the URL
-                const url = `/applications/review/api/applications/${appId}/registry-approval/`;
-                console.log("API URL:", url);
-                
-                // Send request to server
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => {
-                    console.log("Response status:", response.status);
-                    console.log("Response headers:", response.headers);
-                    
-                    // Check if response is ok
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("Response data:", data);
-                    if (data.success) {
-                        showToast(data.message || 'Application processed successfully!', 'success');
-                        // Refresh page after short delay to show updated status
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        showToast(data.message || 'An error occurred during processing.', 'error');
-                        registrySubmitBtn.disabled = false;
-                        registrySubmitBtn.innerHTML = 'Submit Decision';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('An error occurred. Please check the console for details.', 'error');
-                    registrySubmitBtn.disabled = false;
-                    registrySubmitBtn.innerHTML = 'Submit Decision';
-                });
-            });
+            // Remove any existing event listeners
+            const newBtn = registrySubmitBtn.cloneNode(true);
+            registrySubmitBtn.parentNode.replaceChild(newBtn, registrySubmitBtn);
+            
+            // Add the click event listener
+            newBtn.addEventListener('click', handleRegistrySubmit);
+            
+            console.log("Registry submit button event listener added");
         } else {
-            console.log("Registry submit button not found");
+            console.log("Registry submit button not found - checking again in 500ms");
+            // Try again after a short delay in case the element is loaded dynamically
+            setTimeout(setupRegistryApproval, 500);
         }
-    });
+    }
+
+    // Separate handler function for registry submission
+    function handleRegistrySubmit(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log("Registry submit button clicked");
+        
+        const registrySubmitBtn = e.currentTarget;
+        
+        // Validate input
+        let decision = '';
+        const registryApproveBtn = document.getElementById('registry-approve');
+        const registryRejectBtn = document.getElementById('registry-reject');
+        
+        if (registryApproveBtn && registryApproveBtn.checked) {
+            decision = 'approve';
+        } else if (registryRejectBtn && registryRejectBtn.checked) {
+            decision = 'reject';
+        }
+        
+        console.log("Selected decision:", decision);
+        
+        if (!decision) {
+            showToast('Please select a decision (approve or reject).', 'error');
+            return;
+        }
+        
+        // Get application ID - try multiple methods
+        let appId = registrySubmitBtn.getAttribute('data-app-id');
+        if (!appId) {
+            // Try to get from URL
+            const urlMatch = window.location.pathname.match(/\/applications\/parcel\/(\d+)\//);
+            if (urlMatch) {
+                appId = urlMatch[1];
+            }
+        }
+        
+        console.log("Application ID:", appId);
+        
+        if (!appId) {
+            showToast('Application ID not found. Please refresh the page.', 'error');
+            console.error("Could not find application ID");
+            return;
+        }
+        
+        // Get notes
+        const notesElement = document.getElementById('registry-notes');
+        const notes = notesElement ? notesElement.value : '';
+        
+        // Prepare data
+        const data = {
+            decision: decision,
+            notes: notes
+        };
+        
+        console.log("Data to send:", data);
+        
+        // Get CSRF token
+        const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            showToast('CSRF token not found. Please refresh the page.', 'error');
+            console.error("CSRF token not found");
+            return;
+        }
+        
+        // Show loading state
+        registrySubmitBtn.disabled = true;
+        registrySubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+        
+        // Construct the URL
+        const url = `/applications/review/api/applications/${appId}/registry-approval/`;
+        console.log("API URL:", url);
+        console.log("CSRF Token:", csrfToken);
+        
+        // Send request to server
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            console.log("Response status:", response.status);
+            console.log("Response ok:", response.ok);
+            
+            // Try to parse JSON regardless of status
+            return response.json().then(data => {
+                if (!response.ok) {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                }
+                return data;
+            });
+        })
+        .then(data => {
+            console.log("Response data:", data);
+            if (data.success) {
+                showToast(data.message || 'Application processed successfully!', 'success');
+                // Refresh page after short delay to show updated status
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast(data.message || 'An error occurred during processing.', 'error');
+                registrySubmitBtn.disabled = false;
+                registrySubmitBtn.innerHTML = 'Submit Decision';
+            }
+        })
+        .catch(error => {
+            console.error('Error details:', error);
+            showToast(error.message || 'An error occurred. Please check the console for details.', 'error');
+            registrySubmitBtn.disabled = false;
+            registrySubmitBtn.innerHTML = 'Submit Decision';
+        });
+    }
 
     // Initialize map modal event handlers
     function initMapModalHandlers() {

@@ -26,6 +26,7 @@ urlpatterns = [
     
     # Surveyor specific URLs
     path('inspections/', views.SurveyorInspectionsView.as_view(), name='surveyor_inspections'),
+    path('parcel/<int:application_id>/complete-inspection/', views.complete_field_inspection, name='complete_field_inspection'),
     
     # API Endpoints for inspection modal
     path('api/inspection/<int:application_id>/', views.get_inspection_details, name='api_inspection_details'),
