@@ -760,19 +760,7 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                            <div class="flex items-center">
-                                <div class="rounded-md bg-green-100 p-2 mr-3">
-                                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Land Titles</p>
-                                    <p class="text-2xl font-bold text-gray-900">{{ parcel_titles_count }}</p>
-                                </div>
-                            </div>
-                        </div>
+                        
                         
                         <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                             <div class="flex items-center">
@@ -801,7 +789,24 @@
                                 </div>
                             </div>
                         </div>
+                        <a href="{% url 'land_management:parcel_list' %}" class="block">
+    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 hover:shadow-md transition-shadow duration-200">
+        <div class="flex items-center">
+            <div class="rounded-md bg-green-100 p-2 mr-3">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <!-- <p class="text-lg font-semibold text-gray-900">View Land Parcels</p> -->
+                <p class="text-sm text-gray-500">Browse all registered land parcels</p>
+            </div>
+        </div>
+    </div>
+</a>
                     </div>
+
+                    
 
                     <!-- My Land Parcels Section -->
                     <div class="mb-6">

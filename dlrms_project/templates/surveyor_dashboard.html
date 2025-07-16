@@ -26,12 +26,12 @@
                         </svg>
                         View All Inspections
                     </a>
-                    <a href="{% url 'land_management:map' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <!-- <a href="{% url 'land_management:map' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                         </svg>
                         View Map
-                    </a>
+                    </a> -->
                 </div>
             </div>
 
@@ -177,7 +177,7 @@
                     <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-lg font-semibold text-gray-900">Recently Completed</h2>
-                            <a href="#" class="text-sm text-blue-600 hover:text-blue-800">
+                            <a href="{% url 'applications:surveyor_inspections' %}" class="text-sm text-blue-600 hover:text-blue-800">
                                 View All
                             </a>
                         </div>
@@ -215,51 +215,8 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Tools & Activities -->
+                <!-- Right Column: Assigned Disputes -->
                 <div class="lg:col-span-1">
-                    <!-- Quick Tools -->
-                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Field Tools</h2>
-                        
-                        <div class="space-y-3">
-                            <a href="{% url 'land_management:map' %}" class="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-blue-50 transition-colors">
-                                <div class="rounded-md bg-blue-100 p-2 mr-3 flex-shrink-0">
-                                    <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">GIS Map View</p>
-                                    <p class="text-xs text-gray-500">View land parcels on map</p>
-                                </div>
-                            </a>
-                            
-                            <a href="{% url 'applications:surveyor_inspections' %}" class="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-blue-50 transition-colors">
-                                <div class="rounded-md bg-green-100 p-2 mr-3 flex-shrink-0">
-                                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 012-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">Field Inspections</p>
-                                    <p class="text-xs text-gray-500">Manage all inspections</p>
-                                </div>
-                            </a>
-                            
-                            <a href="#" class="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-blue-50 transition-colors">
-                                <div class="rounded-md bg-red-100 p-2 mr-3 flex-shrink-0">
-                                    <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">Report Disputes</p>
-                                    <p class="text-xs text-gray-500">Flag boundary issues</p>
-                                </div>
-                            </a>
-                        </div>
-                    </div>
-
                     <!-- Assigned Disputes -->
                     {% if assigned_disputes %}
                     <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
@@ -291,6 +248,19 @@
                                 </div>
                             </div>
                             {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Assigned Disputes</h2>
+                        </div>
+                        <div class="text-center py-8 text-gray-500">
+                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            </svg>
+                            <p class="text-sm">No disputes assigned</p>
+                            <p class="text-xs mt-1">Disputes will appear here when assigned to you</p>
                         </div>
                     </div>
                     {% endif %}
