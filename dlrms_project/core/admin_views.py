@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
+
 @login_required
 @officer_required
 @require_POST
@@ -78,15 +79,21 @@ def create_user(request):
                 'message': 'National ID already exists.'
             }, status=400)
         
-        # Validate role permissions
-        valid_roles = ['landowner', 'registry_officer', 'surveyor', 'notary']
-        if request.user.role == 'admin':
-            valid_roles.append('admin')
+        # FIXED: Validate role permissions - now includes dispute_officer
+        # Dynamically get valid roles from the User model
+        valid_roles = [role_choice[0] for role_choice in User.ROLE_CHOICES]
+        
+        # Non-admin users cannot create admin users
+        if request.user.role != 'admin' and role == 'admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'Only administrators can create admin users.'
+            }, status=403)
         
         if role not in valid_roles:
             return JsonResponse({
                 'success': False,
-                'message': 'Invalid role selected.'
+                'message': f'Invalid role selected. Valid roles are: {", ".join(valid_roles)}'
             }, status=400)
         
         # Create the user
@@ -103,7 +110,7 @@ def create_user(request):
             password=make_password(password1)
         )
         
-        logger.info(f"User {username} created successfully")
+        logger.info(f"User {username} created successfully with role {role}")
         
         return JsonResponse({
             'success': True,
@@ -117,7 +124,6 @@ def create_user(request):
             'success': False,
             'message': f'Error creating user: {str(e)}'
         }, status=500)
-
 
 @login_required
 @officer_required
@@ -153,6 +159,7 @@ def get_user(request, user_id):
             'success': False,
             'message': f'Error fetching user: {str(e)}'
         }, status=500)
+
 
 @login_required
 @officer_required
@@ -209,15 +216,28 @@ def update_user(request):
                 'message': 'National ID already exists.'
             }, status=400)
         
-        # Validate role permissions
-        valid_roles = ['landowner', 'registry_officer', 'surveyor', 'notary']
-        if request.user.role == 'admin':
-            valid_roles.append('admin')
+        # FIXED: Validate role permissions - now includes dispute_officer
+        # Dynamically get valid roles from the User model
+        valid_roles = [role_choice[0] for role_choice in User.ROLE_CHOICES]
+        
+        # Non-admin users cannot assign admin role
+        if request.user.role != 'admin' and role == 'admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'Only administrators can assign the admin role.'
+            }, status=403)
+        
+        # Prevent users from changing their own role to admin (security measure)
+        if user_id == str(request.user.id) and role == 'admin' and request.user.role != 'admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'You cannot change your own role to admin.'
+            }, status=403)
         
         if role not in valid_roles:
             return JsonResponse({
                 'success': False,
-                'message': 'Invalid role selected.'
+                'message': f'Invalid role selected. Valid roles are: {", ".join(valid_roles)}'
             }, status=400)
         
         # Update the user
@@ -233,6 +253,7 @@ def update_user(request):
         user.is_active = is_active
         
         # Handle password reset
+        password_message = ''
         if reset_password:
             import secrets
             import string
@@ -243,10 +264,12 @@ def update_user(request):
             # In a real implementation, you would send this password via email
             # For now, we'll return it in the response (not recommended for production)
             password_message = f' New password: {new_password} (Please send this to the user securely)'
-        else:
-            password_message = ''
+            
+            logger.info(f"Password reset for user {username}")
         
         user.save()
+        
+        logger.info(f"User {username} updated successfully with role {role}")
         
         return JsonResponse({
             'success': True,

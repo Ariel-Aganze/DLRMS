@@ -2,6 +2,9 @@
 
 {% load static %}
 
+{% load dispute_filters %}
+
+
 {% block title %}Dashboard - DLRMS{% endblock %}
 
 {% block content %}
@@ -267,6 +270,240 @@
                             </a>
                         </div>
                     </div> -->
+                <!-- End Surveyor Dashboard Content -->
+
+                <!-- Registry Officer Dashboard Content -->
+                
+
+                {% elif user.role == 'dispute_officer' %}
+<!-- Dispute Officer Dashboard -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Disputes -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Total Disputes</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ total_disputes }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unassigned Disputes -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-yellow-100 rounded-md p-3">
+                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Unassigned</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ unassigned_disputes }}</p>
+                {% if unassigned_disputes > 0 %}
+                <a href="{% url 'disputes:dispute_list' %}?status=submitted" class="text-xs text-yellow-600 hover:text-yellow-700">
+                    Assign now →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Disputes -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Active Cases</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ active_disputes }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resolved This Month -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-purple-100 rounded-md p-3">
+                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Resolved (Month)</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ resolved_this_month }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Priority Alerts -->
+{% if urgent_disputes > 0 or high_priority_disputes > 0 %}
+<div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm text-red-700">
+                <strong>Priority Cases:</strong> 
+                {% if urgent_disputes > 0 %}{{ urgent_disputes }} urgent{% endif %}
+                {% if urgent_disputes > 0 and high_priority_disputes > 0 %}, {% endif %}
+                {% if high_priority_disputes > 0 %}{{ high_priority_disputes }} high priority{% endif %}
+                dispute{{ urgent_disputes|add:high_priority_disputes|pluralize }} require{{ urgent_disputes|add:high_priority_disputes|pluralize:"s," }} attention
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Recent Unassigned Disputes -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900">Unassigned Disputes</h2>
+                    <a href="{% url 'disputes:dispute_list' %}?status=submitted" class="text-sm text-blue-600 hover:text-blue-700">
+                        View all →
+                    </a>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dispute</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filed</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for dispute in recent_unassigned %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ dispute.dispute_number }}</div>
+                                <div class="text-xs text-gray-500">{{ dispute.title|truncatewords:5 }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ dispute.get_dispute_type_display }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if dispute.priority == 'urgent' %}bg-red-100 text-red-800
+                                    {% elif dispute.priority == 'high' %}bg-orange-100 text-orange-800
+                                    {% elif dispute.priority == 'medium' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ dispute.get_priority_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ dispute.filed_at|date:"M d" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <a href="{% url 'disputes:dispute_officer_assign' dispute.pk %}" 
+                                   class="text-blue-600 hover:text-blue-900">Assign</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                No unassigned disputes
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-6">
+        <!-- Officer Workload -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Officer Workload</h2>
+            </div>
+            <div class="p-6">
+                <div class="space-y-3">
+                    {% for officer in officer_workload %}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                                {{ officer.first_name|slice:":1" }}{{ officer.last_name|slice:":1" }}
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900">{{ officer.get_full_name }}</p>
+                                <p class="text-xs text-gray-500">{{ officer.get_role_display }}</p>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-900">
+                            {{ officer.active_cases }} case{{ officer.active_cases|pluralize }}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-sm text-gray-500">No officer data available</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispute Types Distribution -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Disputes by Type</h2>
+            </div>
+            <div class="p-6">
+                <div class="space-y-2">
+                    {% for type_data in disputes_by_type %}
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">
+                            {{ type_data.dispute_type|format_dispute_type }}
+                        </span>
+                        <span class="text-sm font-medium text-gray-900">{{ type_data.count }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-sm text-gray-500">No dispute data available</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Quick Actions</h2>
+            </div>
+            <div class="p-4 space-y-2">
+                <a href="{% url 'disputes:dispute_list' %}?status=submitted" 
+                   class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded">
+                    View Unassigned Disputes
+                </a>
+                <a href="{% url 'disputes:dispute_list' %}?priority=urgent" 
+                   class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded">
+                    View Urgent Cases
+                </a>
+                <a href="{% url 'disputes:dispute_list' %}" 
+                   class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded">
+                    All Disputes
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+                
 
                 <!-- Admin Dashboard Content -->
                 {% elif user.role == 'admin' or user.role == 'registry_officer' %}
@@ -1092,6 +1329,7 @@
                                     <option value="surveyor">Surveyor</option>
                                     <option value="notary">Notary</option>
                                     <option value="admin">Administrator</option>
+                                    <option value="dispute_officer">Dispute Officer</option>
                                 </select>
                             </div>
                             <div>
@@ -1223,7 +1461,7 @@
     </div>
 </div>
 
-<!-- Add User Modal -->
+<!-- Updated Add User Modal with Dispute Officer role -->
 <div id="add-user-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
         <div class="mt-3">
@@ -1283,6 +1521,7 @@
                                 <option value="registry_officer">Registry Officer</option>
                                 <option value="surveyor">Surveyor</option>
                                 <option value="notary">Notary</option>
+                                <option value="dispute_officer">Dispute Officer</option>
                                 {% if user.role == 'admin' %}
                                 <option value="admin">Administrator</option>
                                 {% endif %}
@@ -1415,6 +1654,7 @@
                                 <option value="registry_officer">Registry Officer</option>
                                 <option value="surveyor">Surveyor</option>
                                 <option value="notary">Notary</option>
+                                <option value="dispute_officer">Dispute Officer</option>
                                 {% if user.role == 'admin' %}
                                 <option value="admin">Administrator</option>
                                 {% endif %}

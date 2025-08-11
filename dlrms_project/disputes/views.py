@@ -3,18 +3,24 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, T
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.urls import reverse_lazy
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.db import transaction
+import json
 
-from accounts.admin import User
-
-
-from .models import Dispute, DisputeComment, DisputeEvidence, DisputeTimeline, MediationSession
+from accounts.models import User
+from notifications.models import Notification
+from .models import (
+    Dispute, DisputeComment, DisputeEvidence, DisputeTimeline, 
+    MediationSession, ApproachEffectiveness
+)
 from .forms import (
     DisputeForm, DisputeCommentForm, DisputeEvidenceForm, 
-    DisputeAssignmentForm, DisputeResolutionForm, MediationSessionForm
+    DisputeAssignmentForm, DisputeResolutionForm, MediationSessionForm,
+    DisputeOfficerAssignmentForm, DisputeApproachRecommender
 )
 from core.mixins import RoleRequiredMixin
 
@@ -31,24 +37,20 @@ class DisputeListView(LoginRequiredMixin, ListView):
         
         # Filter based on user role
         if user.role == 'landowner':
-            # Landowners see only their disputes
             queryset = queryset.filter(
                 Q(complainant=user) | Q(respondent=user)
             )
         elif user.role == 'surveyor':
-            # Surveyors see disputes assigned to them for investigation
             queryset = queryset.filter(
                 assigned_officer=user,
                 dispute_type__in=['boundary', 'encroachment']
             )
         elif user.role == 'notary':
-            # Notaries see only disputes assigned to them
             queryset = queryset.filter(assigned_officer=user)
-        elif user.role in ['registry_officer', 'admin']:
-            # Officers and admins see all disputes
+        elif user.role in ['registry_officer', 'admin', 'dispute_officer']:  # ADD dispute_officer
+            # Officers, admins, and dispute officers see all disputes
             pass
         else:
-            # Other roles see no disputes
             queryset = queryset.none()
         
         # Apply filters
@@ -66,6 +68,18 @@ class DisputeListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['status_choices'] = Dispute.DISPUTE_STATUS_CHOICES
         context['type_choices'] = Dispute.DISPUTE_TYPE_CHOICES
+        
+        # Add statistics for dispute officers
+        if self.request.user.role == 'dispute_officer':
+            context['unassigned_count'] = Dispute.objects.filter(
+                assigned_officer__isnull=True,
+                status='submitted'
+            ).count()
+            context['urgent_count'] = Dispute.objects.filter(
+                priority='urgent',
+                status__in=['submitted', 'under_investigation']
+            ).count()
+        
         return context
 
 
@@ -115,6 +129,7 @@ class DisputeDetailView(LoginRequiredMixin, DetailView):
         elif user.role in ['surveyor', 'notary']:
             if dispute.assigned_officer != user:
                 raise HttpResponseForbidden("You don't have permission to view this dispute.")
+        # dispute_officer, registry_officer, and admin can view all disputes
         
         return dispute
     
@@ -132,24 +147,30 @@ class DisputeDetailView(LoginRequiredMixin, DetailView):
         context['timeline'] = dispute.timeline.select_related('created_by')
         context['mediation_sessions'] = dispute.mediation_sessions.select_related('mediator')
         
-        if self.request.user.role in ['registry_officer', 'admin', 'notary']:
+        if self.request.user.role in ['registry_officer', 'admin', 'notary', 'dispute_officer']:
             context['available_mediators'] = User.objects.filter(
                 role__in=['registry_officer', 'admin', 'notary']
             )
-
+        
         # Filter internal comments for non-officers
-        if self.request.user.role not in ['registry_officer', 'admin', 'notary']:
+        if self.request.user.role not in ['registry_officer', 'admin', 'notary', 'dispute_officer']:
             context['comments'] = context['comments'].filter(is_internal=False)
+        
+        # Add approach guidance visibility
+        context['show_approach_guidance'] = (
+            dispute.suggested_approach and 
+            self.request.user.role in ['notary', 'surveyor', 'registry_officer', 'admin', 'dispute_officer']
+        )
         
         return context
 
 
 class DisputeResolveView(RoleRequiredMixin, UpdateView):
-    """Resolve a dispute - for officers and notaries"""
+    """Resolve a dispute - for officers, notaries, and dispute officers"""
     model = Dispute
     form_class = DisputeResolutionForm
     template_name = 'disputes/dispute_resolve.html'
-    allowed_roles = ['registry_officer', 'admin', 'notary']
+    allowed_roles = ['registry_officer', 'admin', 'notary', 'dispute_officer']  # ADD dispute_officer here
     
     def form_valid(self, form):
         dispute = form.save(commit=False)
@@ -172,6 +193,175 @@ class DisputeResolveView(RoleRequiredMixin, UpdateView):
         dispute.save()
         return redirect('disputes:dispute_detail', pk=dispute.pk)
 
+
+class DisputeOfficerAssignView(RoleRequiredMixin, UpdateView):
+    """Enhanced assignment view for Dispute Officers with approach guidance"""
+    model = Dispute
+    form_class = DisputeOfficerAssignmentForm
+    template_name = 'disputes/dispute_officer_assign.html'
+    allowed_roles = ['dispute_officer', 'admin']
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Check permissions before processing the request"""
+        self.object = self.get_object()
+        
+        # Check if user has permission
+        if request.user.role not in self.allowed_roles:
+            messages.error(request, "You don't have permission to assign disputes.")
+            return redirect('disputes:dispute_detail', pk=self.object.pk)
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_object(self, queryset=None):
+        """Get the dispute object"""
+        return get_object_or_404(Dispute, pk=self.kwargs['pk'])
+    
+    def get_form_kwargs(self):
+        """Pass additional kwargs to the form"""
+        kwargs = super().get_form_kwargs()
+        # You can add additional context to the form here if needed
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        """Add context data for the template"""
+        context = super().get_context_data(**kwargs)
+        dispute = self.object
+        
+        # Get smart recommendations using the recommender
+        recommender = DisputeApproachRecommender()
+        recommendations = recommender.recommend_approach(dispute)
+        
+        # Format the recommendations for display (to avoid template filter issues)
+        for rec in recommendations:
+            # Add a properly formatted display name
+            approach_display = rec['approach'].replace('_', ' ').title()
+            rec['approach_display'] = approach_display
+        
+        context['recommendations'] = recommendations
+        
+        # Get approach templates and format them
+        context['approach_templates'] = {}
+        for approach_choice in Dispute.RESOLUTION_APPROACH_CHOICES:
+            template_text = recommender.get_approach_template(
+                dispute.dispute_type, 
+                approach_choice[0]
+            )
+            if template_text:
+                context['approach_templates'][approach_choice[0]] = template_text
+        
+        # Get available officers with their current workload
+        officers = User.objects.filter(
+            role__in=['notary', 'surveyor', 'registry_officer']
+        ).annotate(
+            active_disputes=Count('assigned_disputes', 
+                filter=Q(assigned_disputes__status__in=['under_investigation', 'mediation']))
+        ).order_by('active_disputes')
+        
+        context['officers_workload'] = officers
+        
+        # Add dispute type choices for JavaScript
+        context['dispute_type'] = dispute.dispute_type
+        
+        # Add current user info
+        context['current_user'] = self.request.user
+        
+        return context
+    
+    def form_valid(self, form):
+        """Handle valid form submission"""
+        dispute = form.save(commit=False)
+        
+        # Track who suggested the approach and when
+        if form.cleaned_data.get('suggested_approach'):
+            dispute.approach_suggested_by = self.request.user
+            dispute.approach_suggested_at = timezone.now()
+        
+        # Save the dispute with updated information
+        dispute.save()
+        
+        # Build event description for timeline
+        event_description = f'Dispute assigned to {dispute.assigned_officer.get_full_name()} by {self.request.user.get_full_name()}'
+        
+        # Add approach information if provided
+        if dispute.suggested_approach:
+            event_description += f' with {dispute.get_suggested_approach_display()} approach'
+        
+        # Add priority information
+        event_description += f'. Priority: {dispute.get_priority_display()}'
+        
+        # Create timeline entry
+        DisputeTimeline.objects.create(
+            dispute=dispute,
+            event='Officer Assigned with Guidance',
+            description=event_description,
+            created_by=self.request.user
+        )
+        
+        # Update dispute status if it's still in submitted state
+        if dispute.status == 'submitted':
+            dispute.status = 'under_investigation'
+            dispute.save()
+            
+            # Create additional timeline entry for status change
+            DisputeTimeline.objects.create(
+                dispute=dispute,
+                event='Status Changed',
+                description='Status changed from Submitted to Under Investigation',
+                created_by=self.request.user
+            )
+        
+        # Send notification to assigned officer
+        from notifications.models import Notification
+        if dispute.assigned_officer:
+            # Build notification message
+            notification_message = f'You have been assigned dispute {dispute.dispute_number} ({dispute.get_dispute_type_display()}). '
+            notification_message += f'Priority: {dispute.get_priority_display()}. '
+            
+            if dispute.suggested_approach:
+                notification_message += f'Suggested approach: {dispute.get_suggested_approach_display()}. '
+            
+            if dispute.approach_notes:
+                notification_message += 'Please review the guidance notes provided.'
+            
+            Notification.objects.create(
+                recipient=dispute.assigned_officer,
+                title='New Dispute Assignment',
+                message=notification_message,
+                notification_type='dispute_assignment',
+                related_dispute=dispute
+            )
+            
+            # Also notify the complainant that an officer has been assigned
+            Notification.objects.create(
+                recipient=dispute.complainant,
+                title='Officer Assigned to Your Dispute',
+                message=f'An officer has been assigned to investigate your dispute {dispute.dispute_number}.',
+                notification_type='dispute_status',
+                related_dispute=dispute
+            )
+        
+        # Show success message
+        messages.success(
+            self.request, 
+            f'Dispute {dispute.dispute_number} has been assigned to {dispute.assigned_officer.get_full_name()} successfully.'
+        )
+        
+        # Log the assignment
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'Dispute {dispute.dispute_number} assigned to {dispute.assigned_officer.username} by {self.request.user.username}')
+        
+        # Redirect to dispute detail page
+        return redirect('disputes:dispute_detail', pk=dispute.pk)
+    
+    def form_invalid(self, form):
+        """Handle invalid form submission"""
+        messages.error(self.request, 'Please correct the errors below.')
+        return super().form_invalid(form)
+    
+    def get_success_url(self):
+        """Get the URL to redirect to after successful form submission"""
+        return reverse_lazy('disputes:dispute_detail', kwargs={'pk': self.object.pk})
 
 class DisputeAssignView(RoleRequiredMixin, UpdateView):
     """Assign dispute to an officer"""
@@ -326,3 +516,195 @@ def schedule_mediation(request, pk):
     else:
         messages.error(request, 'Error scheduling mediation session. Please check the form data.')
         return redirect('disputes:dispute_detail', pk=dispute.pk)
+    
+
+@login_required
+def get_approach_recommendations(request, pk):
+    """AJAX view to get approach recommendations for a dispute"""
+    if request.user.role not in ['dispute_officer', 'admin']:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    dispute = get_object_or_404(Dispute, pk=pk)
+    recommender = DisputeApproachRecommender()
+    recommendations = recommender.recommend_approach(dispute)
+    
+    # Format for JSON response
+    formatted_recommendations = []
+    for rec in recommendations:
+        formatted_rec = {
+            'approach': rec['approach'],
+            'approach_display': dict(Dispute.RESOLUTION_APPROACH_CHOICES).get(rec['approach']),
+            'reason': rec['reason'],
+            'priority': rec['priority']
+        }
+        if rec.get('success_rate') is not None:
+            formatted_rec['success_rate'] = f"{rec['success_rate']:.1f}%"
+        if rec.get('average_days') is not None:
+            formatted_rec['average_days'] = rec['average_days']
+        formatted_recommendations.append(formatted_rec)
+    
+    return JsonResponse({'recommendations': formatted_recommendations})
+
+
+# ADD AJAX endpoint for getting approach template
+@login_required
+def get_approach_template(request):
+    """AJAX view to get template text for a specific approach"""
+    if request.user.role not in ['dispute_officer', 'admin', 'notary', 'registry_officer']:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    dispute_type = request.GET.get('dispute_type')
+    approach = request.GET.get('approach')
+    
+    if not dispute_type or not approach:
+        return JsonResponse({'error': 'Missing parameters'}, status=400)
+    
+    recommender = DisputeApproachRecommender()
+    template_text = recommender.get_approach_template(dispute_type, approach)
+    
+    return JsonResponse({'template': template_text})
+
+@require_POST
+@login_required
+def guidance_feedback(request, pk):
+    """Record feedback on approach guidance helpfulness"""
+    dispute = get_object_or_404(Dispute, pk=pk)
+    
+    # Only assigned officer can provide feedback
+    if dispute.assigned_officer != request.user:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        is_helpful = data.get('helpful', False)
+        
+        # Update approach effectiveness if it was helpful and resolved
+        if is_helpful and dispute.status == 'resolved' and dispute.suggested_approach:
+            effectiveness, created = ApproachEffectiveness.objects.get_or_create(
+                dispute_type=dispute.dispute_type,
+                approach=dispute.suggested_approach,
+                defaults={'success_count': 0, 'total_count': 0}
+            )
+            
+            if is_helpful:
+                effectiveness.success_count += 1
+            effectiveness.total_count += 1
+            
+            # Calculate average resolution days
+            if dispute.resolution_date and dispute.filed_at:
+                days_to_resolve = (dispute.resolution_date - dispute.filed_at).days
+                current_avg = effectiveness.average_resolution_days
+                new_avg = ((current_avg * (effectiveness.total_count - 1)) + days_to_resolve) / effectiveness.total_count
+                effectiveness.average_resolution_days = new_avg
+            
+            effectiveness.save()
+        
+        # Create timeline entry
+        DisputeTimeline.objects.create(
+            dispute=dispute,
+            event='Approach Feedback',
+            description=f'Officer found the suggested approach {"helpful" if is_helpful else "not helpful"}',
+            created_by=request.user
+        )
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    
+
+# DISPUTE MANAGEMENT AJAX VIEWS
+@login_required
+@require_POST
+def update_dispute_status(request, pk):
+    """AJAX view to update dispute status"""
+    # Check permissions - allow dispute_officer, registry_officer, admin, and notary
+    if request.user.role not in ['dispute_officer', 'registry_officer', 'admin', 'notary']:
+        return JsonResponse({
+            'success': False,
+            'error': 'You do not have permission to update dispute status.'
+        }, status=403)
+    
+    try:
+        dispute = get_object_or_404(Dispute, pk=pk)
+        data = json.loads(request.body)
+        
+        # Get the new status
+        new_status = data.get('status')
+        investigation_notes = data.get('investigation_notes', '')
+        resolution = data.get('resolution', '')
+        
+        # Validate status
+        valid_statuses = [choice[0] for choice in Dispute.DISPUTE_STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid status selected.'
+            }, status=400)
+        
+        # Update the dispute
+        old_status = dispute.status
+        dispute.status = new_status
+        
+        # Add investigation notes if provided
+        if investigation_notes:
+            if dispute.investigation_notes:
+                dispute.investigation_notes += f"\n\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] {request.user.get_full_name()}:\n{investigation_notes}"
+            else:
+                dispute.investigation_notes = f"[{timezone.now().strftime('%Y-%m-%d %H:%M')}] {request.user.get_full_name()}:\n{investigation_notes}"
+        
+        # Handle resolution if status is resolved
+        if new_status == 'resolved':
+            if resolution:
+                dispute.resolution = resolution
+            dispute.resolution_date = timezone.now()
+            
+            # Create notification for parties
+            from notifications.models import Notification
+            for user in [dispute.complainant, dispute.respondent] if dispute.respondent else [dispute.complainant]:
+                if user:
+                    Notification.objects.create(
+                        recipient=user,
+                        title='Dispute Resolved',
+                        message=f'Dispute {dispute.dispute_number} has been resolved.',
+                        notification_type='dispute_status',
+                        related_dispute=dispute
+                    )
+        
+        dispute.save()
+        
+        # Create timeline entry
+        DisputeTimeline.objects.create(
+            dispute=dispute,
+            event='Status Updated',
+            description=f'Status changed from {old_status} to {new_status} by {request.user.get_full_name()}',
+            created_by=request.user
+        )
+        
+        # If assigned officer exists and status changed to under_investigation, notify them
+        if dispute.assigned_officer and new_status == 'under_investigation' and old_status != 'under_investigation':
+            from notifications.models import Notification
+            Notification.objects.create(
+                recipient=dispute.assigned_officer,
+                title='Dispute Assignment Active',
+                message=f'Dispute {dispute.dispute_number} is now under investigation.',
+                notification_type='dispute_assignment'
+            )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Dispute status updated to {dispute.get_status_display()}',
+            'new_status': new_status,
+            'new_status_display': dispute.get_status_display()
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid request data.'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

@@ -9,6 +9,7 @@ class User(AbstractUser):
         ('registry_officer', 'Registry Officer'),
         ('surveyor', 'Surveyor'),
         ('notary', 'Notary'),
+        ('dispute_officer', 'Dispute Officer'),
         ('admin', 'Administrator'),
     ]
     

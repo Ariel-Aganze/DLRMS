@@ -228,11 +228,33 @@ class AdminUserCreationForm(UserCreationForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show staff/officer roles for admin creation
-        self.fields['role'].choices = [
-            ('registry_officer', 'Registry Officer'),
-            ('surveyor', 'Surveyor'),
-            ('notary', 'Notary'),
-            ('admin', 'Administrator'),
-            ('landowner', 'Landowner'),  # Include landowner for completeness
-        ]
+        # DYNAMIC APPROACH - This will automatically use all roles from the model
+        # No need to hardcode - it will always be in sync with the model
+        # The role field will automatically use User.ROLE_CHOICES
+        
+        # If you want to exclude certain roles from admin creation, you can filter:
+        # excluded_roles = ['some_role']  # Add any roles you want to exclude
+        # self.fields['role'].choices = [
+        #     choice for choice in User.ROLE_CHOICES 
+        #     if choice[0] not in excluded_roles
+        # ]
+        
+        # Or if you want to keep the current approach but include all roles:
+        self.fields['role'].choices = User.ROLE_CHOICES
+        
+        # Style the fields (optional - add if you want consistent styling)
+        for field_name, field in self.fields.items():
+            if field_name not in ['password1', 'password2', 'is_verified']:
+                field.widget.attrs.update({
+                    'class': 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                })
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        
+        if commit:
+            user.save()
+        return user

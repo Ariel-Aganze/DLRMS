@@ -35,3 +35,11 @@ class SurveyorRequiredMixin(RoleRequiredMixin):
 class NotaryRequiredMixin(RoleRequiredMixin):
     """Mixin for notary views"""
     allowed_roles = ['notary', 'admin']
+
+class DisputeOfficerRequiredMixin(RoleRequiredMixin):
+    """Mixin specifically for dispute officer role"""
+    allowed_roles = ['dispute_officer', 'admin']
+
+class DisputeManagementMixin(RoleRequiredMixin):
+    """Mixin for roles that can manage disputes"""
+    allowed_roles = ['dispute_officer', 'registry_officer', 'admin', 'notary']

@@ -1,13 +1,12 @@
-# core/views.py
 from django.shortcuts import redirect, render
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
+from datetime import timedelta
 from applications.models import ParcelApplication, ParcelTitle
-# Import dispute model directly at the module level and store a reference
-from disputes.models import Dispute as DisputeModel  # Rename to avoid potential namespace conflicts
+from disputes.models import Dispute as DisputeModel
 from .mixins import SurveyorRequiredMixin
 
 User = get_user_model()
@@ -19,14 +18,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard.html'
 
     def dispatch(self, request, *args, **kwargs):
-        # Let LoginRequiredMixin handle authentication first
         response = super().dispatch(request, *args, **kwargs)
         
-        # If we get past the LoginRequiredMixin, the user is authenticated
-        # and we can safely check the role
         if request.user.is_authenticated and request.user.role == 'surveyor':
             return redirect('core:surveyor_dashboard')
-            
+        
         return response
     
     def get_context_data(self, **kwargs):
@@ -36,16 +32,80 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context['user'] = user
         context['unread_notifications_count'] = user.notifications.filter(is_read=False).count()
 
-        # Notary-specific context
-        if user.role == 'notary':
+        # ADD Dispute Officer-specific context
+        if user.role == 'dispute_officer':
+            # Get dispute statistics
+            all_disputes = DisputeModel.objects.all()
+            today = timezone.now().date()
+            month_start = today.replace(day=1)
+            
+            context.update({
+                # Overall statistics
+                'total_disputes': all_disputes.count(),
+                'unassigned_disputes': all_disputes.filter(
+                    assigned_officer__isnull=True,
+                    status='submitted'
+                ).count(),
+                'active_disputes': all_disputes.filter(
+                    status__in=['under_investigation', 'mediation']
+                ).count(),
+                'resolved_this_month': all_disputes.filter(
+                    status='resolved',
+                    resolution_date__gte=month_start
+                ).count(),
+                
+                # Priority breakdown
+                'urgent_disputes': all_disputes.filter(
+                    priority='urgent',
+                    status__in=['submitted', 'under_investigation']
+                ).count(),
+                'high_priority_disputes': all_disputes.filter(
+                    priority='high',
+                    status__in=['submitted', 'under_investigation']
+                ).count(),
+                
+                # Recent unassigned disputes
+                'recent_unassigned': all_disputes.filter(
+                    assigned_officer__isnull=True,
+                    status='submitted'
+                ).select_related('complainant', 'parcel').order_by('-filed_at')[:5],
+                
+                # Disputes by type
+                'disputes_by_type': all_disputes.values('dispute_type').annotate(
+                    count=Count('id')
+                ).order_by('-count'),
+                
+                # Officer workload
+                'officer_workload': User.objects.filter(
+                    role__in=['notary', 'surveyor', 'registry_officer']
+                ).annotate(
+                    active_cases=Count('assigned_disputes', 
+                        filter=Q(assigned_disputes__status__in=['under_investigation', 'mediation']))
+                ).order_by('-active_cases')[:5],
+                
+                # Approach effectiveness (if data exists)
+                'approach_effectiveness': DisputeModel.objects.filter(
+                    suggested_approach__isnull=False,
+                    status='resolved'
+                ).values('suggested_approach').annotate(
+                    count=Count('id')
+                ).order_by('-count')[:5],
+                
+                # Overdue investigations (disputes older than 30 days without resolution)
+                'overdue_disputes': all_disputes.filter(
+                    status__in=['under_investigation', 'mediation'],
+                    filed_at__lt=timezone.now() - timedelta(days=30)
+                ).select_related('assigned_officer', 'parcel').order_by('filed_at')[:5],
+            })
+            
+        # Existing Notary-specific context
+        elif user.role == 'notary':
             from disputes.models import DisputeTimeline
 
-            # Get disputes assigned to this notary
             assigned_disputes = DisputeModel.objects.filter(
                 assigned_officer=user
             ).select_related('parcel', 'complainant').order_by('-filed_at')
 
-            # Calculate statistics
             context.update({
                 'assigned_disputes': assigned_disputes[:5],
                 'assigned_disputes_count': assigned_disputes.count(),
@@ -54,54 +114,56 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 ).count(),
                 'resolved_this_month': assigned_disputes.filter(
                     status='resolved',
-                    resolution_date__month=timezone.now().month,
-                    resolution_date__year=timezone.now().year
-                ).count(),
-                'pending_actions': assigned_disputes.filter(
-                    status__in=['under_investigation', 'mediation']
+                    resolution_date__gte=timezone.now().replace(day=1)
                 ).count(),
                 'recent_activities': DisputeTimeline.objects.filter(
-                    dispute__assigned_officer=user
-                ).select_related('dispute').order_by('-created_at')[:5]
+                    dispute__in=assigned_disputes
+                ).select_related('dispute', 'created_by').order_by('-created_at')[:10],
+                
+                # Show approach guidance if exists
+                'disputes_with_guidance': assigned_disputes.filter(
+                    suggested_approach__isnull=False,
+                    status__in=['under_investigation', 'mediation']
+                ).select_related('approach_suggested_by')[:3],
             })
 
-        # Landowner or other roles
-        else:
-            context['recent_applications'] = ParcelApplication.objects.filter(applicant=user).order_by('-submitted_at')[:4]
-            context['recent_parcels'] = user.land_parcels.all().order_by('-created_at')[:3]
+        # Registry Officer context
+        elif user.role == 'registry_officer':
+            context.update({
+                'pending_applications': ParcelApplication.objects.filter(
+                    status='pending'
+                ).count(),
+                'completed_today': ParcelApplication.objects.filter(
+                    status='approved',
+                    updated_at__date=timezone.now().date()
+                ).count(),
+                'active_titles': ParcelTitle.objects.filter(is_active=True).count(),
+            })
 
-            context['pending_applications_count'] = ParcelApplication.objects.filter(
-                applicant=user,
-                status__in=['submitted', 'under_review', 'field_inspection']
-            ).count()
+        # Admin context
+        elif user.role == 'admin':
+            total_users = User.objects.count()
+            context.update({
+                'total_users': total_users,
+                'total_applications': ParcelApplication.objects.count(),
+                'pending_applications': ParcelApplication.objects.filter(status='pending').count(),
+                'total_disputes': DisputeModel.objects.count(),
+                'active_disputes': DisputeModel.objects.filter(
+                    status__in=['under_investigation', 'mediation']
+                ).count(),
+            })
 
-            context['parcel_titles_count'] = ParcelTitle.objects.filter(
-                owner=user,
-                is_active=True
-            ).count()
-
-        context['today'] = timezone.now().date()
-
-        # Admin and Registry Officer stats
-        if user.role in ['admin', 'registry_officer']:
-            all_users = User.objects.all()
-            context['total_users'] = all_users.count()
-            context['verified_users'] = all_users.filter(is_verified=True).count()
-            context['unverified_users'] = all_users.filter(is_verified=False).count()
-            context['total_landowners'] = all_users.filter(role='landowner').count()
-            context['total_officers'] = all_users.filter(
-                role__in=['registry_officer', 'surveyor', 'notary', 'admin']
-            ).count()
-            context['recent_users'] = all_users.order_by('-date_joined')[:20]
-
-            # Dispute statistics - use DisputeModel instead of Dispute
-            context['total_disputes'] = DisputeModel.objects.count()
-            context['open_disputes'] = DisputeModel.objects.filter(status='open').count()
-            context['pending_disputes'] = DisputeModel.objects.filter(status='open').count()  # Mapping 'open' to 'pending'
-            context['disputes_under_investigation'] = DisputeModel.objects.filter(status='under_investigation').count()
-            context['disputes_in_mediation'] = DisputeModel.objects.filter(status='mediation').count()
-            context['resolved_disputes'] = DisputeModel.objects.filter(status='resolved').count()
-            context['recent_disputes'] = DisputeModel.objects.order_by('-filed_at')[:5]
+        # Landowner context
+        elif user.role == 'landowner':
+            from land_management.models import LandParcel
+            
+            context.update({
+                'my_parcels': LandParcel.objects.filter(owner=user).count(),
+                'my_applications': ParcelApplication.objects.filter(applicant=user).count(),
+                'my_disputes': DisputeModel.objects.filter(
+                    Q(complainant=user) | Q(respondent=user)
+                ).count(),
+            })
 
         return context
 

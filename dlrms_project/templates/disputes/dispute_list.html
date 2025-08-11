@@ -154,10 +154,29 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {{ dispute.filed_at|date:"M d, Y" }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a href="{% url 'disputes:dispute_detail' dispute.pk %}" class="text-blue-600 hover:text-blue-900">
-                            View Details
-                        </a>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="flex space-x-2">
+                            <a href="{% url 'disputes:dispute_detail' dispute.pk %}" 
+                               class="text-blue-600 hover:text-blue-900">View</a>
+                            
+                            {% if user.role in 'dispute_officer,admin' %}
+                                {% if not dispute.assigned_officer %}
+                                <a href="{% url 'disputes:dispute_officer_assign' dispute.pk %}" 
+                                   class="text-green-600 hover:text-green-900">Assign</a>
+                                {% else %}
+                                <a href="{% url 'disputes:dispute_officer_assign' dispute.pk %}" 
+                                   class="text-yellow-600 hover:text-yellow-900">Reassign</a>
+                                {% endif %}
+                            {% elif user.role in 'registry_officer,admin' and not dispute.assigned_officer %}
+                                <a href="{% url 'disputes:dispute_assign' dispute.pk %}" 
+                                   class="text-green-600 hover:text-green-900">Assign</a>
+                            {% endif %}
+                            
+                            {% if user.role in 'registry_officer,admin,notary,dispute_officer' and dispute.status not in 'resolved,closed' %}
+                                <a href="{% url 'disputes:dispute_resolve' dispute.pk %}" 
+                                   class="text-purple-600 hover:text-purple-900">Resolve</a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

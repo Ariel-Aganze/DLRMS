@@ -1,0 +1,264 @@
+<!-- File: dlrms_project/templates/disputes/dispute_officer_assign.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% load dispute_filters %}
+
+{% block title %}Assign Dispute - {{ dispute.dispute_number }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Assign Dispute</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                Assign officer and provide resolution guidance for dispute {{ dispute.dispute_number }}
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Main Assignment Form - Left Column (2/3) -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Dispute Summary -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Dispute Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Dispute Number</p>
+                            <p class="font-medium">{{ dispute.dispute_number }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Type</p>
+                            <p class="font-medium">{{ dispute.get_dispute_type_display }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Filed By</p>
+                            <p class="font-medium">{{ dispute.complainant.get_full_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Filed Date</p>
+                            <p class="font-medium">{{ dispute.filed_at|date:"M d, Y" }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-sm text-gray-500">Description</p>
+                            <p class="mt-1 text-gray-700">{{ dispute.description|truncatewords:50 }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Smart Recommendations -->
+                {% if recommendations %}
+                <div class="bg-blue-50 rounded-lg shadow-sm p-6">
+                    <div class="flex items-center mb-4">
+                        <svg class="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-900">System Recommendations</h3>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        {% for rec in recommendations|slice:":3" %}
+                        <div class="bg-white rounded-md p-4 border border-blue-200">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-900">
+                                        {{ rec.approach|format_dispute_type }}
+                                    </p>
+                                    <p class="text-sm text-gray-600 mt-1">{{ rec.reason }}</p>
+                                    {% if rec.success_rate %}
+                                    <div class="mt-2 flex items-center text-xs text-gray-500">
+                                        <span class="mr-3">Success Rate: {{ rec.success_rate }}</span>
+                                        {% if rec.average_days %}
+                                        <span>Avg. Resolution: {{ rec.average_days|floatformat:0 }} days</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <button type="button" 
+                                        onclick="useRecommendation('{{ rec.approach }}')"
+                                        class="ml-3 px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded hover:bg-blue-50">
+                                    Use
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Assignment Form -->
+                <form method="post" class="bg-white rounded-lg shadow-sm p-6">
+                    {% csrf_token %}
+                    
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Assignment Details</h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Assign To -->
+                        <div>
+                            <label for="{{ form.assigned_officer.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ form.assigned_officer.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.assigned_officer }}
+                            {% if form.assigned_officer.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.assigned_officer.errors.0 }}</p>
+                            {% endif %}
+                            
+                            <!-- Officer Workload Info -->
+                            <div class="mt-2 text-xs text-gray-500">
+                                <p>Current workload of available officers:</p>
+                                <ul class="mt-1 space-y-1">
+                                    {% for officer in officers_workload|slice:":3" %}
+                                    <li>{{ officer.get_full_name }}: {{ officer.active_disputes }} active case{{ officer.active_disputes|pluralize }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Priority Level -->
+                        <div>
+                            <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ form.priority.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.priority }}
+                            {% if form.priority.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.priority.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Resolution Approach -->
+                        <div>
+                            <label for="{{ form.suggested_approach.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ form.suggested_approach.label }}
+                            </label>
+                            {{ form.suggested_approach }}
+                            {% if form.suggested_approach.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.suggested_approach.errors.0 }}</p>
+                            {% endif %}
+                            
+                            <!-- Approach Templates -->
+                            <div class="mt-2">
+                                <button type="button" 
+                                        onclick="loadTemplate()"
+                                        class="text-sm text-blue-600 hover:text-blue-800">
+                                    Load template for selected approach
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Guidance Notes -->
+                        <div>
+                            <label for="{{ form.approach_notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ form.approach_notes.label }}
+                            </label>
+                            {{ form.approach_notes }}
+                            {% if form.approach_notes.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.approach_notes.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <a href="{% url 'disputes:dispute_detail' dispute.pk %}" 
+                           class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </a>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Assign Dispute
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Sidebar (1/3) -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                    <div class="space-y-2">
+                        <a href="{% url 'disputes:dispute_detail' dispute.pk %}" 
+                           class="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded">
+                            View Full Details
+                        </a>
+                        <a href="{% url 'disputes:dispute_list' %}?status=submitted" 
+                           class="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded">
+                            View All Unassigned
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Assignment Guidelines -->
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3">Assignment Guidelines</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="h-4 w-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Consider officer workload and expertise
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="h-4 w-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Assign surveyors for technical disputes
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="h-4 w-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Provide clear guidance notes
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="h-4 w-4 text-gray-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Set appropriate priority levels
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Template storage
+const approachTemplates = {{ approach_templates|safe|default:"{}" }};
+
+function useRecommendation(approach) {
+    document.getElementById('id_suggested_approach').value = approach;
+    // Optionally load the template as well
+    loadTemplate();
+}
+
+function loadTemplate() {
+    const selectedApproach = document.getElementById('id_suggested_approach').value;
+    const disputeType = "{{ dispute.dispute_type }}";
+    
+    if (selectedApproach && approachTemplates[selectedApproach]) {
+        const currentNotes = document.getElementById('id_approach_notes').value;
+        if (currentNotes && !confirm('This will replace the current notes. Continue?')) {
+            return;
+        }
+        
+        // Use AJAX to get the template
+        fetch(`{% url 'disputes:get_approach_template' %}?dispute_type=${disputeType}&approach=${selectedApproach}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.template) {
+                    document.getElementById('id_approach_notes').value = data.template;
+                } else {
+                    alert('No template available for this approach.');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading template:', error);
+            });
+    } else {
+        alert('Please select an approach first.');
+    }
+}
+</script>
+{% endblock %}

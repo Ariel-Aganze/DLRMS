@@ -1,3 +1,6 @@
+# In dlrms_project/disputes/models.py
+# Add these new choices and fields to the Dispute model
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -33,7 +36,20 @@ class Dispute(models.Model):
         ('urgent', 'Urgent'),
     ]
     
-    # Basic Information
+    # ADD THIS NEW CHOICE SET
+    RESOLUTION_APPROACH_CHOICES = [
+        ('direct_mediation', 'Direct Mediation - Face-to-face discussion'),
+        ('shuttle_mediation', 'Shuttle Mediation - Separate meetings'),
+        ('technical_investigation', 'Technical Investigation - Survey/documentation'),
+        ('documentary_review', 'Documentary Review - Legal documents focus'),
+        ('site_inspection', 'Site Inspection - Physical verification'),
+        ('multi_party_conference', 'Multi-Party Conference - Multiple stakeholders'),
+        ('traditional_resolution', 'Traditional Resolution - Local leaders involvement'),
+        ('fast_track', 'Fast Track - Quick resolution for simple cases'),
+        ('complex_investigation', 'Complex Investigation - Extensive research required'),
+    ]
+    
+    # Basic Information (existing fields)
     dispute_number = models.CharField(max_length=50, unique=True, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField()
@@ -41,34 +57,64 @@ class Dispute(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     status = models.CharField(max_length=20, choices=DISPUTE_STATUS_CHOICES, default='submitted')
     
-    # Parties Involved
+    # Parties Involved (existing fields)
     complainant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='filed_disputes')
-    respondent = models.ForeignKey(User, on_delete=models.CASCADE, related_name='disputes_against', blank=True, null=True)
-    respondent_name = models.CharField(max_length=200, blank=True, null=True, help_text="Name of the respondent (person against whom the dispute is filed)")
+    respondent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='disputes_against')
+    respondent_name = models.CharField(max_length=200, blank=True, null=True)
     
-    # Related Objects
-    parcel = models.ForeignKey('land_management.LandParcel', on_delete=models.CASCADE, related_name='disputes')
-    related_application = models.ForeignKey('applications.ParcelApplication', on_delete=models.SET_NULL, blank=True, null=True, related_name='disputes')
+    # Related Land (existing fields)
+    parcel = models.ForeignKey('land_management.LandParcel', on_delete=models.SET_NULL, null=True, blank=True)
+    related_application = models.ForeignKey('applications.ParcelApplication', on_delete=models.SET_NULL, null=True, blank=True)
     
-    # Case Management
+    # Case Management (existing fields)
     assigned_officer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_disputes')
     investigation_notes = models.TextField(blank=True, null=True)
     resolution = models.TextField(blank=True, null=True)
-    resolution_date = models.DateTimeField(blank=True, null=True)
+    resolution_date = models.DateTimeField(null=True, blank=True)
     
-    # Timestamps
+    # ADD THESE NEW FIELDS FOR RESOLUTION APPROACH
+    suggested_approach = models.CharField(
+        max_length=30, 
+        choices=RESOLUTION_APPROACH_CHOICES, 
+        blank=True, 
+        null=True,
+        help_text="Recommended approach for resolving this dispute"
+    )
+    approach_notes = models.TextField(
+        blank=True, 
+        null=True,
+        help_text="Additional guidance for the assigned officer"
+    )
+    approach_suggested_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='suggested_approaches'
+    )
+    approach_suggested_at = models.DateTimeField(null=True, blank=True)
+    
+    # Timestamps (existing fields)
     filed_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def save(self, *args, **kwargs):
         if not self.dispute_number:
             # Generate unique dispute number
-            last_dispute = Dispute.objects.order_by('-id').first()
+            prefix = 'DSP'
+            year = timezone.now().year
+            last_dispute = Dispute.objects.filter(
+                dispute_number__startswith=f'{prefix}{year}'
+            ).order_by('dispute_number').last()
+            
             if last_dispute:
-                last_id = int(last_dispute.dispute_number.split('-')[1])
+                last_number = int(last_dispute.dispute_number[-4:])
+                new_number = last_number + 1
             else:
-                last_id = 0
-            self.dispute_number = f"DSP-{last_id + 1:06d}"
+                new_number = 1
+            
+            self.dispute_number = f'{prefix}{year}{new_number:04d}'
+        
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -78,6 +124,32 @@ class Dispute(models.Model):
         verbose_name = "Dispute"
         verbose_name_plural = "Disputes"
         ordering = ['-filed_at']
+
+
+# ADD THIS NEW MODEL FOR TRACKING APPROACH EFFECTIVENESS
+class ApproachEffectiveness(models.Model):
+    """Track which approaches work best for different dispute types"""
+    dispute_type = models.CharField(max_length=20, choices=Dispute.DISPUTE_TYPE_CHOICES)
+    approach = models.CharField(max_length=30, choices=Dispute.RESOLUTION_APPROACH_CHOICES)
+    success_count = models.IntegerField(default=0)
+    total_count = models.IntegerField(default=0)
+    average_resolution_days = models.FloatField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    @property
+    def success_rate(self):
+        if self.total_count == 0:
+            return 0
+        return (self.success_count / self.total_count) * 100
+    
+    class Meta:
+        unique_together = ['dispute_type', 'approach']
+        verbose_name = "Approach Effectiveness"
+        verbose_name_plural = "Approach Effectiveness Records"
+    
+    def __str__(self):
+        return f"{self.get_dispute_type_display()} - {self.get_approach_display()}: {self.success_rate:.1f}%"
 
 
 class DisputeComment(models.Model):

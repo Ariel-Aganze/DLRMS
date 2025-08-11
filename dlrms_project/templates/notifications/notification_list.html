@@ -64,7 +64,7 @@
                                 {% if notification.notification_type == 'transfer_status' and notification.related_transfer %}
                                     {% if notification.related_transfer.status == 'awaiting_receiver' %}
                                     <div class="mt-3">
-                                        <a href="{% url 'land_management:transfer_detail' notification.related_transfer.pk %}" 
+                                        <a href="{% url 'land_management:confirm_transfer' notification.related_transfer.pk %}" 
                                            class="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 text-sm font-medium rounded-md hover:bg-blue-50">
                                             View Transfer Details
                                         </a>
