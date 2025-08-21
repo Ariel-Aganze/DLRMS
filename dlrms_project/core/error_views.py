@@ -18,7 +18,7 @@ def handler403(request, exception=None):
             'referrer': request.META.get('HTTP_REFERER', 'None')
         }
     )
-    # Add context with DEBUG setting to avoid static file issues
+    # Context with DEBUG setting to avoid static file issues
     context = {
         'debug': settings.DEBUG,
     }

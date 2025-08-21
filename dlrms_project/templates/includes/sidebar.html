@@ -74,73 +74,126 @@
             </a>
 
             <!-- ADMIN AND REGISTRY OFFICER NAVIGATION -->
-            {% if user.role == 'admin' or user.role == 'registry_officer' %}
-                
-                <!-- User Management -->
-                <a href="#" onclick="showUserManagement(); return false;" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'user_management' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'user_management' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
-                    </svg>
-                    <span class="text-sm font-medium">User Management</span>
-                </a>
+{% if user.role == 'admin' or user.role == 'registry_officer' %}
 
-                <!-- Applications Review -->
-                <a href="{% url 'applications:review_dashboard' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'applications_review' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'applications_review' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                    </svg>
-                    <span class="text-sm font-medium">Applications Review</span>
-                </a>
+    <!-- User Management -->
+    <a href="#" onclick="showUserManagement(); return false;" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'user_management' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'user_management' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm6 0v-1a6 6 0 00-9-5.197" />
+        </svg>
+        <span class="text-sm font-medium">User Management</span>
+    </a>
 
-                <!-- All Applications (Admin View) -->
-                <a href="{% url 'applications:parcel_application_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'all_applications' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'all_applications' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    <span class="text-sm font-medium">All Applications</span>
-                </a>
+    <!-- Applications -->
+    <a href="{% url 'applications:review_dashboard' %}" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'applications_review' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'applications_review' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M9 5h6a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2z" />
+        </svg>
+        <span class="text-sm font-medium">Applications Review</span>
+    </a>
 
-                <a href="{% url 'certificates:certificate_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'certificates' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'certificates' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span class="text-sm font-medium">Certificates</span>
-                </a>
+    <a href="{% url 'applications:parcel_application_list' %}" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'all_applications' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'all_applications' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M7 5h10M7 9h10M7 13h10M7 17h10" />
+        </svg>
+        <span class="text-sm font-medium">All Applications</span>
+    </a>
 
-                <!-- All Land Parcels (Admin View) -->
-                <a href="{% url 'land_management:parcel_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'all_parcels' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'all_parcels' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                    </svg>
-                    <span class="text-sm font-medium">All Land Parcels</span>
-                </a>
+    <!-- Certificates -->
+    <a href="{% url 'certificates:certificate_list' %}" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'certificates' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'certificates' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="text-sm font-medium">Certificates</span>
+    </a>
 
-                {% if user.role == 'registry_officer' or user.role == 'admin' %}
-                <!-- Disputes Management -->
-                <a href="{% url 'disputes:dispute_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'disputes' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'disputes' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span class="text-sm font-medium">Dispute Management</span>
-                </a>
-                {% endif %}
+    <!-- Land Parcels -->
+    <a href="{% url 'land_management:parcel_list' %}" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'all_parcels' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'all_parcels' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M9 20l6-3V7L9 4l-6 3v11l6 3z" />
+        </svg>
+        <span class="text-sm font-medium">All Land Parcels</span>
+    </a>
 
-                <!-- System Reports -->
-                {% if user.role == 'admin' or user.role == 'registry_officer' %}
-                <a href="{% url 'reports:dashboard' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'reports' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'reports' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <span class="text-sm font-medium">System Reports</span>
-                </a>
-                {% endif %}
+    <!-- Disputes -->
+    {% if user.role == 'registry_officer' or user.role == 'admin' %}
+    <a href="{% url 'disputes:dispute_list' %}" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'disputes' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'disputes' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M12 8v4m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z" />
+        </svg>
+        <span class="text-sm font-medium">Dispute Management</span>
+    </a>
+    {% endif %}
 
-                <a href="{% url 'land_management:transfer_list' %}" class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'transfers' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
-                    <svg class="mr-3 h-5 w-5 {% if active_page == 'transfers' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                    </svg>
-                    <span class="text-sm font-medium">Ownership Transfers</span>
+    <!-- Reports -->
+    {% if user.role in 'admin,registry_officer,surveyor,notary,landowner' %}
+    <div>
+        <a href="{% url 'reports:dashboard' %}" 
+           class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'reports' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+            <svg class="mr-3 h-5 w-5 {% if active_page == 'reports' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v7m3-2h6" />
+            </svg>
+            <span class="text-sm font-medium">Reports</span>
+        </a>
+
+        <!-- Submenu -->
+        <ul class="ml-10 mt-1 space-y-1 text-xs">
+            <li>
+                <a href="{% url 'reports:dashboard' %}" 
+                   class="block px-3 py-1 rounded-md {% if active_page == 'system_reports' %}bg-blue-50 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">
+                    System Reports
                 </a>
+            </li>
+            <li>
+                <a href="{% url 'reports:custom_report_dashboard' %}" 
+                   class="block px-3 py-1 rounded-md {% if active_page == 'custom_reports' %}bg-blue-50 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">
+                    Custom Reports
+                </a>
+            </li>
+            {% if user.role in 'admin,registry_officer' %}
+            <li>
+                <a href="{% url 'reports:audit_logs' %}" 
+                   class="block px-3 py-1 rounded-md {% if active_page == 'audit_logs' %}bg-blue-50 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">
+                    Audit Logs
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Ownership Transfers -->
+    <a href="{% url 'land_management:transfer_list' %}" 
+       class="group flex items-center px-3 py-2 rounded-lg {% if active_page == 'transfers' %}bg-blue-100 text-blue-700{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+        <svg class="mr-3 h-5 w-5 {% if active_page == 'transfers' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %}" 
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        <span class="text-sm font-medium">Ownership Transfers</span>
+    </a>
+
+
                 
             <!-- SURVEYOR NAVIGATION -->
             {% elif user.role == 'surveyor' %}

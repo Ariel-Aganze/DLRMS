@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Custom Report Generator - DLRMS{% endblock %}
+
+{% block content %}
+<div class="flex h-screen bg-slate-50 flex-col md:flex-row">
+    {% include 'includes/sidebar.html' with active_page='reports' %}
+    
+    <div class="flex-1 md:ml-80 w-full overflow-auto">
+        <div class="p-4 md:p-6">
+            <!-- Messages Section -->
+            {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                <div class="px-4 py-3 rounded-md {% if message.tags == 'success' %}bg-green-100 border border-green-400 text-green-700{% elif message.tags == 'info' %}bg-blue-100 border border-blue-400 text-blue-700{% elif message.tags == 'warning' %}bg-yellow-100 border border-yellow-400 text-yellow-700{% elif message.tags == 'error' %}bg-red-100 border border-red-400 text-red-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Custom Report Generator</h1>
+                    <p class="text-gray-600">Generate detailed reports based on your role and permissions</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{% url 'reports:dashboard' %}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Report Type Selection -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Select Report Type</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {% for report in available_reports %}
+                    <button onclick="selectReportType('{{ report.id }}', '{{ report.name }}')" 
+                            data-report-id="{{ report.id }}"
+                            class="report-type-btn p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 text-left">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {% if report.icon == 'file-text' %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    {% elif report.icon == 'clipboard' %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    {% elif report.icon == 'users' %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                    {% elif report.icon == 'shield' %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                    {% else %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v7m3-2h6"></path>
+                                    {% endif %}
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-gray-900">{{ report.name }}</h3>
+                                <p class="text-xs text-gray-500 mt-1">Click to configure</p>
+                            </div>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Report Configuration Form -->
+            <div id="reportConfigSection" class="hidden">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                        Configure Report: <span id="selectedReportName" class="text-blue-600"></span>
+                    </h2>
+                    
+                    <form id="reportForm" method="POST" action="{% url 'reports:generate_custom_report' %}">
+                        {% csrf_token %}
+                        <input type="hidden" id="report_type" name="report_type" value="">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Date Range -->
+                            <div>
+                                <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <input type="date" id="start_date" name="start_date" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                <input type="date" id="end_date" name="end_date" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <!-- Status Filter -->
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select id="status" name="status" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Additional Filters (shown for admin) -->
+                            {% if can_generate_all %}
+                            <div>
+                                <label for="user_filter" class="block text-sm font-medium text-gray-700 mb-1">User Filter</label>
+                                <input type="text" id="user_filter" name="user_filter" 
+                                       placeholder="Username or email"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label for="department" class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                                <select id="department" name="department" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Departments</option>
+                                    <option value="registry">Registry</option>
+                                    <option value="survey">Survey</option>
+                                    <option value="legal">Legal</option>
+                                </select>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Output Format -->
+                            <div>
+                                <label for="format" class="block text-sm font-medium text-gray-700 mb-1">Output Format</label>
+                                <select id="format" name="format" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="pdf">PDF (Landscape)</option>
+                                    <option value="preview">Preview Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="mt-6 flex justify-end space-x-3">
+                            <button type="button" onclick="resetForm()" 
+                                    class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Reset
+                            </button>
+                            <button type="button" onclick="previewReport()" 
+                                    class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Preview
+                            </button>
+                            <button type="submit" 
+                                    class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Generate PDF Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div id="previewSection" class="hidden mt-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-900">Report Preview</h2>
+                        <button onclick="closePreview()" class="text-gray-400 hover:text-gray-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="previewContent" class="overflow-x-auto">
+                        <!-- Preview content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Reports -->
+            <div class="mt-6 bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Recently Generated Reports</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated By</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 text-center text-sm text-gray-500" colspan="5">
+                                    No recent reports available
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedReportType = null;
+
+function selectReportType(reportId, reportName) {
+    selectedReportType = reportId;
+    
+    // Update UI
+    document.querySelectorAll('.report-type-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-200', 'bg-gray-50');
+    });
+    
+    event.currentTarget.classList.remove('border-gray-200', 'bg-gray-50');
+    event.currentTarget.classList.add('border-blue-500', 'bg-blue-50');
+    
+    // Show configuration section
+    document.getElementById('reportConfigSection').classList.remove('hidden');
+    document.getElementById('selectedReportName').textContent = reportName;
+    document.getElementById('report_type').value = reportId;
+    
+    // Update status options based on report type
+    updateStatusOptions(reportId);
+}
+
+function updateStatusOptions(reportType) {
+    const statusSelect = document.getElementById('status');
+    statusSelect.innerHTML = '<option value="">All Status</option>';
+    
+    let options = [];
+    
+    switch(reportType) {
+        case 'certificates':
+            options = [
+                {value: 'issued', text: 'Issued'},
+                {value: 'expired', text: 'Expired'},
+                {value: 'revoked', text: 'Revoked'},
+                {value: 'draft', text: 'Draft'}
+            ];
+            break;
+        case 'applications':
+            options = [
+                {value: 'submitted', text: 'Submitted'},
+                {value: 'under_review', text: 'Under Review'},
+                {value: 'field_inspection', text: 'Field Inspection'},
+                {value: 'approved', text: 'Approved'},
+                {value: 'rejected', text: 'Rejected'}
+            ];
+            break;
+        case 'disputes':
+            options = [
+                {value: 'pending', text: 'Pending'},
+                {value: 'investigating', text: 'Investigating'},
+                {value: 'resolved', text: 'Resolved'},
+                {value: 'escalated', text: 'Escalated'}
+            ];
+            break;
+        default:
+            options = [
+                {value: 'active', text: 'Active'},
+                {value: 'completed', text: 'Completed'},
+                {value: 'cancelled', text: 'Cancelled'}
+            ];
+    }
+    
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.text;
+        statusSelect.appendChild(option);
+    });
+}
+
+function previewReport() {
+    const formData = new FormData(document.getElementById('reportForm'));
+    formData.set('format', 'preview');
+    
+    fetch("{% url 'reports:preview_report_data' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayPreview(data);
+        } else {
+            alert('Error generating preview: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error generating preview');
+    });
+}
+
+function displayPreview(data) {
+    const previewSection = document.getElementById('previewSection');
+    const previewContent = document.getElementById('previewContent');
+    
+    // Build preview HTML
+    let html = `
+        <div class="mb-4">
+            <h3 class="text-md font-semibold text-gray-900 mb-2">Summary Statistics</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    `;
+    
+    if (data.data.summary) {
+        for (const [key, value] of Object.entries(data.data.summary)) {
+            html += `
+                <div class="bg-gray-50 rounded p-3">
+                    <div class="text-xs text-gray-500">${key.replace(/_/g, ' ').toUpperCase()}</div>
+                    <div class="text-lg font-semibold text-gray-900">${value}</div>
+                </div>
+            `;
+        }
+    }
+    
+    html += `
+            </div>
+        </div>
+        <div class="mt-4">
+            <h3 class="text-md font-semibold text-gray-900 mb-2">Sample Records (First 10)</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+    `;
+    
+    // Add table headers
+    if (data.data.records && data.data.records.length > 0) {
+        const firstRecord = data.data.records[0];
+        for (const key of Object.keys(firstRecord)) {
+            html += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">${key.replace(/_/g, ' ')}</th>`;
+        }
+        html += `
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+        `;
+        
+        // Add table rows (limit to 10)
+        data.data.records.slice(0, 10).forEach(record => {
+            html += '<tr>';
+            for (const value of Object.values(record)) {
+                html += `<td class="px-4 py-2 text-sm text-gray-900">${value || 'N/A'}</td>`;
+            }
+            html += '</tr>';
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+    } else {
+        html += `
+                        </tr>
+                    </thead>
+                </table>
+                <p class="text-gray-500 text-center py-4">No records found for the selected criteria</p>
+            </div>
+        </div>
+        `;
+    }
+    
+    previewContent.innerHTML = html;
+    previewSection.classList.remove('hidden');
+}
+
+function closePreview() {
+    document.getElementById('previewSection').classList.add('hidden');
+}
+
+function resetForm() {
+    document.getElementById('reportForm').reset();
+    document.getElementById('reportConfigSection').classList.add('hidden');
+    document.getElementById('previewSection').classList.add('hidden');
+    
+    // Reset report type buttons
+    document.querySelectorAll('.report-type-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-200', 'bg-gray-50');
+    });
+    
+    selectedReportType = null;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Set default dates
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('end_date').value = today.toISOString().split('T')[0];
+    document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

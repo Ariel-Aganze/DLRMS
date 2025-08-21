@@ -7,11 +7,15 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 import csv
 import datetime
+from django.db.models import Count, Q, Sum, Avg
+from applications.models import ParcelApplication
 
 from core.models import AuditLog
-from certificates.models import CertificateAuditLog
+from certificates.models import Certificate, CertificateAuditLog
 from django.contrib.auth import get_user_model
 from .utils import create_sample_audit_logs
+from django.http import HttpResponse, JsonResponse
+
 
 User = get_user_model()
 
