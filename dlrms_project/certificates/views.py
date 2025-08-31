@@ -317,7 +317,7 @@ class DownloadCertificateView(LoginRequiredMixin, View):
 
 
 class VerifyCertificateView(View):
-    """Public certificate verification"""
+    """Public certificate verification - Enhanced to show details"""
     template_name = 'certificates/verify_certificate.html'
     
     def get(self, request, certificate_id=None):
@@ -337,7 +337,8 @@ class VerifyCertificateView(View):
                 context = {
                     'certificate': certificate,
                     'is_valid': certificate.is_valid,
-                    'verification_success': True
+                    'verification_success': True,
+                    'certificate_id': certificate_id  # Add this to show details
                 }
             except Certificate.DoesNotExist:
                 context = {
@@ -350,14 +351,16 @@ class VerifyCertificateView(View):
         return render(request, self.template_name, context)
     
     def post(self, request):
-        """Verify by certificate number"""
+        """Verify by certificate number - Enhanced to redirect with details"""
         certificate_number = request.POST.get('certificate_number', '').strip()
         
         if not certificate_number:
             return JsonResponse({'success': False, 'error': 'Certificate number is required'})
         
         try:
-            certificate = Certificate.objects.get(certificate_number=certificate_number)
+            certificate = Certificate.objects.select_related('owner', 'application').prefetch_related('signatures__signer').get(
+                certificate_number=certificate_number
+            )
             
             # Log verification
             CertificateAuditLog.objects.create(
@@ -368,21 +371,56 @@ class VerifyCertificateView(View):
                 user_agent=request.META.get('HTTP_USER_AGENT', '')
             )
             
+            # Get additional details from the application if available
+            application = certificate.application
+            property_details = {
+                'address': getattr(application, 'property_address', 'N/A'),
+                'size': f"{getattr(application, 'size_hectares', 0)} hectares" if hasattr(application, 'size_hectares') else 'N/A',
+                'use_type': getattr(application, 'intended_use', 'N/A'),
+                'location': {
+                    'district': getattr(application, 'district', 'N/A'),
+                    'sector': getattr(application, 'sector', 'N/A'),
+                    'cell': getattr(application, 'cell', 'N/A'),
+                }
+            }
+            
+            # Get digital signatures information
+            signatures_data = []
+            for signature in certificate.signatures.all():
+                signatures_data.append({
+                    'id': signature.id,
+                    'signature_id': getattr(signature, 'signature_id', str(signature.id)),
+                    'signer_name': signature.signer.get_full_name(),
+                    'role': signature.signer.get_role_display(),
+                    'signed_at': signature.signed_at.strftime('%B %d, %Y at %I:%M %p'),
+                    'document_hash': getattr(signature, 'document_hash', ''),
+                    'is_verified': getattr(signature, 'is_verified', True),
+                })
+            
             return JsonResponse({
                 'success': True,
+                'redirect': True,
+                'redirect_url': request.build_absolute_uri(f'/certificates/verify/{certificate.certificate_id}/'),
                 'certificate': {
+                    'id': str(certificate.certificate_id),
                     'number': certificate.certificate_number,
                     'type': certificate.get_certificate_type_display(),
                     'owner': certificate.owner.get_full_name(),
-                    'issue_date': certificate.issue_date.strftime('%B %d, %Y'),
+                    'owner_email': certificate.owner.email,
+                    'issue_date': certificate.issue_date.strftime('%B %d, %Y') if certificate.issue_date else 'Not issued',
                     'expiry_date': certificate.expiry_date.strftime('%B %d, %Y') if certificate.expiry_date else 'Lifetime',
                     'is_valid': certificate.is_valid,
-                    'status': certificate.get_status_display()
+                    'status': certificate.get_status_display(),
+                    'property_details': property_details,
+                    'signatures': signatures_data,  # Include signature information
+                    'verification_url': request.build_absolute_uri(f'/certificates/verify/{certificate.certificate_id}/'),
                 }
             })
         except Certificate.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Certificate not found'})
-
+            return JsonResponse({
+                'success': False, 
+                'error': 'Certificate not found. Please check the certificate number and try again.'
+            })
 
 class SignCertificateView(LoginRequiredMixin, View):
     """Add digital signature to certificate"""

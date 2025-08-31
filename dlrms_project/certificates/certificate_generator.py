@@ -1,5 +1,3 @@
-# Add this class to certificates/certificate_generator.py or create a new file
-
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch, cm

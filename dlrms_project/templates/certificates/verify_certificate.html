@@ -1,17 +1,18 @@
+<!-- Enhanced verify_certificate.html template -->
 {% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Verify Certificate - DLRMS{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
     
     <div class="text-center mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Certificate Verification</h1>
         <p class="mt-2 text-gray-600">Verify the authenticity of land ownership certificates</p>
     </div>
 
-    {% if not certificate_id %}
+    {% if not certificate_id and not certificate %}
     <!-- Verification Form -->
     <div class="bg-white rounded-lg shadow-sm p-8 max-w-md mx-auto">
         <form method="post" id="verifyForm">
@@ -29,6 +30,7 @@
                 <p class="mt-2 text-sm text-gray-500">Enter the certificate number to verify its authenticity</p>
             </div>
             <button type="submit" 
+                    id="verifyButton"
                     class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
                 Verify Certificate
             </button>
@@ -42,126 +44,239 @@
     </div>
     {% endif %}
 
-    <!-- Verification Result -->
+    <!-- Verification Result - Enhanced to show full details -->
     {% if verification_success is not None %}
-    <div class="bg-white rounded-lg shadow-sm p-8 max-w-2xl mx-auto mt-8">
-        {% if verification_success %}
-            <div class="text-center mb-6">
+    <div class="bg-white rounded-lg shadow-sm max-w-4xl mx-auto mt-8">
+        {% if verification_success and certificate %}
+            <!-- Success Header -->
+            <div class="text-center p-8 border-b border-gray-200">
                 <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <i class="fas fa-check-circle text-3xl text-green-600"></i>
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
                 </div>
                 <h2 class="text-2xl font-bold text-gray-900">Certificate Verified</h2>
                 <p class="mt-2 text-gray-600">This certificate is authentic and valid</p>
             </div>
             
-            <div class="border-t border-gray-200 pt-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Certificate Details</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Certificate Number</label>
-                        <p class="mt-1 text-gray-900 font-medium">{{ certificate.certificate_number }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Type</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.get_certificate_type_display }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Owner</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.owner.get_full_name }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Issue Date</label>
-                        <p class="mt-1 text-gray-900">{{ certificate.issue_date|date:"F d, Y" }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Status</label>
-                        <p class="mt-1">
-                            {% if certificate.is_valid %}
-                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
-                                    Valid
-                                </span>
-                            {% else %}
-                                <span class="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800">
-                                    {{ certificate.get_status_display }}
-                                </span>
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-500">Validity Period</label>
-                        <p class="mt-1 text-gray-900">
-                            {% if certificate.expiry_date %}
-                                Until {{ certificate.expiry_date|date:"F d, Y" }}
-                            {% else %}
-                                Lifetime
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-                
-                {% if certificate.application %}
-                <div class="mt-6">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Property Information</h4>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-sm text-gray-900">
-                            <span class="font-medium">Location:</span> {{ certificate.application.property_address }}
-                        </p>
-                        <p class="text-sm text-gray-900 mt-1">
-                            <span class="font-medium">Parcel ID:</span> 
-                            {% if certificate.application.parcel %}
-                                {{ certificate.application.parcel.parcel_id }}
-                            {% else %}
-                                Not assigned
-                            {% endif %}
-                        </p>
-                        <p class="text-sm text-gray-900 mt-1">
-                            <span class="font-medium">Size:</span> {{ certificate.application.size_hectares }} hectares
-                        </p>
-                    </div>
-                </div>
-                {% elif certificate.parcel %}
-                <div class="mt-6">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Property Information</h4>
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-sm text-gray-900">
-                            <span class="font-medium">Location:</span> {{ certificate.parcel.location }}
-                        </p>
-                        <p class="text-sm text-gray-900 mt-1">
-                            <span class="font-medium">Parcel ID:</span> {{ certificate.parcel.parcel_id }}
-                        </p>
-                        <p class="text-sm text-gray-900 mt-1">
-                            <span class="font-medium">Size:</span> {{ certificate.parcel.size_hectares }} hectares
-                        </p>
-                    </div>
-                </div>
-                {% endif %}
-                
-                {% if certificate.signatures.exists %}
-                <div class="mt-6">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Digital Signatures</h4>
-                    <div class="space-y-2">
-                        {% for signature in certificate.signatures.all %}
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <p class="text-sm text-gray-900">
-                                <i class="fas fa-signature text-green-500 mr-2"></i>
-                                Signed by {{ signature.signer.get_full_name }} on {{ signature.signed_at|date:"M d, Y" }}
-                            </p>
-                            <p class="text-xs text-gray-600 mt-1">
-                                <span class="font-medium">Signature ID:</span> {{ signature.signature_id }}
-                            </p>
+            <!-- Certificate Details -->
+            <div class="p-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Main Certificate Information -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Basic Details -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Certificate Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Certificate Number</label>
+                                    <p class="mt-1 text-gray-900 font-mono text-lg">{{ certificate.certificate_number }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Certificate Type</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.get_certificate_type_display }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Issue Date</label>
+                                    <p class="mt-1 text-gray-900">
+                                        {% if certificate.issue_date %}
+                                            {{ certificate.issue_date|date:"F d, Y" }}
+                                        {% else %}
+                                            Not issued
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Status</label>
+                                    <p class="mt-1">
+                                        {% if certificate.is_valid %}
+                                            <span class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                                Valid
+                                            </span>
+                                        {% else %}
+                                            <span class="px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800">
+                                                {{ certificate.get_status_display }}
+                                            </span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        {% endfor %}
+
+                        <!-- Owner Information -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Owner Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Full Name</label>
+                                    <p class="mt-1 text-gray-900 font-medium">{{ certificate.owner.get_full_name }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Email</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.owner.email }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">National ID</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.owner.national_id|default:"Not provided" }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Phone Number</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.owner.phone_number|default:"Not provided" }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Property Information -->
+                        {% if certificate.application %}
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Property Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Property Address</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.property_address|default:"Not specified" }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Size</label>
+                                    <p class="mt-1 text-gray-900">
+                                        {% if certificate.application.size_hectares %}
+                                            {{ certificate.application.size_hectares }} hectares
+                                        {% else %}
+                                            Not specified
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Intended Use</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.intended_use|default:"Not specified" }}</p>
+                                </div>
+                                <div>
+                                    <label class="text-sm font-medium text-gray-500">Application Number</label>
+                                    <p class="mt-1 text-gray-900">{{ certificate.application.application_number }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Location Details -->
+                            {% if certificate.application.district %}
+                            <div class="mt-4">
+                                <label class="text-sm font-medium text-gray-500">Location</label>
+                                <p class="mt-1 text-gray-900">
+                                    {{ certificate.application.district|default:"" }}
+                                    {% if certificate.application.sector %}, {{ certificate.application.sector }}{% endif %}
+                                    {% if certificate.application.cell %}, {{ certificate.application.cell }}{% endif %}
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Digital Signatures -->
+                        {% if certificate.signatures.all %}
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Digital Signatures</h3>
+                            <div class="space-y-3">
+                                {% for signature in certificate.signatures.all %}
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-gray-900">{{ signature.signer.get_full_name }}</p>
+                                            <p class="text-sm text-gray-500">{{ signature.signer.get_role_display }}</p>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                            Verified
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 text-sm text-gray-600">
+                                        <p>Signed on: {{ signature.signed_at|date:"F d, Y g:i A" }}</p>
+                                        <p>Digital Signature ID: 
+                                            <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                                {{ signature.signature_id|default:signature.id }}
+                                            </span>
+                                        </p>
+                                        {% if signature.document_hash %}
+                                        <!-- <p>Document Hash: 
+                                            <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all">
+                                                {{ signature.document_hash|truncatechars:20 }}...
+                                            </span>
+                                        </p> -->
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Sidebar with QR Code and Security Info -->
+                    <div class="space-y-6">
+                        <!-- QR Code -->
+                        <div class="bg-gray-50 rounded-lg p-6 text-center">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Verification QR Code</h4>
+                            <div class="inline-block p-4 bg-white rounded-lg shadow-sm">
+                                <div id="qrcode" class="mx-auto"></div>
+                            </div>
+                            <p class="mt-4 text-sm text-gray-600">Scan to verify certificate authenticity</p>
+                        </div>
+
+                        <!-- Security Features -->
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-4">Security Features</h4>
+                            <ul class="space-y-2 text-sm text-gray-600">
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>QR code verification</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>Digitally signed and encrypted</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>Tamper-evident seal</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span>Real-time verification</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="{% url 'certificates:verify_certificate' %}" 
+                       class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center">
+                        Verify Another Certificate
+                    </a>
+                    {% if certificate.pdf_file %}
+                    <a href="{{ certificate.pdf_file.url }}" 
+                       target="_blank"
+                       class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-center">
+                        View PDF Certificate
+                    </a>
+                    {% endif %}
+                </div>
             </div>
+
         {% else %}
-            <div class="text-center">
+            <!-- Error State -->
+            <div class="text-center p-8">
                 <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                    <i class="fas fa-times-circle text-3xl text-red-600"></i>
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </div>
                 <h2 class="text-2xl font-bold text-gray-900">Certificate Not Found</h2>
-                <p class="mt-2 text-gray-600">{{ error_message|default:"The certificate number you entered could not be found in our system." }}</p>
+                <p class="mt-2 text-gray-600">{{ error_message|default:"The certificate you're looking for could not be found." }}</p>
                 <a href="{% url 'certificates:verify_certificate' %}" 
                    class="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     Try Another Certificate
@@ -170,23 +285,52 @@
         {% endif %}
     </div>
     {% endif %}
+
+    <!-- Loading Message Container -->
+    <div id="loadingMessage" class="hidden bg-white rounded-lg shadow-sm p-8 max-w-md mx-auto mt-8">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-4 text-gray-600">Verifying certificate...</p>
+        </div>
+    </div>
 </div>
 
-<!-- AJAX Verification Script -->
+<!-- Enhanced AJAX Verification Script -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
 <script>
+// Generate QR Code if certificate exists
+{% if certificate %}
+document.addEventListener('DOMContentLoaded', function() {
+    const qr = qrcode(0, 'M');
+    qr.addData('{{ request.build_absolute_uri }}');
+    qr.make();
+    document.getElementById('qrcode').innerHTML = qr.createImgTag(4);
+});
+{% endif %}
+
+// Enhanced form verification
 document.getElementById('verifyForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const certificateNumber = document.getElementById('certificate_number').value;
+    const certificateNumber = document.getElementById('certificate_number').value.trim();
+    if (!certificateNumber) {
+        alert('Please enter a certificate number');
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('certificate_number', certificateNumber);
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
     
     // Show loading state
-    const submitButton = e.target.querySelector('button[type="submit"]');
+    const submitButton = document.getElementById('verifyButton');
     const originalText = submitButton.textContent;
     submitButton.disabled = true;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...';
+    submitButton.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Verifying...';
+    
+    // Show loading message
+    document.getElementById('loadingMessage').classList.remove('hidden');
     
     fetch("{% url 'certificates:verify_certificate' %}", {
         method: 'POST',
@@ -195,29 +339,33 @@ document.getElementById('verifyForm')?.addEventListener('submit', function(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Display verification result
-            displayVerificationResult(true, data.certificate);
+            if (data.redirect && data.redirect_url) {
+                // Redirect to detailed view
+                window.location.href = data.redirect_url;
+            } else {
+                // Fallback: show basic info
+                displayBasicVerificationResult(true, data.certificate);
+            }
         } else {
-            displayVerificationResult(false, null, data.error);
+            displayBasicVerificationResult(false, null, data.error);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        displayVerificationResult(false, null, 'An error occurred while verifying the certificate.');
+        displayBasicVerificationResult(false, null, 'An error occurred while verifying the certificate. Please try again.');
     })
     .finally(() => {
         submitButton.disabled = false;
         submitButton.textContent = originalText;
+        document.getElementById('loadingMessage').classList.add('hidden');
     });
 });
 
-function displayVerificationResult(success, certificate, errorMessage) {
-    // This would typically update the DOM to show the result
-    // For now, we'll reload the page with the result
-    if (success) {
-        alert('Certificate verified successfully!');
+function displayBasicVerificationResult(success, certificate, errorMessage) {
+    if (success && certificate) {
+        alert(`Certificate verified successfully!\n\nCertificate: ${certificate.number}\nOwner: ${certificate.owner}\nType: ${certificate.type}\nStatus: ${certificate.status}`);
     } else {
-        alert(errorMessage || 'Certificate not found.');
+        alert(errorMessage || 'Certificate not found or invalid.');
     }
 }
 </script>

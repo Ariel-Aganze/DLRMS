@@ -39,12 +39,14 @@ class DisputeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
+    
         if user:
-            # Only show parcels that the user owns or has disputes with
-            self.fields['parcel'].queryset = LandParcel.objects.filter(
-                Q(owner=user) | Q(disputes__complainant=user)
-            ).distinct()
+        # SIMPLE FIX: Just show parcels owned by the user
+        # Remove the problematic reverse relationship query
+            self.fields['parcel'].queryset = LandParcel.objects.filter(owner=user)
+        else:
+        # If no user provided, show no parcels
+            self.fields['parcel'].queryset = LandParcel.objects.none()
 
 
 class DisputeCommentForm(forms.ModelForm):

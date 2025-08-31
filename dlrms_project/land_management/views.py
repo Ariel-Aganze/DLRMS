@@ -6,7 +6,6 @@ from django.urls import reverse_lazy
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.http import JsonResponse
-# Import only the models that exist in this app
 from .models import LandParcel, OwnershipTransfer, ParcelBoundary
 
 # Import models from other apps
@@ -261,7 +260,7 @@ class MapView(LoginRequiredMixin, TemplateView):
             context['map_center'] = {'lat': avg_lat, 'lng': avg_lng}
         else:
             # Default to Kigali
-            context['map_center'] = {'lat': -1.9441, 'lng': 30.0619}
+            context['map_center'] = {'lat': -1.955688, 'lng': 30.104188}
         
         return context
 

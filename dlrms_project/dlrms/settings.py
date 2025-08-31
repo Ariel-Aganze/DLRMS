@@ -27,9 +27,9 @@ if os.name == 'nt':  # Windows
     GDAL_LIBRARY_PATH = os.path.join(osgeo_path, 'gdal.dll')
     GEOS_LIBRARY_PATH = os.path.join(osgeo_path, 'geos_c.dll')
     
-    print(f"✅ GDAL configured at: {GDAL_LIBRARY_PATH}")
-    print(f"✅ GEOS configured at: {GEOS_LIBRARY_PATH}")
-    print(f"✅ PROJ_LIB set to: {osgeo_path}")
+    print(f"### GDAL configured at: {GDAL_LIBRARY_PATH}")
+    print(f"### GEOS configured at: {GEOS_LIBRARY_PATH}")
+    print(f"### PROJ_LIB set to: {osgeo_path}")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here')

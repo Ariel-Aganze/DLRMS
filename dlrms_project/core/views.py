@@ -127,9 +127,13 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 ).select_related('approach_suggested_by')[:3],
             })
 
-        # Registry Officer context
+        # Registry Officer context - ENHANCED WITH MISSING METRICS
         elif user.role == 'registry_officer':
+            # Get all users for admin-level statistics
+            all_users = User.objects.all()
+            
             context.update({
+                # Application metrics
                 'pending_applications': ParcelApplication.objects.filter(
                     status='pending'
                 ).count(),
@@ -138,31 +142,79 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     updated_at__date=timezone.now().date()
                 ).count(),
                 'active_titles': ParcelTitle.objects.filter(is_active=True).count(),
+                
+                # USER STATISTICS THAT WERE MISSING
+                'total_users': all_users.count(),
+                'verified_users': all_users.filter(is_verified=True).count(),
+                'unverified_users': all_users.filter(is_verified=False).count(),
+                'total_landowners': all_users.filter(role='landowner').count(),
+                'total_officers': all_users.filter(
+                    role__in=['registry_officer', 'surveyor', 'notary', 'admin']
+                ).count(),
+                'active_users': all_users.filter(is_active=True).count(),
+                'inactive_users': all_users.filter(is_active=False).count(),
+                'new_users_today': all_users.filter(
+                    date_joined__date=timezone.now().date()
+                ).count(),
             })
 
-        # Admin context
+        # Admin context - ENHANCED WITH MISSING METRICS  
         elif user.role == 'admin':
-            total_users = User.objects.count()
+            # Get all users for comprehensive statistics
+            all_users = User.objects.all()
+            
             context.update({
-                'total_users': total_users,
+                # USER STATISTICS THAT WERE MISSING
+                'total_users': all_users.count(),
+                'verified_users': all_users.filter(is_verified=True).count(),
+                'unverified_users': all_users.filter(is_verified=False).count(),
+                'total_landowners': all_users.filter(role='landowner').count(),
+                'total_officers': all_users.filter(
+                    role__in=['registry_officer', 'surveyor', 'notary', 'admin']
+                ).count(),
+                'active_users': all_users.filter(is_active=True).count(),
+                'inactive_users': all_users.filter(is_active=False).count(),
+                'new_users_today': all_users.filter(
+                    date_joined__date=timezone.now().date()
+                ).count(),
+                
+                # Application and system metrics
                 'total_applications': ParcelApplication.objects.count(),
                 'pending_applications': ParcelApplication.objects.filter(status='pending').count(),
+                'approved_applications': ParcelApplication.objects.filter(status='approved').count(),
+                'field_inspection_applications': ParcelApplication.objects.filter(status='field_inspection').count(),
+                
+                # Dispute metrics
                 'total_disputes': DisputeModel.objects.count(),
                 'active_disputes': DisputeModel.objects.filter(
                     status__in=['under_investigation', 'mediation']
                 ).count(),
+                
+                # Recent activity for admin overview
+                'recent_applications': ParcelApplication.objects.order_by('-submitted_at')[:5],
+                'recent_users': all_users.order_by('-date_joined')[:5],
             })
 
-        # Landowner context
+        # Landowner context - FIXED VARIABLE NAME ISSUE
         elif user.role == 'landowner':
             from land_management.models import LandParcel
             
+            # Get landowner's data
+            my_applications = ParcelApplication.objects.filter(applicant=user)
+            my_disputes = DisputeModel.objects.filter(
+                Q(complainant=user) | Q(respondent=user)
+            )
+            
             context.update({
                 'my_parcels': LandParcel.objects.filter(owner=user).count(),
-                'my_applications': ParcelApplication.objects.filter(applicant=user).count(),
-                'my_disputes': DisputeModel.objects.filter(
-                    Q(complainant=user) | Q(respondent=user)
-                ).count(),
+                'my_applications': my_applications.count(),
+                'applications': my_applications.count(),  # Alternative variable name for template compatibility
+                'my_disputes': my_disputes.count(),
+                
+                # Additional landowner metrics
+                'pending_applications': my_applications.filter(status='submitted').count(),
+                'approved_applications': my_applications.filter(status='approved').count(),
+                'recent_applications': my_applications.order_by('-submitted_at')[:5],
             })
 
         return context
