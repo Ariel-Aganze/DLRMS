@@ -60,7 +60,6 @@ class ParcelApplicationCreateView(LoginRequiredMixin, CreateView):
                     title='New Application Submitted',
                     message=f'New parcel application {form.instance.application_number} submitted by {self.request.user.get_full_name()}',
                     notification_type='application_status',
-                    # Don't use related_application since it expects TitleApplication
                     sender=self.request.user
                 )
             )

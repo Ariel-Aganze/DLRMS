@@ -172,8 +172,6 @@ class CustomReportGenerator:
         date_range = self._format_date_range(filters)
         elements.extend(self._create_header(report_title, date_range))
         
-        # Skip summary statistics table (removed)
-        # Go directly to main data table
         
         # Add main data table
         if 'records' in data:
